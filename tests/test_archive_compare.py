@@ -214,6 +214,85 @@ class TestGenerateComparison:
         assert "&lt;img" in html
         assert "onerror=&quot;alert(1)&quot;" in html
 
+class TestGenerateComparisonArchive:
+    def test_skips_error_and_empty_days_and_writes_dashboard(self, tmp_path, monkeypatch):
+        clients = []
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+                clients.append(self)
+
+            def _discover_latest_day(self):
+                return None
+
+            def iter_raw_events_for_day(self, day):
+                if day == 1:
+                    raise archive_compare.api_client.APIError("temporary outage")
+                if day == 2:
+                    return iter([])
+                return iter([
+                    {
+                        "id": "event-3",
+                        "createdAt": "2026-06-01T17:00:00Z",
+                        "data": {
+                            "agentId": "agent-1",
+                            "roomId": "room-1",
+                            "actionType": "AGENT_TALK",
+                            "content": "hello",
+                            "inputTokens": 12,
+                            "outputTokens": 3,
+                        },
+                    }
+                ])
+
+            def get_agents(self):
+                return {"agent-1": "Alice"}
+
+            def get_rooms(self):
+                return {"room-1": "best"}
+
+        rendered = []
+
+        def fake_generate_comparison(day_metrics, output_path, village_day=0):
+            rendered.append((day_metrics, output_path, village_day))
+            output_path.write_text("comparison", encoding="utf-8")
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+        monkeypatch.setattr(archive_compare, "generate_comparison", fake_generate_comparison)
+
+        output = archive_compare.generate_comparison_archive(
+            tmp_path,
+            days_back=3,
+            endpoint="https://example.invalid/api/",
+            village_slug="custom-slug",
+            village_id="village-1",
+        )
+
+        assert output == tmp_path / "comparison.html"
+        assert output.read_text(encoding="utf-8") == "comparison"
+        assert [c.kwargs for c in clients] == [
+            {
+                "village_slug": "custom-slug",
+                "endpoint": "https://example.invalid/api/",
+                "village_id": "village-1",
+            }
+        ]
+        assert len(rendered) == 1
+        day_metrics, output_path, village_day = rendered[0]
+        assert output_path == output
+        assert village_day == 3
+        assert [d["day"] for d in day_metrics] == [3]
+        assert day_metrics[0]["messages"] == 1
+        assert day_metrics[0]["events"] == 1
+        assert day_metrics[0]["agents"] == 1
+        assert day_metrics[0]["tokens"] == 15
+        assert day_metrics[0]["efficiency"] == 4.0
+        assert day_metrics[0]["room_participation"] == {"best": {"Alice": 1}}
+        assert day_metrics[0]["top_agents"] == [{"agent": "Alice", "messages": 1}]
+        assert day_metrics[0]["daily_trends"][0]["date"] == "2026-06-01"
+
+
 class TestArchiveCompareCLI:
     def test_main_forwards_options_and_prints_output(self, tmp_path, monkeypatch, capsys):
         calls = []
