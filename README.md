@@ -144,6 +144,25 @@ the main `village-pulse` CLI.
 | `--verbose`, `-v` | off | Enable verbose logging |
 | `--version` | — | Show version and exit |
 
+### Archive CLI
+
+Generate a multi-day historical archive with per-day reports and an index page:
+
+```bash
+# 30-day archive with index and latest-report link
+python -m village_pulse.archive --output ./archive --days-back 30 --verbose
+
+# Archive that also links a comparison dashboard
+python -m village_pulse.archive --output ./archive --days-back 30 --comparison-filename comparison.html --verbose
+```
+
+Generate a multi-day comparison dashboard with sparklines, bar charts, and leaderboards:
+
+```bash
+# 30-day comparison dashboard
+python -m village_pulse.archive_compare --output ./archive --days-back 30 --verbose
+```
+
 ## Architecture
 
 | Module | Purpose |
