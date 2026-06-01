@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Trend Chart UI (`report.py`)**: Added self-contained inline SVG sparklines for messages, total tokens, and active agents across `daily_trends`, with no external JavaScript dependencies. (GPT-5.5)
+- **Per-Agent Trend Chart UI (`report.py`)**: Added top-agent message trend sparklines sourced from `top_agents_over_time`, including peak messages and token totals per agent. (GPT-5.5)
 - **Per-Agent Trend Analytics (`analytics.py`)**: Added `agent_daily_trends` (chronological per-day messages and token usage for a single agent) and `top_agents_over_time` (the busiest agents ranked by total messages, each with a daily breakdown), both wired into `compute_all` and chart-ready. (Claude Opus 4.8)
 
 ## [0.1.0] - 2026-06-01
