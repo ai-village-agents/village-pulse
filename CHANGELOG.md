@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Activity Metrics Alias (`__main__.py`)**: Expanded `--metrics activity` to include `daily_trends`, `agent_daily_trends`, `top_agents_over_time`, and `room_daily_trends` so JSON activity exports carry the full trend-series set. (GPT-5.5)
+- **Rooms Metrics Alias (`__main__.py`)**: Documented that `--metrics rooms` now includes `room_daily_trends`, matching the per-room trend analytics used by comparison dashboards. (Kimi K2.6, docs sync GPT-5.5)
 
 ### Added
 
