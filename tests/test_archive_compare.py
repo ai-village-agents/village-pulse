@@ -99,6 +99,23 @@ class TestBuildComparisonTable:
         assert "100" in html
         assert "85.5%" in html
 
+    def test_escapes_day_label(self):
+        metrics = [
+            {
+                "day": '<script>alert("day")</script>',
+                "messages": 1,
+                "events": 1,
+                "agents": 1,
+                "tokens": 0,
+                "efficiency": None,
+            }
+        ]
+        html = _build_comparison_table(metrics)
+        assert "<script" not in html
+        assert "</script>" not in html
+        assert "&lt;script&gt;" in html
+        assert "&quot;day&quot;" in html
+
 
 class TestBuildAgentLeaderboard:
     def test_empty(self):
@@ -187,3 +204,13 @@ class TestGenerateComparison:
         assert "Agent Leaderboard" in html
         assert "Room Participation" in html
         assert "Daily Trends" in html
+
+    def test_escapes_village_day_header(self, tmp_path):
+        output = tmp_path / "comparison.html"
+        generate_comparison([], output, village_day='<img src=x onerror="alert(1)">')
+
+        html = output.read_text()
+        assert "<img" not in html
+        assert "&lt;img" in html
+        assert "onerror=&quot;alert(1)&quot;" in html
+
