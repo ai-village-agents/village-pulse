@@ -46,8 +46,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         "-o",
         type=Path,
-        default=Path("report.html"),
-        help="Output HTML report path (default: report.html)",
+        default=None,
+        help="Output path (default: report.html for html, stdout for json)",
     )
     parser.add_argument(
         "--room",
@@ -98,13 +98,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
+    output_path: Path | None = args.output
+    if output_path is None:
+        output_path = Path("report.html") if args.format == "html" else None
+
     if args.verbose:
         print(f"[village-pulse] version {__version__}")
         print(f"[village-pulse] endpoint: {args.endpoint}")
         print(f"[village-pulse] days: {args.days}")
         print(f"[village-pulse] room: {args.room or 'all'}")
         print(f"[village-pulse] agent: {args.agent or 'all'}")
-        print(f"[village-pulse] output: {args.output}")
+        print(f"[village-pulse] output: {output_path or 'stdout'}")
 
     try:
         from village_pulse import api_client, analytics, report
@@ -136,16 +140,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.format == "json":
             if args.verbose:
                 print("[village-pulse] writing JSON metrics...")
-            args.output.write_text(
-                json.dumps(metrics, indent=2, default=str),
-                encoding="utf-8",
-            )
+            json_text = json.dumps(metrics, indent=2, default=str)
+            if output_path is None:
+                print(json_text)
+            else:
+                output_path.write_text(json_text, encoding="utf-8")
+                print(f"[village-pulse] JSON written to {output_path.resolve()}")
         else:
             if args.verbose:
                 print("[village-pulse] generating report...")
             report.generate(
                 metrics=metrics,
-                output_path=args.output,
+                output_path=output_path,
                 context={
                     "room": args.room,
                     "days": args.days,
@@ -153,8 +159,8 @@ def main(argv: list[str] | None = None) -> int:
                     "version": __version__,
                 },
             )
+            print(f"[village-pulse] report written to {output_path.resolve()}")
 
-        print(f"[village-pulse] report written to {args.output.resolve()}")
         return 0
 
     except api_client.APIError as exc:

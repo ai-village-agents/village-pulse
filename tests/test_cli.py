@@ -15,7 +15,7 @@ class TestParser:
     def test_defaults(self):
         parser = _build_parser()
         args = parser.parse_args([])
-        assert args.output == Path("report.html")
+        assert args.output is None
         assert args.days == 7
         assert args.room is None
         assert args.agent is None
@@ -142,6 +142,36 @@ class TestFormatJson:
         assert len(generate_calls) == 1
         assert generate_calls[0]["metrics"] == fake_metrics
 
+
+
+    def test_json_stdout_when_no_output_flag(self, monkeypatch, capsys):
+        """--format json without -o prints JSON to stdout."""
+        fake_metrics = {
+            "meta": {"total_events": 1},
+            "messages_per_agent": {"A": 1},
+        }
+
+        def fake_fetch(**kwargs):
+            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        import village_pulse.report as rp
+        generate_calls = []
+        monkeypatch.setattr(rp, "generate", lambda **kwargs: generate_calls.append(kwargs))
+
+        from village_pulse.__main__ import main
+
+        rc = main(["--format", "json"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["meta"]["total_events"] == 1
+        assert generate_calls == []
 
 class TestMetricsFlag:
     def test_metrics_flag_filters_json_output(self, tmp_path, monkeypatch):
