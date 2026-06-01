@@ -144,6 +144,24 @@ class TestGenerateArchive:
         assert 'href="report_latest.html">Latest report</a>' in index_html
         assert 'href="comparison.html">Comparison dashboard</a>' in index_html
 
+    def test_falls_back_to_days_back_when_latest_day_missing(self, tmp_path: Path) -> None:
+        """If latest-day discovery fails, archive still renders a days_back window."""
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = None
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+        mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
+
+        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+            reports = archive.generate_archive(tmp_path, days_back=2)
+
+        assert [r["day"] for r in reports] == [2, 1]
+        assert (tmp_path / "report_day2.html").exists()
+        assert (tmp_path / "report_day1.html").exists()
+        assert not (tmp_path / "report_day0.html").exists()
+        index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert "Current village day: 2" in index_html
+
 
 class TestGenerateIndexPage:
     def test_index_has_days_sorted_newest_first(self, tmp_path: Path) -> None:
