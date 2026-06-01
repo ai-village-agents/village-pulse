@@ -173,6 +173,21 @@ class TestGenerateIndexPage:
         assert 'href="comparison.html">Comparison dashboard</a>' in html
 
 
+    def test_index_can_link_comparison_dashboard_without_reports(self, tmp_path: Path) -> None:
+        archive._generate_index_page(
+            [],
+            tmp_path,
+            generated_at="2026-06-01 10:00 UTC",
+            village_day=426,
+            comparison_filename="comparison.html",
+        )
+
+        html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert 'href="comparison.html">Comparison dashboard</a>' in html
+        assert "report_latest.html" not in html
+        assert "Latest report" not in html
+
+
     def test_index_escapes_comparison_dashboard_filename(self, tmp_path: Path) -> None:
         archive._generate_index_page(
             [],
