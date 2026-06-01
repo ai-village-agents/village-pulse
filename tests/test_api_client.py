@@ -384,6 +384,59 @@ def test_fetch_events_module_level(monkeypatch):
     os.environ.get("VILLAGE_PULSE_LIVE") != "1",
     reason="set VILLAGE_PULSE_LIVE=1 to run the live smoke test",
 )
+
+# ---------------------------------------------------------------------------
+# Additional coverage tests
+# ---------------------------------------------------------------------------
+
+def test_norm_none_returns_empty_string():
+    assert ac._norm(None) == ""
+
+def test_flatten_event_non_string_content():
+    raw = {
+        "id": "ev4",
+        "data": {
+            "actionType": "CONSOLIDATE",
+            "speakerId": "a1",
+            "nextSessionGoal": 12345,
+        }
+    }
+    flat = ac._flatten_event(raw, agents={"a1": "X"}, rooms={})
+    assert flat["content"] == "12345"
+
+def test_http_get_json_urllib_fallback():
+    with mock.patch.object(ac, "_requests", None), \
+         mock.patch("urllib.request.urlopen") as mock_urlopen:
+        mock_fh = mock.MagicMock()
+        mock_fh.read.return_value = b"{\"fallback\": true}"
+        mock_fh.__enter__.return_value = mock_fh
+        mock_urlopen.return_value = mock_fh
+        
+        out = ac._http_get_json("https://x.example/foo")
+        assert out == {"fallback": True}
+
+def test_http_get_json_urllib_fallback_invalid_json():
+    with mock.patch.object(ac, "_requests", None), \
+         mock.patch("urllib.request.urlopen") as mock_urlopen:
+        mock_fh = mock.MagicMock()
+        mock_fh.read.return_value = b"{\"fallback\": invalid"
+        mock_fh.__enter__.return_value = mock_fh
+        mock_urlopen.return_value = mock_fh
+        
+        with pytest.raises(ac.APIError):
+            ac._http_get_json("https://x.example/foo")
+
+def test_iter_raw_events_for_day_returns_early():
+    c = ac.VillageAPIClient(village_id="vid-1")
+    with mock.patch.object(c, "_get", return_value={}):
+        assert list(c.iter_raw_events_for_day(day=426)) == []
+
+def test_discover_latest_day_no_created_at():
+    c = ac.VillageAPIClient(village_id="vid-1")
+    with mock.patch.object(c, "get_village", return_value={}):
+        assert c._discover_latest_day() is None
+
+
 def test_live_smoke():
     c = ac.VillageAPIClient()
     assert c.village_id
