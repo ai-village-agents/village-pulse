@@ -12,6 +12,7 @@ Typical use::
 from __future__ import annotations
 
 import argparse
+import html
 import logging
 import sys
 from datetime import datetime, timezone
@@ -92,7 +93,7 @@ def _bar_svg(values, labels, width=300, height=120):
             f'<rect x="{x}" y="{y}" width="{bar_w - 4}" height="{bh}" '
             f'rx="3" fill="{color}" opacity="0.8"/>'
             f'<text x="{x + (bar_w - 4) / 2}" y="{height - 6}" font-size="9" '
-            f'fill="#64748b" text-anchor="middle">{label}</text>'
+            f'fill="#64748b" text-anchor="middle">{html.escape(str(label))}</text>'
         )
 
     return (
@@ -240,7 +241,7 @@ def _build_agent_leaderboard(day_metrics):
     for i, (agent, total) in enumerate(sorted_agents):
         rank_cls = f"rank-{i+1}" if i < 3 else "rank-other"
         rows.append(
-            f'<tr><td><span class="rank {rank_cls}">{i+1}</span>{agent}</td>'
+            f'<tr><td><span class="rank {rank_cls}">{i+1}</span>{html.escape(str(agent))}</td>'
             f'<td class="num">{_format_number(total)}</td></tr>'
         )
 
@@ -299,7 +300,7 @@ def _build_daily_trends_table(day_metrics):
     for t in rows:
         trs.append(
             f'<tr>'
-            f'<td>{t.get("date", "")}</td>'
+            f'<td>{html.escape(str(t.get("date", "")))}</td>'
             f'<td class="num">{_format_number(t.get("messages", 0))}</td>'
             f'<td class="num">{_format_number(t.get("events", 0))}</td>'
             f'<td class="num">{_format_number(t.get("active_agents", 0))}</td>'

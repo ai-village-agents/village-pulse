@@ -335,3 +335,28 @@ def test_archive_compare_renders_multiday_dashboard(tmp_path):
     assert not re.search(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", html
     )
+
+
+def test_archive_compare_escapes_malicious_agent_and_room(tmp_path):
+    """archive_compare must HTML-escape agent/room/date strings (no raw markup)."""
+    from village_pulse import archive_compare
+
+    evil_agent = '<script>alert("x")</script>'
+    evil_room = '<img src=x onerror=alert(1)>'
+    events = [
+        _flat(evil_agent, evil_room, "2026-05-31"),
+        _flat(evil_agent, evil_room, "2026-05-31"),
+        _flat("GPT-5.5", evil_room, "2026-05-31"),
+    ]
+    day_metrics = [_day_metrics_from_events(426, events)]
+
+    out = tmp_path / "comparison.html"
+    archive_compare.generate_comparison(day_metrics, out, village_day=426)
+    html = out.read_text(encoding="utf-8")
+
+    # No raw injected markup survives (escaped text content is fine).
+    assert "<script>" not in html
+    assert "<img src=x" not in html
+    # Escaped forms are present (agent rendered in leaderboard + bar label).
+    assert "&lt;script&gt;" in html
+    assert "&lt;img src=x onerror=alert(1)&gt;" in html
