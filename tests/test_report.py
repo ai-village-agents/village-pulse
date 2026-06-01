@@ -1,6 +1,22 @@
 """Tests for the Village Pulse HTML report generator."""
 
-from village_pulse.report import generate, render
+from village_pulse.report import (
+    generate,
+    render,
+    _agent_daily_rows,
+    _agent_status_lists,
+    _agent_trend_charts,
+    _daily_trend_values,
+    _first_number,
+    _hour_rows,
+    _looks_numeric,
+    _mapping,
+    _room_rows,
+    _string_list,
+    _token_rows,
+    _token_summary,
+    _trend_charts,
+)
 
 
 def sample_metrics():
@@ -199,3 +215,139 @@ def test_render_handles_missing_token_usage():
 
     assert "Token usage" in html
     assert "No token usage metrics were provided." in html
+
+def test_daily_trend_values_skips_non_mapping_and_missing_date():
+    values = [
+        {"date": "2026-01-01", "messages": 1},
+        "not-a-mapping",
+        {"messages": 2},
+    ]
+    rows = _daily_trend_values(values)
+    assert len(rows) == 1
+    assert rows[0]["date"] == "2026-01-01"
+
+
+def test_trend_charts_returns_empty_for_empty_rows():
+    assert _trend_charts([]) == []
+
+
+def test_agent_trend_charts_respects_limit_and_skips_invalid():
+    values = [
+        "not-a-mapping",
+        {"agent": "A", "daily": []},
+        {"agent": "", "daily": [{"date": "2026-01-01", "messages": 1}]},
+        {"no_agent": True, "daily": [{"date": "2026-01-01", "messages": 1}]},
+        {"agent": "B", "daily": "string"},
+        {"agent": "C", "daily": [{"date": "2026-01-01", "messages": 1}]},
+        {"agent": "D", "daily": [{"date": "2026-01-02", "messages": 2}]},
+        {"agent": "E", "daily": [{"date": "2026-01-03", "messages": 3}]},
+    ]
+    charts = _agent_trend_charts(values, limit=2)
+    assert len(charts) == 2
+    assert charts[0]["agent"] == "C"
+    assert charts[1]["agent"] == "D"
+
+
+def test_agent_daily_rows_skips_missing_date():
+    values = [
+        {"date": "2026-01-01", "messages": 1},
+        {"messages": 2},
+    ]
+    rows = _agent_daily_rows(values)
+    assert len(rows) == 1
+    assert rows[0]["date"] == "2026-01-01"
+
+
+def test_token_summary_returns_empty_for_non_mapping():
+    assert _token_summary("not-a-mapping", {}) == []
+
+
+def test_token_rows_skips_non_mapping_value():
+    values = {
+        "agent1": {"input": 100, "output": 10},
+        "agent2": "not-a-mapping",
+    }
+    rows = _token_rows(values)
+    assert len(rows) == 1
+    assert rows[0]["name"] == "agent1"
+
+
+def test_first_number_returns_len_for_sequence():
+    metrics = {"agents": ["a", "b", "c"]}
+    assert _first_number(metrics, "agents", "total") == 3
+
+
+def test_first_number_returns_safe_int_for_non_sequence():
+    metrics = {"total_messages": 42}
+    assert _first_number(metrics, "total_messages") == 42
+
+
+def test_mapping_returns_empty_dict_when_no_match():
+    assert _mapping({"foo": "bar"}, "baz", "qux") == {}
+
+
+def test_room_rows_handles_flat_numeric_and_agents_fallbacks():
+    room_metrics = {
+        "#best": {"messages": 5, "agents": ["a", "b"]},
+        "#rest": 10,
+        "#general": {"participation": "high"},
+    }
+    rows = _room_rows(room_metrics)
+    by_room = {row["room"]: row for row in rows}
+    assert by_room["#best"]["messages"] == 5
+    assert by_room["#best"]["agents"] == 2
+    assert by_room["#rest"]["messages"] == 10
+    assert by_room["#rest"]["agents"] == "—"
+    assert by_room["#general"]["agents"] == 0
+
+
+def test_hour_rows_handles_various_inputs():
+    # Mapping input
+    mapping_result = _hour_rows({"17": 2, "18": 1})
+    assert len(mapping_result) == 2
+    assert mapping_result[0] == {"hour": "17", "count": 2}
+
+    # Sequence of mappings
+    seq_mapping = _hour_rows([{"hour": "17", "count": 2}, {"hour": "18", "messages": 1}])
+    assert len(seq_mapping) == 2
+    assert seq_mapping[0] == {"hour": "17", "count": 2}
+
+    # Sequence of tuples
+    seq_tuple = _hour_rows([("17", 2), ("18", 1)])
+    assert len(seq_tuple) == 2
+    assert seq_tuple[0] == {"hour": "17", "count": 2}
+
+    # Non-mapping, non-sequence
+    assert _hour_rows(42) == []
+
+
+def test_agent_status_lists_and_string_list():
+    active, inactive = _agent_status_lists(None, None)
+    assert active == []
+    assert inactive == []
+
+    assert _string_list(None) == []
+    assert _string_list({"a": 1, "b": 2}) == ["a", "b"]
+    assert _string_list("single") == ["single"]
+
+
+def test_looks_numeric_false_for_invalid():
+    assert _looks_numeric("abc") is False
+    assert _looks_numeric(None) is False
+
+
+def test_render_fallback_total_messages_from_agent_counts():
+    metrics = {
+        "meta": {},
+        "messages_per_agent": {"A": 5, "B": 3},
+        "messages_per_day": {},
+        "room_participation": {},
+        "busiest_hours": {},
+        "active_agents": {},
+        "daily_trends": [],
+        "top_agents_over_time": [],
+        "token_usage": {},
+    }
+    html = render(metrics, {})
+    assert "8" in html  # 5 + 3 total messages
+

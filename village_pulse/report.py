@@ -343,8 +343,6 @@ def _build_view_model(
     agent_counts = _mapping(
         metrics, "messages_per_agent", "agent_message_counts", "agents"
     )
-    if total_messages is None:
-        total_messages = sum(_safe_int(value) for value in agent_counts.values())
 
     room_metrics = _mapping(
         metrics, "room_health", "room_participation", "rooms", "participation_by_room"
@@ -473,8 +471,6 @@ def _trend_charts(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     charts: list[dict[str, Any]] = []
     for title, key, color in specs:
         point_rows = _sparkline_points(rows, key)
-        if not point_rows:
-            continue
         points = " ".join(f"{point['x']},{point['y']}" for point in point_rows)
         area_points = f"0,38 {points} 100,38"
         values = [_safe_int(row.get(key)) for row in rows]
