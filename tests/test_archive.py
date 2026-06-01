@@ -60,6 +60,7 @@ class TestGenerateArchive:
         assert "report_day426.html" in index_html
         assert "report_day425.html" in index_html
         assert "report_day424.html" in index_html
+        assert 'href="report_latest.html">Latest report</a>' in index_html
 
     def test_skips_empty_days(self, tmp_path: Path) -> None:
         """Days with no events are silently skipped."""
@@ -118,6 +119,14 @@ class TestGenerateIndexPage:
         pos2 = html.find("Day 2")
         assert pos3 < pos2
         assert pos2 < pos1
+
+    def test_index_omits_latest_link_when_no_reports(self, tmp_path: Path) -> None:
+        archive._generate_index_page([], tmp_path, generated_at="2026-06-01 10:00 UTC", village_day=426)
+
+        html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert "Village Pulse Archive" in html
+        assert "report_latest.html" not in html
+        assert "Latest report" not in html
 
 
 class TestCLI:

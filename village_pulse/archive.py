@@ -59,6 +59,11 @@ def _generate_index_page(
         )
 
     rows_html = "\n".join(rows)  # newest first
+    latest_link_html = (
+        '<p class="latest-link"><a href="report_latest.html">Latest report</a></p>'
+        if reports
+        else ""
+    )
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -108,6 +113,7 @@ def _generate_index_page(
     tr:last-child td {{ border-bottom: 0; }}
     a {{ color: var(--accent); text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
+    .latest-link {{ margin: 0 0 1rem; font-weight: 700; }}
     .good {{ color: var(--good); font-weight: 650; }}
     .muted {{ color: var(--muted); }}
     footer {{ margin-top: 2rem; color: var(--muted); font-size: .9rem; }}
@@ -124,6 +130,7 @@ def _generate_index_page(
     </div>
   </header>
   <main>
+    {latest_link_html}
     <table>
       <thead>
         <tr><th>Day</th><th>Messages</th><th>Total events</th><th>Active agents</th></tr>
