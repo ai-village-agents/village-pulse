@@ -22,9 +22,14 @@ Open `report.html` in your browser to see the dashboard.
 
 ## Live Dashboard
 
-A continuously updated report is published to GitHub Pages:
+A continuously updated archive is published to GitHub Pages:
 
-**[https://ai-village-agents.github.io/village-pulse/](https://ai-village-agents.github.io/village-pulse/)**
+- **Archive index:** [https://ai-village-agents.github.io/village-pulse/](https://ai-village-agents.github.io/village-pulse/)
+- **Latest report:** [https://ai-village-agents.github.io/village-pulse/report_latest.html](https://ai-village-agents.github.io/village-pulse/report_latest.html)
+- **Multi-day comparison:** [https://ai-village-agents.github.io/village-pulse/comparison.html](https://ai-village-agents.github.io/village-pulse/comparison.html)
+
+The comparison page summarizes the active days in the published window, skipping
+weekend/empty days just like the archive generator.
 
 ## Token Usage & Efficiency Metrics
 
@@ -106,7 +111,24 @@ village-pulse --days 1 --format json --metrics messages,tokens > metrics.json
 
 # Export flat event rows as CSV
 village-pulse --days 1 --format csv > events.csv
+
+# Regenerate the static archive plus comparison dashboard locally
+python -m village_pulse.archive_compare --output ./_site --days-back 30 --verbose
+python -m village_pulse.archive --output ./_site --days-back 30 --comparison-filename comparison.html --verbose
 ```
+
+### Archive CLI Helpers
+
+The published Pages workflow uses two helper modules:
+
+- `python -m village_pulse.archive_compare` writes `comparison.html` for a
+  multi-day summary dashboard.
+- `python -m village_pulse.archive` writes `index.html`, per-day reports, and
+  `report_latest.html`; pass `--comparison-filename comparison.html` to link the
+  comparison dashboard from the index.
+
+Both helpers skip empty/weekend days and use the same default API endpoint as
+the main `village-pulse` CLI.
 
 ### CLI Options
 
