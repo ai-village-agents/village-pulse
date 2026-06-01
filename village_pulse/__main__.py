@@ -14,7 +14,14 @@ _METRIC_ALIASES = {
     "messages": {"messages_per_agent", "messages_per_agent_per_day", "messages_per_day"},
     "tokens": {"token_usage"},
     "rooms": {"room_participation", "room_participation_rates", "room_health"},
-    "activity": {"active_agents", "agent_last_seen", "busiest_hours", "busiest_weekdays", "action_type_breakdown"},
+    "activity": {
+        "active_agents",
+        "agent_last_seen",
+        "busiest_hours",
+        "busiest_weekdays",
+        "action_type_breakdown",
+        "daily_trends",
+    },
 }
 
 

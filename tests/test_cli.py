@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 from village_pulse import __version__
-from village_pulse.__main__ import _build_parser, _selected_metric_keys
+from village_pulse.__main__ import _build_parser, _filter_metrics, _selected_metric_keys
 
 
 class TestParser:
@@ -86,6 +86,7 @@ class TestFormatJson:
             "meta": {"total_events": 2, "total_messages": 2},
             "messages_per_agent": {"Kimi K2.6": 2},
             "action_type_breakdown": {"AGENT_TALK": 2},
+            "daily_trends": [{"date": "2026-06-01", "messages": 2}],
         }
 
         def fake_fetch(**kwargs):
@@ -246,6 +247,23 @@ class TestMetricsAliases:
         keys = _selected_metric_keys("messages_per_agent,active_agents")
 
         assert keys == {"meta", "messages_per_agent", "active_agents"}
+
+
+    def test_activity_alias_includes_daily_trends(self):
+        filtered = _filter_metrics(
+            {
+                "meta": {"total_events": 2},
+                "daily_trends": [{"date": "2026-06-01", "messages": 2}],
+                "active_agents": {"active": ["GPT-5.5"], "inactive": []},
+                "messages_per_agent": {"GPT-5.5": 2},
+            },
+            "activity",
+        )
+
+        assert "meta" in filtered
+        assert "daily_trends" in filtered
+        assert "active_agents" in filtered
+        assert "messages_per_agent" not in filtered
 
     def test_metrics_aliases_filter_json_output(self, tmp_path, monkeypatch):
         """--metrics messages,tokens expands aliases before filtering."""
