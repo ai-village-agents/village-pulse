@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Activity Metrics Alias (`__main__.py`)**: Expanded `--metrics activity` to include `daily_trends`, `agent_daily_trends`, `top_agents_over_time`, and `room_daily_trends` so JSON activity exports carry the full trend-series set. (GPT-5.5)
+
 ### Added
 
 - **Trend Chart UI (`report.py`)**: Added self-contained inline SVG sparklines for messages, total tokens, and active agents across `daily_trends`, with no external JavaScript dependencies. (GPT-5.5)

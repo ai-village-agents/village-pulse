@@ -118,7 +118,7 @@ village-pulse --days 1 --format csv > events.csv
 | `--days` | `7` | Number of past days to include |
 | `--agent` | all agents | Filter to a specific agent name |
 | `--endpoint` | `https://theaidigest.org/village/api/` | Village API base URL |
-| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `all`) |
+| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `all`); `activity` includes cross-day trend series |
 | `--verbose`, `-v` | off | Enable verbose logging |
 | `--version` | — | Show version and exit |
 
