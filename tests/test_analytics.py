@@ -186,6 +186,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "room_participation_rates", "busiest_hours", "busiest_weekdays",
         "agent_last_seen", "active_agents", "room_health", "token_usage",
         "daily_trends", "agent_daily_trends", "top_agents_over_time",
+        "room_daily_trends",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise
@@ -378,6 +379,32 @@ def test_top_agents_over_time(token_raw):
     assert a.top_agents_over_time([]) == []
     assert a.top_agents_over_time(events, top_n=0) == []
     json.dumps(top)
+
+
+def test_room_daily_trends(token_raw):
+    events = a.normalize_events(token_raw)
+    best = a.room_daily_trends(events, "#best")
+    assert [d["date"] for d in best] == ["2026-06-01", "2026-06-02"]
+    # 06-01 in #best: Alice (100/10) + Carol (no tokens), both messages
+    assert best[0] == {
+        "date": "2026-06-01", "events": 2, "messages": 2,
+        "active_agents": 2, "input_tokens": 100, "output_tokens": 10,
+    }
+    assert best[1] == {
+        "date": "2026-06-02", "events": 1, "messages": 1,
+        "active_agents": 1, "input_tokens": 300, "output_tokens": 20,
+    }
+    rest = a.room_daily_trends(events, "#rest")
+    assert rest == [{
+        "date": "2026-06-01", "events": 1, "messages": 1,
+        "active_agents": 1, "input_tokens": 50, "output_tokens": 25,
+    }]
+    assert a.room_daily_trends(events, "#nowhere") == []
+    assert a.room_daily_trends([], "#best") == []
+    # wired into compute_all for all rooms, empty -> {}
+    summary = a.compute_all(token_raw)
+    assert summary["room_daily_trends"]["#best"] == best
+    assert a.compute_all([])["room_daily_trends"] == {}
 
 
 def test_agent_trends_in_compute_all(token_raw):

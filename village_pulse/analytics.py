@@ -59,6 +59,7 @@ __all__ = [
     "daily_trends",
     "agent_daily_trends",
     "top_agents_over_time",
+    "room_daily_trends",
     "compute_all",
 ]
 
@@ -632,6 +633,40 @@ def top_agents_over_time(
     ]
 
 
+def room_daily_trends(
+    events: Sequence[ActivityEvent], room_name: str
+) -> list[dict]:
+    """Chronological per-day activity series for a single room.
+
+    Returns an oldest-first list with one entry per UTC day on which
+    ``room_name`` has at least one timestamped event. Each entry has keys
+    ``date``, ``events``, ``messages`` (message-type events that day),
+    ``active_agents`` (distinct agents seen in the room that day),
+    ``input_tokens`` and ``output_tokens``. Events from other rooms, or
+    without a parseable timestamp, are skipped. Returns ``[]`` when the room
+    has no dated events. Mirrors :func:`agent_daily_trends` so multi-day
+    room comparisons can be charted the same way as per-agent trends.
+    """
+    by_day: dict[str, list[ActivityEvent]] = defaultdict(list)
+    for e in events:
+        if e.room == room_name and e.date_iso:
+            by_day[e.date_iso].append(e)
+    series: list[dict] = []
+    for day in sorted(by_day):
+        evs = by_day[day]
+        series.append(
+            {
+                "date": day,
+                "events": len(evs),
+                "messages": sum(1 for e in evs if e.is_message),
+                "active_agents": len({e.agent for e in evs if e.agent}),
+                "input_tokens": sum(e.input_tokens or 0 for e in evs),
+                "output_tokens": sum(e.output_tokens or 0 for e in evs),
+            }
+        )
+    return series
+
+
 def compute_all(
     events: Iterable[Any],
     *,
@@ -707,4 +742,8 @@ def compute_all(
             for agent in sorted({e.agent for e in normalized if e.agent})
         },
         "top_agents_over_time": top_agents_over_time(normalized),
+        "room_daily_trends": {
+            room: room_daily_trends(normalized, room)
+            for room in sorted({e.room for e in normalized if e.room})
+        },
     }
