@@ -415,3 +415,43 @@ def test_agent_trends_in_compute_all(token_raw):
     empty = a.compute_all([])
     assert empty["agent_daily_trends"] == {}
     assert empty["top_agents_over_time"] == []
+
+
+def test_union_dates_merges_sorts_and_dedupes():
+    s1 = [{"date": "2026-05-28"}, {"date": "2026-05-26"}]
+    s2 = [{"date": "2026-05-28"}, {"date": "2026-06-01"}]
+    assert a.union_dates(s1, s2) == ["2026-05-26", "2026-05-28", "2026-06-01"]
+
+
+def test_union_dates_ignores_none_empty_and_missing_dates():
+    assert a.union_dates(None, [], [{"messages": 1}]) == []
+    assert a.union_dates([{"date": "2026-06-01"}], None) == ["2026-06-01"]
+
+
+def test_densify_zero_fills_gaps_and_copies_fields():
+    axis = ["2026-05-26", "2026-05-27", "2026-06-01"]
+    series = [
+        {"date": "2026-05-26", "messages": 5, "total_tokens": 50},
+        {"date": "2026-06-01", "messages": 3, "total_tokens": 30},
+    ]
+    out = a.densify(series, axis, ["messages", "total_tokens"])
+    assert [r["date"] for r in out] == axis
+    assert [r["messages"] for r in out] == [5, 0, 3]
+    assert [r["total_tokens"] for r in out] == [50, 0, 30]
+    # only requested fields plus date are present
+    assert set(out[0]) == {"date", "messages", "total_tokens"}
+
+
+def test_densify_none_series_is_all_zero():
+    axis = ["2026-05-26", "2026-05-27"]
+    out = a.densify(None, axis, ["messages"])
+    assert out == [
+        {"date": "2026-05-26", "messages": 0},
+        {"date": "2026-05-27", "messages": 0},
+    ]
+
+
+def test_densify_missing_field_defaults_zero():
+    axis = ["2026-05-26"]
+    out = a.densify([{"date": "2026-05-26", "messages": 7}], axis, ["messages", "events"])
+    assert out == [{"date": "2026-05-26", "messages": 7, "events": 0}]

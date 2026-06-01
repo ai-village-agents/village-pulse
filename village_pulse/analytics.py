@@ -61,6 +61,8 @@ __all__ = [
     "top_agents_over_time",
     "room_daily_trends",
     "compute_all",
+    "union_dates",
+    "densify",
 ]
 
 # Action types that count as a "message" for the message-centric metrics.
@@ -747,3 +749,44 @@ def compute_all(
             for room in sorted({e.room for e in normalized if e.room})
         },
     }
+
+
+def union_dates(*series: "list[dict] | None") -> list[str]:
+    """Return the sorted union of ``date`` values across one or more trend series.
+
+    Each positional argument is a list of dicts (e.g. ``daily_trends`` or a
+    ``room_daily_trends`` value) or ``None``. Rows without a truthy ``date`` are
+    ignored. The result is a sorted list of unique ``YYYY-MM-DD`` strings suitable
+    as a shared x-axis when plotting several sparse series together. ``None`` and
+    empty series contribute nothing.
+    """
+    seen: set[str] = set()
+    for lst in series:
+        for row in (lst or []):
+            date = row.get("date")
+            if date:
+                seen.add(date)
+    return sorted(seen)
+
+
+def densify(
+    series: "list[dict] | None",
+    axis: "list[str]",
+    fields: "list[str]",
+) -> list[dict]:
+    """Zero-fill ``series`` onto a shared ``axis`` of dates.
+
+    Returns one row per date in ``axis`` (preserving its order). For dates present
+    in ``series`` the requested ``fields`` are copied (missing field -> 0); for
+    dates absent from ``series`` every requested field is 0. The returned rows
+    contain only ``date`` plus the requested ``fields``. ``None``/empty ``series``
+    densifies to all-zero rows, so weekend/quiet gaps never raise.
+    """
+    by_date = {row["date"]: row for row in (series or []) if row.get("date")}
+    return [
+        {
+            "date": d,
+            **{f: (by_date[d].get(f, 0) if d in by_date else 0) for f in fields},
+        }
+        for d in axis
+    ]
