@@ -513,3 +513,27 @@ def test_fetch_events_latest_day_none(monkeypatch):
 def test_normalize_room_filter_empty_normalization():
     assert ac._normalize_room_filter("#") is None
     assert ac._normalize_room_filter("   ") is None
+
+
+def test_http_get_json_wraps_network_failure_after_retries():
+    with mock.patch.object(ac, "_requests", None), \
+         mock.patch("urllib.request.urlopen", side_effect=OSError("offline")), \
+         mock.patch("time.sleep"):
+        with pytest.raises(ac.APIError) as exc_info:
+            ac._http_get_json("https://x.example/foo", max_retries=1)
+    assert "GET failed after 1 attempts: offline" in str(exc_info.value)
+
+
+def test_fetch_events_rejects_non_positive_days():
+    c = ac.VillageAPIClient(village_id="vid-1")
+    with pytest.raises(ValueError, match="days must be >= 1"):
+        c.fetch_events(days=0)
+
+
+def test_discover_latest_day_from_created_at_today():
+    from datetime import datetime, timezone
+
+    c = ac.VillageAPIClient(village_id="vid-1")
+    today = datetime.now(tz=timezone.utc).date().isoformat()
+    with mock.patch.object(c, "get_village", return_value={"createdAt": f"{today}T00:00:00Z"}):
+        assert c._discover_latest_day() == 1
