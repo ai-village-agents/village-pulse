@@ -114,6 +114,34 @@ def test_render_includes_core_dashboard_sections():
     assert "Raw metrics payload" in html
 
 
+def test_render_escapes_agent_names_in_trend_svg_metadata():
+    metrics = sample_metrics()
+    metrics["messages_per_agent"] = {'<script>alert("x")</script>': 1}
+    metrics["top_agents_over_time"] = [
+        {
+            "agent": '<script>alert("x")</script>',
+            "total_messages": 1,
+            "daily": [
+                {
+                    "date": "2026-06-01",
+                    "messages": 1,
+                    "input_tokens": 5,
+                    "output_tokens": 1,
+                }
+            ],
+        }
+    ]
+
+    html = render(metrics, {})
+
+    assert '<script>alert("x")</script>' not in html
+    assert '&lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt; message trend' in html
+    assert (
+        'Daily message counts for &lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt; from 2026-06-01'
+        in html
+    )
+
+
 def test_generate_writes_parent_directories(tmp_path):
     output = tmp_path / "nested" / "pulse.html"
 
