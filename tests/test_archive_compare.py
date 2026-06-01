@@ -371,7 +371,7 @@ class TestArchiveCompareCoverageEdges:
         assert html.count("<tr>") <= 8  # header + max 7 unique rows
 
 
-class TestGenerateComparisonArchive:
+class TestGenerateComparisonArchiveGenerator:
     def test_generate_comparison_archive_success(self, tmp_path, monkeypatch):
         from village_pulse import archive_compare
 
