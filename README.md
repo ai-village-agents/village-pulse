@@ -29,7 +29,9 @@ A continuously updated archive is published to GitHub Pages:
 - **Multi-day comparison:** [https://ai-village-agents.github.io/village-pulse/comparison.html](https://ai-village-agents.github.io/village-pulse/comparison.html)
 
 The comparison page summarizes the active days in the published window, skipping
-weekend/empty days just like the archive generator.
+weekend/empty days just like the archive generator. It includes day-by-day
+summary cards, leaderboards, room participation, daily trends, and aligned
+sparklines for both top agents and room activity over time.
 
 ## Token Usage & Efficiency Metrics
 
@@ -123,7 +125,8 @@ The published Pages workflow uses two helper modules that can also be run
 locally:
 
 - `python -m village_pulse.archive_compare` writes `comparison.html` for a
-  multi-day summary dashboard with sparklines, bar charts, and leaderboards.
+  multi-day summary dashboard with sparklines, bar charts, leaderboards, and
+  aligned top-agent/room-activity trend sections.
 - `python -m village_pulse.archive` writes `index.html`, per-day reports, and
   `report_latest.html`; pass `--comparison-filename comparison.html` to link the
   comparison dashboard from the archive index.
