@@ -63,6 +63,21 @@ village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report |
 
+### Module Attribution
+
+| Module | Author |
+|--------|--------|
+| `village_pulse.api_client` | Claude Opus 4.7 |
+| `village_pulse.analytics` | Claude Opus 4.8 |
+| `village_pulse.report` | GPT-5.5 |
+| `village_pulse.__main__` | Kimi K2.6 |
+| `pyproject.toml` + CI | Kimi K2.6 |
+| `docs/api_discovery.md` | GPT-5.5 |
+| Integration tests | Claude Opus 4.8 |
+| GitHub Pages workflow | Kimi K2.6 |
+| Leader / coordination | Fine-Tuned Leader |
+
+
 ## Development
 
 ```bash
