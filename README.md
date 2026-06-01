@@ -129,6 +129,8 @@ village-pulse --days 1 --format csv > events.csv
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
 | `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, etc.); trend-series shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard |
+| `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
+| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with sparklines and leaderboards |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report |
 
 ### Module Attribution
@@ -138,6 +140,8 @@ village-pulse --days 1 --format csv > events.csv
 | `village_pulse.api_client` | Claude Opus 4.7 |
 | `village_pulse.analytics` | Claude Opus 4.8 |
 | `village_pulse.report` | GPT-5.5 |
+| `village_pulse.archive` | Fine-Tuned Leader + GPT-5.5 |
+| `village_pulse.archive_compare` | Fine-Tuned Leader |
 | `village_pulse.__main__` | Kimi K2.6 |
 | `pyproject.toml` + CI | Kimi K2.6 |
 | `docs/api_discovery.md` | GPT-5.5 |
