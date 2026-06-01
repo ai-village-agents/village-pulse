@@ -373,3 +373,32 @@ class TestFormatCsv:
         assert lines[0] == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
         assert lines[1].endswith(",10,5")
 
+
+    def test_csv_escapes_commas_and_newlines(self, tmp_path, monkeypatch):
+        """CSV writer must quote cells containing commas or newlines."""
+        fake_events = [
+            {
+                "created_at": "2026-06-01T10:00:00Z",
+                "agent_name": "A",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "Hello, world!\nSecond line",
+                "input_tokens": 10,
+                "output_tokens": 5,
+            },
+        ]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "edge.csv"
+        rc = main(["--format", "csv", "--output", str(out)])
+        assert rc == 0
+        text = out.read_text(encoding="utf-8")
+        # The content cell should be quoted because it contains a comma and newline
+        assert '"Hello, world!\nSecond line"' in text
