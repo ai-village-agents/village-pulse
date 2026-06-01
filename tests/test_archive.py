@@ -161,6 +161,34 @@ class TestGenerateIndexPage:
         assert 'href="comparison.html&quot; onclick=&quot;alert(1)">Comparison dashboard</a>' in html
 
 
+    def test_index_escapes_report_filename_and_metadata(self, tmp_path: Path) -> None:
+        reports = [
+            {
+                "day": '<script>alert("day")</script>',
+                "filename": 'report_day426.html" onclick="alert(1)',
+                "total_events": '<script>alert("events")</script>',
+                "total_messages": 5,
+                "unique_agents": '<script>alert("agents")</script>',
+            },
+        ]
+
+        archive._generate_index_page(
+            reports,
+            tmp_path,
+            generated_at='<script>alert("time")</script>',
+            village_day='<script>alert("village")</script>',
+        )
+
+        html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert '<script>alert' not in html
+        assert 'onclick="alert(1)' not in html
+        assert 'href="report_day426.html&quot; onclick=&quot;alert(1)">Day &lt;script&gt;alert(&quot;day&quot;)&lt;/script&gt;</a>' in html
+        assert '&lt;script&gt;alert(&quot;events&quot;)&lt;/script&gt;' in html
+        assert '&lt;script&gt;alert(&quot;agents&quot;)&lt;/script&gt;' in html
+        assert 'Current village day: &lt;script&gt;alert(&quot;village&quot;)&lt;/script&gt;' in html
+        assert 'Generated &lt;script&gt;alert(&quot;time&quot;)&lt;/script&gt;' in html
+
+
 class TestCLI:
     def test_main_with_mocked_archive(self, tmp_path: Path) -> None:
         mock_client = MagicMock()

@@ -51,16 +51,23 @@ def _generate_index_page(
         msgs = r.get("total_messages", 0)
         agents = r.get("unique_agents", 0)
         status_class = "good" if msgs > 0 else "muted"
+        safe_day = html_lib.escape(str(day))
+        safe_filename = html_lib.escape(str(filename), quote=True)
+        safe_total = html_lib.escape(str(total))
+        safe_msgs = html_lib.escape(str(msgs))
+        safe_agents = html_lib.escape(str(agents))
         rows.append(
             f'<tr class="{status_class}">'
-            f'<td><a href="{filename}">Day {day}</a></td>'
-            f'<td>{msgs}</td>'
-            f'<td>{total}</td>'
-            f'<td>{agents}</td>'
+            f'<td><a href="{safe_filename}">Day {safe_day}</a></td>'
+            f'<td>{safe_msgs}</td>'
+            f'<td>{safe_total}</td>'
+            f'<td>{safe_agents}</td>'
             f'</tr>'
         )
 
     rows_html = "\n".join(rows)  # newest first
+    safe_village_day = html_lib.escape(str(village_day))
+    safe_generated_at = html_lib.escape(generated_at)
     links = []
     if reports:
         links.append('<a href="report_latest.html">Latest report</a>')
@@ -132,8 +139,8 @@ def _generate_index_page(
     <h1>Village Pulse Archive</h1>
     <p class="subtitle">Historical daily dashboards for AI Village activity.</p>
     <div class="meta">
-      <span class="pill">Current village day: {village_day}</span>
-      <span class="pill">Generated {generated_at}</span>
+      <span class="pill">Current village day: {safe_village_day}</span>
+      <span class="pill">Generated {safe_generated_at}</span>
       <span class="pill">{len(reports)} days archived</span>
     </div>
   </header>
