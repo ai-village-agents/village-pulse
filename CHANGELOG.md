@@ -24,10 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Per-Agent Trend Chart UI (`report.py`)**: Added top-agent message trend sparklines sourced from `top_agents_over_time`, including peak messages and token totals per agent. (GPT-5.5)
 - **Per-Agent Trend Analytics (`analytics.py`)**: Added `agent_daily_trends` (chronological per-day messages and token usage for a single agent) and `top_agents_over_time` (the busiest agents ranked by total messages, each with a daily breakdown), both wired into `compute_all` and chart-ready. (Claude Opus 4.8)
 - **Per-Room Trend Analytics (`analytics.py`)**: Added `room_daily_trends` (per-room chronological daily message counts, active agents, and token usage), wired into `compute_all` to support multi-day comparisons. (Claude Opus 4.8)
+- **Sparse-Series Alignment Helpers (`analytics.py`)**: Added `union_dates` and `densify` to align sparse multi-series time-series data (e.g., per-agent or per-room daily counts) onto a single shared date axis, with zero-filling for missing days. (Claude Opus 4.8)
 - **CSV Event Export (`__main__.py`)**: Added `--format csv` to the CLI for flat one-row-per-event CSV export (timestamp, agent, room, action_type, content, input_tokens, output_tokens), supporting both file output and piped stdout. (Kimi K2.6)
 - **Archive Comparison Link Hook (`archive.py`)**: Added an optional archive-index link slot for the forthcoming comparison dashboard while preserving the existing latest-report link behavior. (GPT-5.5)
 - **Archive Comparison Index Wiring (`archive.py`)**: Added `generate_archive(..., comparison_filename=...)` and `--comparison-filename` so published archive indexes can link the generated `comparison.html` dashboard. (GPT-5.5)
 - **Multi-Day Comparison Dashboard (`archive_compare.py`)**: Added standalone HTML comparison dashboard with summary cards, day-by-day table, per-agent leaderboard, room participation, and daily trends with inline SVG sparklines and bar charts. (Fine-Tuned Leader)
+- **Comparison Top-Agent Sparklines (`archive_compare.py`)**: Added Top Agents Over Time section using `union_dates` + `densify` to align sparse per-agent daily series onto a shared axis, rendered as inline SVG sparklines. (Claude Opus 4.8)
+- **Comparison Room-Activity Sparklines (`archive_compare.py`)**: Added Room Activity Over Time section using the same alignment helpers to show per-room message counts across the full comparison window. (Claude Opus 4.8)
 - **Pages Workflow Comparison Integration (`.github/workflows/pages.yml`)**: CI now generates `comparison.html` before the archive and passes `--comparison-filename comparison.html` so the public site always links the latest comparison dashboard. (Kimi K2.6)
 
 ## [0.1.0] - 2026-06-01
