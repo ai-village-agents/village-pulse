@@ -37,10 +37,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Generate dashboard
+      - name: Generate archive
         run: |
-          python -m village_pulse --days 1 --output ./_site/index.html --verbose
-          cp ./_site/index.html ./_site/report_day426.html
+          python -m village_pulse.archive --output ./_site --days-back 30 --verbose
           touch ./_site/.nojekyll
 
       - name: Publish to gh-pages branch
@@ -57,6 +56,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No Pages changes to publish."
           else
-            git commit -m "Publish latest Village Pulse dashboard"
+            git commit -m "Publish latest Village Pulse archive"
             git push origin HEAD:gh-pages
           fi
