@@ -46,7 +46,8 @@ village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--output`, `-o` | `report.html` | Output HTML report path |
+| `--output`, `-o` | `report.html` | Output report path |
+| `--format` | `html` | Output format: `html` or `json` |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--agent` | all agents | Filter to a specific agent name |
