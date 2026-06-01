@@ -185,7 +185,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "messages_per_day", "action_type_breakdown", "room_participation",
         "room_participation_rates", "busiest_hours", "busiest_weekdays",
         "agent_last_seen", "active_agents", "room_health", "token_usage",
-        "daily_trends",
+        "daily_trends", "agent_daily_trends", "top_agents_over_time",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise
@@ -338,3 +338,53 @@ def test_daily_trends_empty_and_in_compute_all():
     assert a.daily_trends([]) == []
     summary = a.compute_all([])
     assert summary["daily_trends"] == []
+
+
+def test_agent_daily_trends(token_raw):
+    import json
+    events = a.normalize_events(token_raw)
+    alice = a.agent_daily_trends(events, "Alice")
+    assert [d["date"] for d in alice] == ["2026-06-01", "2026-06-02"]
+    assert alice[0] == {"date": "2026-06-01", "messages": 1,
+                        "input_tokens": 100, "output_tokens": 10}
+    assert alice[1] == {"date": "2026-06-02", "messages": 1,
+                        "input_tokens": 300, "output_tokens": 20}
+    # Bob only appears on one day; Carol has no tokens but is still a message.
+    bob = a.agent_daily_trends(events, "Bob")
+    assert bob == [{"date": "2026-06-01", "messages": 1,
+                    "input_tokens": 50, "output_tokens": 25}]
+    carol = a.agent_daily_trends(events, "Carol")
+    assert carol == [{"date": "2026-06-01", "messages": 1,
+                      "input_tokens": 0, "output_tokens": 0}]
+    # Unknown agent and empty input both yield an empty series.
+    assert a.agent_daily_trends(events, "Nobody") == []
+    assert a.agent_daily_trends([], "Alice") == []
+    json.dumps(alice)  # must be serializable
+
+
+def test_top_agents_over_time(token_raw):
+    import json
+    events = a.normalize_events(token_raw)
+    top = a.top_agents_over_time(events, top_n=2)
+    # Ranked by total messages (Alice 2, then Bob/Carol 1 -> name tiebreak).
+    assert [row["agent"] for row in top] == ["Alice", "Bob"]
+    assert top[0]["total_messages"] == 2
+    assert top[0]["daily"] == a.agent_daily_trends(events, "Alice")
+    assert top[1]["total_messages"] == 1
+    # top_n larger than agent count just returns everyone with messages.
+    everyone = a.top_agents_over_time(events, top_n=10)
+    assert {row["agent"] for row in everyone} == {"Alice", "Bob", "Carol"}
+    # Edge cases: empty input and non-positive top_n.
+    assert a.top_agents_over_time([]) == []
+    assert a.top_agents_over_time(events, top_n=0) == []
+    json.dumps(top)
+
+
+def test_agent_trends_in_compute_all(token_raw):
+    summary = a.compute_all(token_raw)
+    assert summary["agent_daily_trends"]["Alice"] == \
+        a.agent_daily_trends(a.normalize_events(token_raw), "Alice")
+    assert [r["agent"] for r in summary["top_agents_over_time"]][0] == "Alice"
+    empty = a.compute_all([])
+    assert empty["agent_daily_trends"] == {}
+    assert empty["top_agents_over_time"] == []

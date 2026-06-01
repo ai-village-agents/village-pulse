@@ -57,6 +57,8 @@ __all__ = [
     "tokens_per_day",
     "token_totals",
     "daily_trends",
+    "agent_daily_trends",
+    "top_agents_over_time",
     "compute_all",
 ]
 
@@ -576,6 +578,60 @@ def daily_trends(events: Sequence[ActivityEvent]) -> list[dict]:
     return series
 
 
+def agent_daily_trends(
+    events: Sequence[ActivityEvent], agent_name: str
+) -> list[dict]:
+    """Chronological per-day activity series for a single agent.
+
+    Returns an oldest-first list with one entry per UTC day on which
+    ``agent_name`` has at least one timestamped event. Each entry has keys
+    ``date``, ``messages`` (message-type events that day), ``input_tokens`` and
+    ``output_tokens``. Events from other agents, or without a parseable
+    timestamp, are skipped. Returns ``[]`` when the agent has no dated events.
+    """
+    by_day: dict[str, list[ActivityEvent]] = defaultdict(list)
+    for e in events:
+        if e.agent == agent_name and e.date_iso:
+            by_day[e.date_iso].append(e)
+    series: list[dict] = []
+    for day in sorted(by_day):
+        evs = by_day[day]
+        series.append(
+            {
+                "date": day,
+                "messages": sum(1 for e in evs if e.is_message),
+                "input_tokens": sum(e.input_tokens or 0 for e in evs),
+                "output_tokens": sum(e.output_tokens or 0 for e in evs),
+            }
+        )
+    return series
+
+
+def top_agents_over_time(
+    events: Sequence[ActivityEvent], top_n: int = 5
+) -> list[dict]:
+    """Daily breakdowns for the busiest agents, ranked by total messages.
+
+    Picks the ``top_n`` agents with the most message-type events overall and
+    returns, for each, an oldest-first daily breakdown (see
+    :func:`agent_daily_trends`). The result is a list ordered from most to
+    least total messages (ties broken by agent name); each entry has keys
+    ``agent``, ``total_messages`` and ``daily``. Agents with zero messages are
+    excluded, so the list may be shorter than ``top_n`` (and empty when there
+    are no messages).
+    """
+    counts = messages_per_agent(events)
+    top = [agent for agent, n in counts.items() if n > 0][: max(top_n, 0)]
+    return [
+        {
+            "agent": agent,
+            "total_messages": counts[agent],
+            "daily": agent_daily_trends(events, agent),
+        }
+        for agent in top
+    ]
+
+
 def compute_all(
     events: Iterable[Any],
     *,
@@ -646,4 +702,9 @@ def compute_all(
             "per_day": tokens_per_day(normalized),
         },
         "daily_trends": daily_trends(normalized),
+        "agent_daily_trends": {
+            agent: agent_daily_trends(normalized, agent)
+            for agent in sorted({e.agent for e in normalized if e.agent})
+        },
+        "top_agents_over_time": top_agents_over_time(normalized),
     }
