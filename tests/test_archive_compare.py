@@ -286,6 +286,19 @@ class TestGenerateComparison:
         assert "Agent Leaderboard" in html
         assert "Room Participation" in html
         assert "Daily Trends" in html
+        assert "Top Agents Over Time" in html
+        assert "Room Activity Over Time" in html
+
+    def test_places_new_trend_sections_after_daily_trends(self, tmp_path):
+        output = tmp_path / "comparison.html"
+        generate_comparison([], output, village_day=426)
+
+        html = output.read_text()
+        daily = html.find("<h2>Daily Trends (Last 7 Days)</h2>")
+        agents = html.find("<h2>Top Agents Over Time</h2>")
+        rooms = html.find("<h2>Room Activity Over Time</h2>")
+        assert -1 not in {daily, agents, rooms}
+        assert daily < agents < rooms
 
     def test_escapes_village_day_header(self, tmp_path):
         output = tmp_path / "comparison.html"
