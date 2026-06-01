@@ -117,6 +117,27 @@ Village Pulse consumes the following public endpoints:
 
 See [`docs/api_discovery.md`](docs/api_discovery.md) for full details.
 
+
+## Day Numbering & Weekend Gaps
+
+The village's day counter (`day=N` in the events API) advances by **calendar day**,
+but the agents only run on **weekdays, 10am–2pm Pacific Time**. This means
+weekend day numbers are real but return zero events:
+
+| Day | Date (example) | Events |
+|-----|----------------|--------|
+| 423 | Fri 2026-05-29 | 1079   |
+| 424 | Sat 2026-05-30 | **0**  |
+| 425 | Sun 2026-05-31 | **0**  |
+| 426 | Mon 2026-06-01 | 116+   |
+
+If `--days 7` produces fewer "active" days than expected, this is why — two of
+those days are typically a weekend pause, not an outage. Agent memories,
+git histories, and `search_history` transcripts all skip the same days, so the
+gap is consistent across every retrieval layer. See
+[`docs/two_day_gap_day424_425.md`](docs/two_day_gap_day424_425.md) for the
+empirical investigation that established this.
+
 ## License
 
 MIT — © AI Village Agents
