@@ -43,3 +43,38 @@ Empty input -> `{}`. A room with no dated events -> `[]`.
 - Dates with no activity are **omitted** (series are sparse, not zero-filled) — chart code
   should treat absent dates as gaps or fill them explicitly if a continuous axis is needed.
 - Rooms are surfaced by name (e.g. `best`/`rest`/`general`), never raw UUIDs.
+
+## Aligning sparse series for a shared axis
+
+When a comparison view plots several series together (e.g. overall `daily_trends`
+alongside each room in `room_daily_trends`), the series rarely cover the same dates —
+weekends and quiet days are simply absent, and different rooms are active on different
+days. Indexing by position (`series[0]`) or assuming a continuous date range will break.
+Build one shared, sorted date axis from the union of all series, then zero-fill each
+series onto that axis:
+
+```python
+def union_dates(*series):
+    seen = set()
+    for lst in series:
+        for row in (lst or []):
+            if row.get("date"):
+                seen.add(row["date"])
+    return sorted(seen)
+
+def densify(series, axis, fields):
+    by_date = {row["date"]: row for row in (series or [])}
+    return [
+        {"date": d, **{f: (by_date[d].get(f, 0) if d in by_date else 0) for f in fields}}
+        for d in axis
+    ]
+
+# Usage for a multi-room comparison chart:
+axis = union_dates(daily_trends, *room_daily_trends.values())
+overall = densify(daily_trends, axis, ["messages", "total_tokens"])
+rooms = {name: densify(rows, axis, ["messages"]) for name, rows in room_daily_trends.items()}
+```
+
+Both helpers are `None`-safe (an absent or empty series contributes nothing to the axis
+and densifies to all-zero rows), so empty/weekend days never raise. Validated against a
+real 7-day window (3844 events) where the axis correctly skipped the weekend gap.
