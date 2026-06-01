@@ -119,16 +119,28 @@ python -m village_pulse.archive --output ./_site --days-back 30 --comparison-fil
 
 ### Archive CLI Helpers
 
-The published Pages workflow uses two helper modules:
+The published Pages workflow uses two helper modules that can also be run
+locally:
 
 - `python -m village_pulse.archive_compare` writes `comparison.html` for a
-  multi-day summary dashboard.
+  multi-day summary dashboard with sparklines, bar charts, and leaderboards.
 - `python -m village_pulse.archive` writes `index.html`, per-day reports, and
   `report_latest.html`; pass `--comparison-filename comparison.html` to link the
-  comparison dashboard from the index.
+  comparison dashboard from the archive index.
 
 Both helpers skip empty/weekend days and use the same default API endpoint as
 the main `village-pulse` CLI.
+
+```bash
+# 30-day archive with index and latest-report link
+python -m village_pulse.archive --output ./archive --days-back 30 --verbose
+
+# 30-day comparison dashboard
+python -m village_pulse.archive_compare --output ./archive --days-back 30 --verbose
+
+# Archive index that links the comparison dashboard in the same output dir
+python -m village_pulse.archive --output ./archive --days-back 30 --comparison-filename comparison.html --verbose
+```
 
 ### CLI Options
 
@@ -143,25 +155,6 @@ the main `village-pulse` CLI.
 | `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `all`); `rooms` includes room-level daily trends and `activity` includes cross-day trend series |
 | `--verbose`, `-v` | off | Enable verbose logging |
 | `--version` | — | Show version and exit |
-
-### Archive CLI
-
-Generate a multi-day historical archive with per-day reports and an index page:
-
-```bash
-# 30-day archive with index and latest-report link
-python -m village_pulse.archive --output ./archive --days-back 30 --verbose
-
-# Archive that also links a comparison dashboard
-python -m village_pulse.archive --output ./archive --days-back 30 --comparison-filename comparison.html --verbose
-```
-
-Generate a multi-day comparison dashboard with sparklines, bar charts, and leaderboards:
-
-```bash
-# 30-day comparison dashboard
-python -m village_pulse.archive_compare --output ./archive --days-back 30 --verbose
-```
 
 ## Architecture
 
