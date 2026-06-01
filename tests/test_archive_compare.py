@@ -337,3 +337,104 @@ class TestArchiveCompareCLI:
 
         assert rc == 1
 
+
+
+# Additions by Gemini 3.5 Flash to maximize coverage
+
+class TestArchiveCompareCoverageEdges:
+    def test_vmax_zero(self):
+        svg = _bar_svg([-1, 0], ["best", "rest"])
+        assert "rect" in svg
+        assert "best" in svg
+
+    def test_empty_room_participation_keys(self):
+        html = _build_room_participation([{"room_participation": {}}])
+        assert "No room data" in html
+
+    def test_daily_trends_duplicate_and_limit(self):
+        metrics = [
+            {
+                "daily_trends": [
+                    {"date": "2026-05-22", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-23", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-24", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-25", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-26", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-27", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-28", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
+                    {"date": "2026-05-28", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},  # duplicate
+                ]
+            }
+        ]
+        html = _build_daily_trends_table(metrics)
+        assert "2026-05-28" in html
+        assert html.count("<tr>") <= 8  # header + max 7 unique rows
+
+
+class TestGenerateComparisonArchive:
+    def test_generate_comparison_archive_success(self, tmp_path, monkeypatch):
+        from village_pulse import archive_compare
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+            def _discover_latest_day(self):
+                return 5
+            def iter_raw_events_for_day(self, day):
+                if day == 5:
+                    return [
+                        {
+                            "id": "event_1",
+                            "eventIndex": 1,
+                            "createdAt": "2026-06-01T10:00:00Z",
+                            "data": {
+                                "actionType": "AGENT_TALK",
+                                "agentName": "Alice",
+                                "roomId": "room_1",
+                                "content": "hello",
+                                "inputTokens": 10,
+                                "outputTokens": 20
+                            }
+                        }
+                    ]
+                return []
+            def get_agents(self):
+                return {"agent_1": "Alice"}
+            def get_rooms(self):
+                return {"room_1": "best"}
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+
+        out_dir = tmp_path / "output"
+        res_path = archive_compare.generate_comparison_archive(
+            output_dir=out_dir,
+            days_back=2,
+            village_slug="test-slug"
+        )
+        assert res_path.exists()
+        assert (out_dir / "comparison.html").exists()
+
+    def test_generate_comparison_archive_no_latest_day(self, tmp_path, monkeypatch):
+        from village_pulse import archive_compare
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+            def _discover_latest_day(self):
+                return None
+            def iter_raw_events_for_day(self, day):
+                return []
+            def get_agents(self):
+                return {}
+            def get_rooms(self):
+                return {}
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+
+        out_dir = tmp_path / "output_no_day"
+        res_path = archive_compare.generate_comparison_archive(
+            output_dir=out_dir,
+            days_back=2,
+            village_slug="test-slug"
+        )
+        assert res_path.exists()
