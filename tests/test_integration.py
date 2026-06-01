@@ -360,3 +360,63 @@ def test_archive_compare_escapes_malicious_agent_and_room(tmp_path):
     # Escaped forms are present (agent rendered in leaderboard + bar label).
     assert "&lt;script&gt;" in html
     assert "&lt;img src=x onerror=alert(1)&gt;" in html
+
+
+def _section(html_text, title):
+    """Return the HTML of a named <h2> section up to its closing </table>."""
+    i = html_text.find(f"<h2>{title}</h2>")
+    assert i != -1, f"missing section: {title}"
+    j = html_text.find("</table>", i)
+    return html_text[i:j]
+
+
+def test_archive_compare_renders_trend_sections_aligned_and_escaped(tmp_path):
+    """The new Top Agents / Room Activity sections align multi-day series via
+    union_dates+densify (zero-filling absent days) and HTML-escape names."""
+    from village_pulse import archive_compare
+
+    evil_agent = '<script>alert(1)</script>'
+    day425 = [
+        _flat("GPT-5.5", "best", "2026-05-31"),
+        _flat("GPT-5.5", "best", "2026-05-31", content="b"),
+        _flat("GPT-5.5", "best", "2026-05-31", content="c"),
+        _flat("Kimi K2.6", "rest", "2026-05-31"),  # rest only appears on day 425
+    ]
+    day426 = [
+        _flat("GPT-5.5", "best", "2026-06-01"),
+        _flat("Claude Opus 4.8", "best", "2026-06-01"),  # Opus only on day 426
+        _flat(evil_agent, "best", "2026-06-01"),
+    ]
+    day_metrics = [
+        _day_metrics_from_events(425, day425),
+        _day_metrics_from_events(426, day426),
+    ]
+
+    out = tmp_path / "comparison.html"
+    archive_compare.generate_comparison(day_metrics, out, village_day=426)
+    html = out.read_text(encoding="utf-8")
+
+    # Both new sections render after the existing trends section.
+    assert "<h2>Top Agents Over Time</h2>" in html
+    assert "<h2>Room Activity Over Time</h2>" in html
+
+    agents = _section(html, "Top Agents Over Time")
+    rooms = _section(html, "Room Activity Over Time")
+
+    # Aggregated totals across the aligned window are correct.
+    # GPT-5.5: 3 (day425) + 1 (day426) = 4.
+    assert '<td>GPT-5.5</td>' in agents
+    assert '<td class="num">4</td>' in agents
+    # Rooms: best = 3 + 3 (GPT/Opus/evil on day426) ... best total = 3+1+1+1 = 6, rest = 1.
+    assert '<td>best</td>' in rooms
+    assert '<td class="num">6</td>' in rooms
+    assert '<td>rest</td>' in rooms
+    assert '<td class="num">1</td>' in rooms
+
+    # Sparklines drawn per row (best + rest = 2 rooms, several agents).
+    assert agents.count("<svg") >= 3
+    assert rooms.count("<svg") == 2
+
+    # Malicious agent name is escaped in the new section (no raw markup).
+    assert "<script>" not in agents
+    assert "&lt;script&gt;" in agents

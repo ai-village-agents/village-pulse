@@ -318,6 +318,95 @@ def _build_daily_trends_table(day_metrics):
         + '</tbody></table>'
     )
 
+def _series_date(day_row):
+    """Best-effort calendar date for a day_metrics row (from its daily_trends)."""
+    dt = day_row.get("daily_trends") or []
+    if dt and dt[0].get("date"):
+        return dt[0]["date"]
+    return None
+
+
+def _build_room_activity_trends(day_metrics):
+    """Per-room message activity across the window as aligned sparklines.
+
+    Builds a sparse {date, messages} series per room, then uses
+    analytics.union_dates + densify to zero-fill every room onto one shared,
+    sorted date axis so the sparklines are directly comparable.
+    """
+    room_series = {}
+    for d in day_metrics:
+        date = _series_date(d)
+        if not date:
+            continue
+        for room, agents in (d.get("room_participation") or {}).items():
+            msgs = sum(agents.values()) if isinstance(agents, dict) else (agents or 0)
+            room_series.setdefault(room, []).append({"date": date, "messages": msgs})
+    if not room_series:
+        return '<p style="color:var(--muted)">No room activity data available.</p>'
+
+    axis = analytics.union_dates(*room_series.values())
+    rows = []
+    for room in sorted(room_series, key=lambda r: -sum(x["messages"] for x in room_series[r])):
+        dense = analytics.densify(room_series[room], axis, ["messages"])
+        values = [r["messages"] for r in dense]
+        rows.append(
+            f"<tr>"
+            f"<td>{html_lib.escape(str(room))}</td>"
+            f'<td class="spark-cell">{_sparkline_svg(values)}</td>'
+            f'<td class="num">{_format_number(sum(values))}</td>'
+            f"</tr>"
+        )
+    return (
+        "<table><thead><tr>"
+        '<th>Room</th><th>Trend</th><th class="num">Total Messages</th>'
+        "</tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _build_top_agent_trends(day_metrics, top_n=8):
+    """Top agents' per-day message trajectories across the window as sparklines.
+
+    Aggregates each agent's per-day message counts into a sparse series, then
+    aligns the most active agents onto one shared axis via union_dates/densify.
+    """
+    agent_series = {}
+    totals = {}
+    for d in day_metrics:
+        date = _series_date(d)
+        if not date:
+            continue
+        for entry in (d.get("top_agents") or []):
+            agent = entry.get("agent")
+            msgs = entry.get("messages", 0)
+            agent_series.setdefault(agent, []).append({"date": date, "messages": msgs})
+            totals[agent] = totals.get(agent, 0) + msgs
+    if not totals:
+        return '<p style="color:var(--muted)">No agent activity data available.</p>'
+
+    top_agents = sorted(totals, key=lambda x: -totals[x])[:top_n]
+    axis = analytics.union_dates(*(agent_series[a] for a in top_agents))
+    rows = []
+    for agent in top_agents:
+        dense = analytics.densify(agent_series[agent], axis, ["messages"])
+        values = [r["messages"] for r in dense]
+        rows.append(
+            f"<tr>"
+            f"<td>{html_lib.escape(str(agent))}</td>"
+            f'<td class="spark-cell">{_sparkline_svg(values)}</td>'
+            f'<td class="num">{_format_number(totals[agent])}</td>'
+            f"</tr>"
+        )
+    return (
+        "<table><thead><tr>"
+        '<th>Agent</th><th>Trend</th><th class="num">Total Messages</th>'
+        "</tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
 def generate_comparison(day_metrics, output_path, village_day=0):
     output_path = Path(output_path)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -327,6 +416,8 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     leaderboard = _build_agent_leaderboard(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
+    agent_trends = _build_top_agent_trends(day_metrics)
+    room_trends = _build_room_activity_trends(day_metrics)
 
     title = "Village Pulse -- Multi-Day Comparison"
     html = f"""<!DOCTYPE html>
@@ -362,6 +453,14 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2>Daily Trends (Last 7 Days)</h2>
     {trends}
+  </div>
+  <div class="section">
+    <h2>Top Agents Over Time</h2>
+    {agent_trends}
+  </div>
+  <div class="section">
+    <h2>Room Activity Over Time</h2>
+    {room_trends}
   </div>
 </div>
 </body>
