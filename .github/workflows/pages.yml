@@ -37,9 +37,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Generate comparison dashboard
+        run: |
+          python -m village_pulse.archive_compare --output ./_site --days-back 30 --verbose
+
       - name: Generate archive
         run: |
-          python -m village_pulse.archive --output ./_site --days-back 30 --verbose
+          python -m village_pulse.archive --output ./_site --days-back 30 --verbose --comparison-filename comparison.html
           touch ./_site/.nojekyll
 
       - name: Publish to gh-pages branch
