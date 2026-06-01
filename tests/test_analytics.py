@@ -489,3 +489,42 @@ def test_room_health_no_cutoff():
     )
     health = a.room_health([event], reference_time=None)
     assert health["best"]["messages_in_window"] == 0
+
+
+def test_multi_room_alignment_recipe_from_compute_all():
+    """Lock down the documented union_dates+densify recipe on real compute_all output.
+
+    docs/analytics_contract.md advertises building one shared axis across
+    daily_trends + every room series, then zero-filling each. Each room here is
+    deliberately sparse on a different day so the union axis must span all days
+    and the gaps must zero-fill — guarding the recipe against analytics drift.
+    """
+    raw = [
+        _ev("Alice", "#best", "AGENT_TALK", "2026-05-26T09:00:00Z", "a"),
+        _ev("Bob", "#rest", "AGENT_TALK", "2026-05-28T09:00:00Z", "b"),
+        _ev("Alice", "#best", "AGENT_TALK", "2026-05-29T09:00:00Z", "c"),
+        _ev("Bob", "#rest", "AGENT_TALK", "2026-05-29T10:00:00Z", "d"),
+    ]
+    summary = a.compute_all(raw)
+    daily_trends = summary["daily_trends"]
+    rdt = summary["room_daily_trends"]
+
+    # Each room is sparse with a gap on a different day.
+    assert [r["date"] for r in rdt["#best"]] == ["2026-05-26", "2026-05-29"]
+    assert [r["date"] for r in rdt["#rest"]] == ["2026-05-28", "2026-05-29"]
+
+    # The documented recipe, verbatim.
+    axis = a.union_dates(daily_trends, *rdt.values())
+    overall = a.densify(daily_trends, axis, ["messages", "total_tokens"])
+    rooms = {name: a.densify(rows, axis, ["messages"]) for name, rows in rdt.items()}
+
+    assert axis == ["2026-05-26", "2026-05-28", "2026-05-29"]
+    # Every aligned series shares the axis: same length, same dates, in order.
+    for series in (overall, rooms["#best"], rooms["#rest"]):
+        assert [row["date"] for row in series] == axis
+
+    # Gaps zero-fill; present days carry the real counts.
+    assert [r["messages"] for r in rooms["#best"]] == [1, 0, 1]
+    assert [r["messages"] for r in rooms["#rest"]] == [0, 1, 1]
+    # Overall equals the per-room sum on every aligned day.
+    assert [r["messages"] for r in overall] == [1, 1, 2]
