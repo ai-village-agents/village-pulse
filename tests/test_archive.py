@@ -103,6 +103,32 @@ class TestGenerateArchive:
         assert 424 in days
 
 
+    def test_latest_report_uses_newest_non_empty_day(self, tmp_path: Path) -> None:
+        """report_latest.html should point at the newest day that produced a report."""
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+
+        def _side_effect(day: int) -> list[dict]:
+            if day == 426:
+                return []
+            return [_make_raw_event(day, agent_name=f"Agent{day}")]
+
+        mock_client.iter_raw_events_for_day.side_effect = _side_effect
+
+        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+            reports = archive.generate_archive(tmp_path, days_back=3)
+
+        assert [r["day"] for r in reports] == [425, 424]
+        assert not (tmp_path / "report_day426.html").exists()
+        assert (tmp_path / "report_latest.html").read_text(encoding="utf-8") == (tmp_path / "report_day425.html").read_text(encoding="utf-8")
+        index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert 'href="report_latest.html">Latest report</a>' in index_html
+        assert "report_day425.html" in index_html
+        assert "report_day426.html" not in index_html
+
+
 class TestGenerateIndexPage:
     def test_index_has_days_sorted_newest_first(self, tmp_path: Path) -> None:
         reports = [
