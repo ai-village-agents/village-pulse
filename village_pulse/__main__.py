@@ -54,6 +54,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: html)",
     )
     parser.add_argument(
+        "--metrics",
+        type=str,
+        default="all",
+        help="Comma-separated list of metrics to include (default: all)",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -98,6 +104,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[village-pulse] fetched {len(raw_events)} events")
             print("[village-pulse] computing analytics...")
         metrics = analytics.compute_all(raw_events)
+
+        if args.metrics != "all":
+            allowed = {"meta"} | set(args.metrics.split(","))
+            metrics = {k: v for k, v in metrics.items() if k in allowed}
 
         if args.format == "json":
             if args.verbose:

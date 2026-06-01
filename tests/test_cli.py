@@ -141,3 +141,61 @@ class TestFormatJson:
         assert rc == 0
         assert len(generate_calls) == 1
         assert generate_calls[0]["metrics"] == fake_metrics
+
+
+class TestMetricsFlag:
+    def test_metrics_flag_filters_json_output(self, tmp_path, monkeypatch):
+        """--metrics messages,active_agents filters compute_all result."""
+        fake_metrics = {
+            "meta": {"total_events": 2},
+            "messages_per_agent": {"A": 2},
+            "active_agents": ["A"],
+            "room_health": {"best": 1.0},
+        }
+
+        def fake_fetch(**kwargs):
+            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "filtered.json"
+        rc = main(["--format", "json", "--metrics", "messages_per_agent,active_agents", "--output", str(out)])
+
+        assert rc == 0
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert "meta" in data
+        assert "messages_per_agent" in data
+        assert "active_agents" in data
+        assert "room_health" not in data
+
+    def test_metrics_all_includes_everything(self, tmp_path, monkeypatch):
+        """Default --metrics all keeps every key."""
+        fake_metrics = {
+            "meta": {"total_events": 1},
+            "messages_per_agent": {"A": 1},
+            "room_health": {"best": 1.0},
+        }
+
+        def fake_fetch(**kwargs):
+            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "all.json"
+        rc = main(["--format", "json", "--output", str(out)])
+
+        assert rc == 0
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert set(data.keys()) == {"meta", "messages_per_agent", "room_health"}
