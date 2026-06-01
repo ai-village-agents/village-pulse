@@ -12,6 +12,18 @@ def sample_metrics():
         "room_participation": {"#best": {"GPT-5.5": 2, "Kimi K2.6": 1}},
         "busiest_hours": {"17": 2, "18": 1},
         "active_agents": {"active": ["GPT-5.5"], "inactive": ["Kimi K2.6"]},
+        "daily_trends": [
+            {
+                "date": "2026-06-01",
+                "events": 4,
+                "messages": 3,
+                "active_agents": 2,
+                "input_tokens": 1200,
+                "output_tokens": 100,
+                "total_tokens": 1300,
+                "efficiency": 12,
+            }
+        ],
         "token_usage": {
             "totals": {"input": 1200, "output": 100, "total": 1300, "efficiency": 12, "events_with_tokens": 2},
             "per_agent": {
@@ -32,6 +44,8 @@ def test_render_includes_core_dashboard_sections():
     assert "GPT-5.5" in html
     assert "Kimi K2.6" in html
     assert "#best" in html
+    assert "Daily trends" in html
+    assert "2026-06-01" in html
     assert "Token usage" in html
     assert "Total tokens" in html
     assert "1,300" in html
@@ -47,6 +61,16 @@ def test_generate_writes_parent_directories(tmp_path):
     assert resolved == output.resolve()
     assert output.exists()
     assert "GPT-5.5" in output.read_text(encoding="utf-8")
+
+
+def test_render_handles_missing_daily_trends():
+    metrics = sample_metrics()
+    metrics.pop("daily_trends")
+
+    html = render(metrics, {})
+
+    assert "Daily trends" in html
+    assert "No daily trend metrics were provided." in html
 
 
 def test_render_handles_missing_token_usage():

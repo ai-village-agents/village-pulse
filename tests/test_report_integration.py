@@ -35,6 +35,8 @@ def test_report_accepts_compute_all_metrics(tmp_path):
     assert "GPT-5.5" in html
     assert "Kimi K2.6" in html
     assert "#best" in html
+    assert "Daily trends" in html
+    assert "2026-06-01" in html
     assert "Token usage" in html
     assert "Total tokens" in html
     assert "165" in html

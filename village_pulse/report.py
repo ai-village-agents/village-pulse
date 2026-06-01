@@ -165,6 +165,20 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Daily trends</h2>
+      {% if daily_trend_rows %}
+      <table>
+        <thead><tr><th>Date</th><th>Messages</th><th>Events</th><th>Active agents</th><th>Total tokens</th><th>Input:output</th></tr></thead>
+        <tbody>
+          {% for row in daily_trend_rows %}
+          <tr><td>{{ row.date }}</td><td>{{ row.messages }}</td><td>{{ row.events }}</td><td>{{ row.active_agents }}</td><td>{{ row.total_tokens }}</td><td>{{ row.efficiency }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p class="muted">No daily trend metrics were provided.</p>{% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Token usage</h2>
       {% if token_summary %}
       <div class="grid" aria-label="token summary metrics">
@@ -268,6 +282,7 @@ def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[
     token_summary = _token_summary(token_usage, meta)
     token_agent_rows = _token_rows(token_usage.get("per_agent") if isinstance(token_usage, Mapping) else None)
     token_room_rows = _token_rows(token_usage.get("per_room") if isinstance(token_usage, Mapping) else None)
+    daily_trend_rows = _daily_trend_rows(metrics.get("daily_trends"))
 
     summary_cards = [
         {"label": "Messages", "value": total_messages, "note": "events included in this report"},
@@ -287,10 +302,34 @@ def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[
         "token_summary": token_summary,
         "token_agent_rows": token_agent_rows,
         "token_room_rows": token_room_rows,
+        "daily_trend_rows": daily_trend_rows,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
     }
+
+
+def _daily_trend_rows(values: Any, *, limit: int = 14) -> list[dict[str, Any]]:
+    if not isinstance(values, Sequence) or isinstance(values, (str, bytes, bytearray)):
+        return []
+    rows: list[dict[str, Any]] = []
+    for value in values:
+        if not isinstance(value, Mapping):
+            continue
+        date = value.get("date")
+        if not date:
+            continue
+        rows.append(
+            {
+                "date": str(date),
+                "messages": _format_number(value.get("messages")),
+                "events": _format_number(value.get("events")),
+                "active_agents": _format_number(value.get("active_agents")),
+                "total_tokens": _format_number(value.get("total_tokens")),
+                "efficiency": _format_efficiency(value.get("efficiency")),
+            }
+        )
+    return rows[-limit:]
 
 
 def _token_summary(token_usage: Any, meta: Mapping[str, Any]) -> list[dict[str, Any]]:
