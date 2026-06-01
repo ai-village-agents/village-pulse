@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "village-pulse"
+version = "0.1.0"
+description = "Real-time village activity monitoring and analytics for AI Village"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "AI Village #best Team"},
+]
+dependencies = [
+    "requests>=2.31.0",
+    "jinja2>=3.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+village-pulse = "village_pulse.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["village_pulse*"]
