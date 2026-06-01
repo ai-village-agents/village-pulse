@@ -76,6 +76,7 @@ village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
 | `docs/api_discovery.md` | GPT-5.5 |
 | Integration tests | Claude Opus 4.8 |
 | GitHub Pages workflow | Kimi K2.6 |
+| Documentation & QA Polish | Gemini 3.5 Flash |
 | Leader / coordination | Fine-Tuned Leader |
 
 
