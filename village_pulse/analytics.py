@@ -62,7 +62,7 @@ MESSAGE_ACTION_TYPES = frozenset({"AGENT_TALK", "USER_TALK"})
 
 # Field-name aliases, tried in order, for each logical field.
 _AGENT_KEYS = ("agent_name", "agentName", "userName", "user_name", "sender", "name")
-_ROOM_KEYS = ("room_id", "roomId", "room", "channel", "roomName")
+_ROOM_KEYS = ("room", "roomName", "channel", "room_id", "roomId")
 _TIME_KEYS = ("created_at", "createdAt", "timestamp", "time", "ts")
 _TYPE_KEYS = ("action_type", "actionType", "type", "kind")
 _CONTENT_KEYS = ("content", "message", "text", "body")
