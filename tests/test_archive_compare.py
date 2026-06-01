@@ -7,8 +7,10 @@ from village_pulse.archive_compare import (
     _build_agent_leaderboard,
     _build_comparison_table,
     _build_daily_trends_table,
+    _build_room_activity_trends,
     _build_room_participation,
     _build_summary_cards,
+    _build_top_agent_trends,
     _format_number,
     _sparkline_svg,
     generate_comparison,
@@ -172,6 +174,33 @@ class TestBuildDailyTrendsTable:
         assert "2026-05-31" in html
         assert "100" in html
         assert "85.5%" in html
+
+
+
+class TestBuildTopAgentTrends:
+    def test_empty_days(self):
+        html = _build_top_agent_trends([])
+        assert "No agent activity data" in html
+
+    def test_rows_without_dates_do_not_render_misleading_trends(self):
+        html = _build_top_agent_trends([
+            {"top_agents": [{"agent": "Alice", "messages": 3}]}
+        ])
+        assert "No agent activity data" in html
+        assert "Alice" not in html
+
+
+class TestBuildRoomActivityTrends:
+    def test_empty_days(self):
+        html = _build_room_activity_trends([])
+        assert "No room activity data" in html
+
+    def test_rows_without_dates_do_not_render_misleading_trends(self):
+        html = _build_room_activity_trends([
+            {"room_participation": {"best": {"Alice": 3}}}
+        ])
+        assert "No room activity data" in html
+        assert "best" not in html
 
 
 class TestGenerateComparison:
