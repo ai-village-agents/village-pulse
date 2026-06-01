@@ -1,6 +1,6 @@
 """Tests for village_pulse.archive_compare module."""
 
-
+import village_pulse.archive_compare as archive_compare
 
 from village_pulse.archive_compare import (
     _bar_svg,
@@ -213,4 +213,48 @@ class TestGenerateComparison:
         assert "<img" not in html
         assert "&lt;img" in html
         assert "onerror=&quot;alert(1)&quot;" in html
+
+class TestArchiveCompareCLI:
+    def test_main_forwards_options_and_prints_output(self, tmp_path, monkeypatch, capsys):
+        calls = []
+        expected = tmp_path / "comparison.html"
+
+        def fake_generate_comparison_archive(**kwargs):
+            calls.append(kwargs)
+            return expected
+
+        monkeypatch.setattr(
+            archive_compare,
+            "generate_comparison_archive",
+            fake_generate_comparison_archive,
+        )
+
+        rc = archive_compare.main([
+            "--output",
+            str(tmp_path),
+            "--days-back",
+            "9",
+            "--endpoint",
+            "https://example.invalid/api/",
+        ])
+
+        assert rc == 0
+        assert calls == [
+            {
+                "output_dir": str(tmp_path),
+                "days_back": 9,
+                "endpoint": "https://example.invalid/api/",
+            }
+        ]
+        assert f"Comparison dashboard written to: {expected}" in capsys.readouterr().out
+
+    def test_main_returns_one_when_generation_fails(self, tmp_path, monkeypatch):
+        def boom(**_kwargs):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr(archive_compare, "generate_comparison_archive", boom)
+
+        rc = archive_compare.main(["--output", str(tmp_path)])
+
+        assert rc == 1
 
