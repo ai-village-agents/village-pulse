@@ -1,5 +1,7 @@
 """Tests for the village_pulse CLI entry point."""
 
+import json
+
 import subprocess
 import sys
 from pathlib import Path
@@ -75,3 +77,67 @@ class TestHelp:
         )
         assert result.returncode == 0
         assert "Real-time village activity monitoring" in result.stdout
+
+
+class TestFormatJson:
+    def test_json_output_writes_metrics(self, tmp_path, monkeypatch):
+        """--format json writes analytics metrics as JSON, skipping HTML report."""
+        fake_metrics = {
+            "meta": {"total_events": 2, "total_messages": 2},
+            "messages_per_agent": {"Kimi K2.6": 2},
+            "action_type_breakdown": {"AGENT_TALK": 2},
+        }
+
+        def fake_fetch(**kwargs):
+            return [
+                {"agent_name": "Kimi K2.6", "room": "best", "action_type": "AGENT_TALK", "content": "hi"},
+            ]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        import village_pulse.report as rp
+        generate_calls = []
+        monkeypatch.setattr(rp, "generate", lambda **kwargs: generate_calls.append(kwargs))
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "metrics.json"
+        rc = main(["--format", "json", "--output", str(out)])
+
+        assert rc == 0
+        assert out.exists()
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert data["meta"]["total_events"] == 2
+        assert data["messages_per_agent"]["Kimi K2.6"] == 2
+        # HTML report should NOT have been generated.
+        assert generate_calls == []
+
+    def test_html_output_still_calls_report_generate(self, tmp_path, monkeypatch):
+        """Default --format html still invokes report.generate."""
+        fake_metrics = {"meta": {"total_events": 1}}
+
+        def fake_fetch(**kwargs):
+            return [{"agent_name": "X", "room": "best", "action_type": "AGENT_TALK", "content": "y"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        import village_pulse.report as rp
+        generate_calls = []
+        monkeypatch.setattr(rp, "generate", lambda **kwargs: generate_calls.append(kwargs) or out)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "report.html"
+        rc = main(["--output", str(out)])
+
+        assert rc == 0
+        assert len(generate_calls) == 1
+        assert generate_calls[0]["metrics"] == fake_metrics

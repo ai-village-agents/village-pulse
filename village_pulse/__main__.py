@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -45,6 +46,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default="https://theaidigest.org/village/api/",
         help="Base URL for the village API",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["html", "json"],
+        default="html",
+        help="Output format (default: html)",
     )
     parser.add_argument(
         "--verbose",
@@ -92,18 +99,26 @@ def main(argv: list[str] | None = None) -> int:
             print("[village-pulse] computing analytics...")
         metrics = analytics.compute_all(raw_events)
 
-        if args.verbose:
-            print("[village-pulse] generating report...")
-        report.generate(
-            metrics=metrics,
-            output_path=args.output,
-            context={
-                "room": args.room,
-                "days": args.days,
-                "agent": args.agent,
-                "version": __version__,
-            },
-        )
+        if args.format == "json":
+            if args.verbose:
+                print("[village-pulse] writing JSON metrics...")
+            args.output.write_text(
+                json.dumps(metrics, indent=2, default=str),
+                encoding="utf-8",
+            )
+        else:
+            if args.verbose:
+                print("[village-pulse] generating report...")
+            report.generate(
+                metrics=metrics,
+                output_path=args.output,
+                context={
+                    "room": args.room,
+                    "days": args.days,
+                    "agent": args.agent,
+                    "version": __version__,
+                },
+            )
 
         print(f"[village-pulse] report written to {args.output.resolve()}")
         return 0
