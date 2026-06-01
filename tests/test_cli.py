@@ -437,3 +437,122 @@ def test_rooms_alias_includes_room_daily_trends():
     keys = _selected_metric_keys("rooms")
     assert keys is not None
     assert "room_daily_trends" in keys
+
+
+class TestCLIExtraEdges:
+    def test_verbose_output(self, monkeypatch, capsys):
+        """Test main when --verbose is specified."""
+        fake_metrics = {"meta": {"total_events": 1}}
+        fake_events = [{"agent_name": "Kimi K2.6", "room": "best", "action_type": "AGENT_TALK", "content": "hi"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        import village_pulse.report as rp
+        monkeypatch.setattr(rp, "generate", lambda **kwargs: Path("report.html"))
+
+        from village_pulse.__main__ import main
+        rc = main(["--verbose", "--format", "json"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "[village-pulse] version" in captured.out
+        assert "[village-pulse] endpoint:" in captured.out
+        assert "[village-pulse] fetching data..." in captured.out
+        assert "[village-pulse] fetched 1 events" in captured.out
+        assert "[village-pulse] computing analytics..." in captured.out
+
+    def test_verbose_csv_output(self, monkeypatch, capsys):
+        """Test verbose printing with --format csv."""
+        fake_events = [{"agent_name": "Kimi", "room": "best", "action_type": "AGENT_TALK", "content": "hi"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
+
+        from village_pulse.__main__ import main
+        rc = main(["--verbose", "--format", "csv"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "[village-pulse] writing CSV events..." in captured.out
+
+    def test_api_error_handling(self, monkeypatch, capsys):
+        """Test that main returns 2 on APIError."""
+        import village_pulse.api_client as ac
+        def fake_fetch_raise(**kwargs):
+            raise ac.APIError("Fake API failure")
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch_raise)
+
+        from village_pulse.__main__ import main
+        rc = main([])
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "[village-pulse] API error: Fake API failure" in captured.err
+
+    def test_unexpected_exception_handling(self, monkeypatch, capsys):
+        """Test that main returns 3 on unexpected exception."""
+        import village_pulse.api_client as ac
+        def fake_fetch_raise_unexpected(**kwargs):
+            raise ValueError("Something went terribly wrong")
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch_raise_unexpected)
+
+        from village_pulse.__main__ import main
+        rc = main([])
+        assert rc == 3
+        captured = capsys.readouterr()
+        assert "[village-pulse] unexpected error: Something went terribly wrong" in captured.err
+
+    def test_default_html_output_path(self, monkeypatch, tmp_path):
+        """Test default output_path is Path('report.html') if format is html and output is None."""
+        import os
+        orig_cwd = os.getcwd()
+        os.chdir(str(tmp_path))
+        try:
+            fake_metrics = {"meta": {"total_events": 0}}
+            import village_pulse.api_client as ac
+            monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
+
+            import village_pulse.analytics as an
+            monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+            import village_pulse.report as rp
+            generate_calls = []
+            def fake_generate(**kwargs):
+                generate_calls.append(kwargs)
+                p = Path("report.html")
+                p.write_text("dummy html", encoding="utf-8")
+                return p
+            monkeypatch.setattr(rp, "generate", fake_generate)
+
+            from village_pulse.__main__ import main
+            rc = main([])
+            assert rc == 0
+            assert len(generate_calls) == 1
+            assert generate_calls[0]["output_path"] == Path("report.html")
+            assert Path("report.html").exists()
+        finally:
+            os.chdir(orig_cwd)
+
+    def test_verbose_html_output(self, monkeypatch, capsys):
+        """Test verbose printing with HTML report generation."""
+        fake_metrics = {"meta": {"total_events": 1}}
+        fake_events = [{"agent_name": "Kimi K2.6", "room": "best", "action_type": "AGENT_TALK", "content": "hi"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        import village_pulse.report as rp
+        monkeypatch.setattr(rp, "generate", lambda **kwargs: Path("report.html"))
+
+        from village_pulse.__main__ import main
+        rc = main(["--verbose"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "[village-pulse] generating report..." in captured.out
