@@ -184,7 +184,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "meta", "messages_per_agent", "messages_per_agent_per_day",
         "messages_per_day", "action_type_breakdown", "room_participation",
         "room_participation_rates", "busiest_hours", "busiest_weekdays",
-        "agent_last_seen", "active_agents", "room_health",
+        "agent_last_seen", "active_agents", "room_health", "token_usage",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise
@@ -213,3 +213,99 @@ def test_compute_all_accepts_activityevent_objects(sample_raw):
     assert all(isinstance(e, ActivityEvent) for e in events)
     summary = a.compute_all(events)  # pre-normalized input also works
     assert summary["meta"]["total_events"] == 6
+
+
+# --- token usage ---------------------------------------------------------
+
+def _tok_ev(agent, room, inp, out, action="AGENT_TALK", when="2026-06-01T09:00:00Z"):
+    return {
+        "agentName": agent,
+        "roomId": room,
+        "actionType": action,
+        "createdAt": when,
+        "inputTokens": inp,
+        "outputTokens": out,
+    }
+
+
+@pytest.fixture
+def token_raw():
+    return [
+        _tok_ev("Alice", "#best", 100, 10, when="2026-06-01T09:00:00Z"),
+        _tok_ev("Alice", "#best", 300, 20, when="2026-06-02T09:00:00Z"),
+        _tok_ev("Bob", "#rest", 50, 25, when="2026-06-01T09:00:00Z"),
+        # event with no token fields at all is ignored by token metrics
+        _ev("Carol", "#best", "AGENT_TALK", "2026-06-01T09:00:00Z", "hi"),
+    ]
+
+
+def test_normalize_extracts_tokens():
+    [e] = a.normalize_events([_tok_ev("X", "#best", 120, 30)])
+    assert e.input_tokens == 120
+    assert e.output_tokens == 30
+    assert e.total_tokens == 150
+
+
+def test_normalize_tokens_absent_is_none():
+    [e] = a.normalize_events([_ev("X", "#best", "AGENT_TALK", "2026-06-01T09:00:00Z")])
+    assert e.input_tokens is None
+    assert e.output_tokens is None
+    assert e.total_tokens == 0
+
+
+def test_coerce_int_rejects_junk():
+    assert a._coerce_int(None) is None
+    assert a._coerce_int(True) is None
+    assert a._coerce_int(-5) is None
+    assert a._coerce_int("nope") is None
+    assert a._coerce_int("42") == 42
+    assert a._coerce_int(7.9) == 7
+
+
+def test_tokens_per_agent(token_raw):
+    result = a.tokens_per_agent(a.normalize_events(token_raw))
+    assert list(result.keys()) == ["Alice", "Bob"]  # Carol has no tokens; sorted by total
+    assert result["Alice"] == {"input": 400, "output": 30, "total": 430,
+                               "efficiency": round(400 / 30, 2)}
+    assert result["Bob"]["total"] == 75
+
+
+def test_tokens_per_room(token_raw):
+    result = a.tokens_per_room(a.normalize_events(token_raw))
+    assert result["#best"]["input"] == 400
+    assert result["#rest"]["total"] == 75
+
+
+def test_tokens_per_day(token_raw):
+    result = a.tokens_per_day(a.normalize_events(token_raw))
+    assert list(result.keys()) == ["2026-06-01", "2026-06-02"]  # chronological
+    assert result["2026-06-01"]["input"] == 150  # Alice 100 + Bob 50
+    assert result["2026-06-02"]["input"] == 300
+
+
+def test_token_totals(token_raw):
+    totals = a.token_totals(a.normalize_events(token_raw))
+    assert totals["input"] == 450
+    assert totals["output"] == 55
+    assert totals["total"] == 505
+    assert totals["events_with_tokens"] == 3
+    assert totals["efficiency"] == round(450 / 55, 2)
+
+
+def test_token_efficiency_none_when_no_output():
+    result = a.tokens_per_agent(a.normalize_events([_tok_ev("Z", "#best", 99, 0)]))
+    assert result["Z"]["efficiency"] is None
+
+
+def test_compute_all_includes_token_usage(token_raw):
+    import json
+    tu = a.compute_all(token_raw)["token_usage"]
+    assert set(tu.keys()) == {"totals", "per_agent", "per_room", "per_day"}
+    assert tu["totals"]["total"] == 505
+    json.dumps(tu)
+
+
+def test_compute_all_meta_token_totals(token_raw):
+    meta = a.compute_all(token_raw)["meta"]
+    assert meta["total_input_tokens"] == 450
+    assert meta["total_output_tokens"] == 55

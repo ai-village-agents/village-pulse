@@ -52,6 +52,10 @@ __all__ = [
     "agent_last_seen",
     "active_agents",
     "room_health",
+    "tokens_per_agent",
+    "tokens_per_room",
+    "tokens_per_day",
+    "token_totals",
     "compute_all",
 ]
 
@@ -66,6 +70,8 @@ _ROOM_KEYS = ("room", "roomName", "channel", "room_id", "roomId")
 _TIME_KEYS = ("created_at", "createdAt", "timestamp", "time", "ts")
 _TYPE_KEYS = ("action_type", "actionType", "type", "kind")
 _CONTENT_KEYS = ("content", "message", "text", "body")
+_INTOK_KEYS = ("input_tokens", "inputTokens", "promptTokens", "prompt_tokens")
+_OUTTOK_KEYS = ("output_tokens", "outputTokens", "completionTokens", "completion_tokens")
 
 
 @dataclass(frozen=True)
@@ -90,6 +96,13 @@ class ActivityEvent:
     action_type: str
     content: str
     raw: Any = field(default=None, repr=False, compare=False)
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+
+    @property
+    def total_tokens(self) -> int:
+        """Input + output tokens for this event (missing values count as 0)."""
+        return (self.input_tokens or 0) + (self.output_tokens or 0)
 
     @property
     def is_message(self) -> bool:
@@ -176,6 +189,26 @@ def _coerce_timestamp(value: Any) -> Optional[datetime]:
     return None
 
 
+def _coerce_int(value):
+    """Coerce a token-count value to a non-negative int, or ``None``.
+
+    Accepts ints, floats, and numeric strings. Booleans, negatives, and
+    anything unparseable yield ``None`` so they are simply skipped by the
+    token metrics rather than corrupting totals.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, float):
+        return int(value) if value >= 0 else None
+    if isinstance(value, str):
+        text = value.strip()
+        if text.isdigit():
+            return int(text)
+    return None
+
+
 def normalize_event(raw: Any) -> ActivityEvent:
     """Normalize a single raw event into an :class:`ActivityEvent`."""
     agent = _lookup(raw, _AGENT_KEYS)
@@ -183,6 +216,8 @@ def normalize_event(raw: Any) -> ActivityEvent:
     action_type = _lookup(raw, _TYPE_KEYS)
     content = _lookup(raw, _CONTENT_KEYS)
     timestamp = _coerce_timestamp(_lookup(raw, _TIME_KEYS))
+    input_tokens = _coerce_int(_lookup(raw, _INTOK_KEYS))
+    output_tokens = _coerce_int(_lookup(raw, _OUTTOK_KEYS))
     return ActivityEvent(
         agent=str(agent) if agent is not None else "",
         room=str(room) if room is not None else None,
@@ -190,6 +225,8 @@ def normalize_event(raw: Any) -> ActivityEvent:
         action_type=str(action_type).upper() if action_type is not None else "",
         content=str(content) if content is not None else "",
         raw=raw,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
 
@@ -431,6 +468,74 @@ def room_health(
     return dict(sorted(rooms.items(), key=lambda kv: (-kv[1]["messages"], kv[0])))
 
 
+def _efficiency(inp: int, out: int) -> Optional[float]:
+    """Input:output token ratio, rounded to 2dp, or ``None`` if no output."""
+    return round(inp / out, 2) if out else None
+
+
+def _token_bucket(pairs):
+    """Aggregate ``(input, output)`` pairs into a summary dict."""
+    inp = sum(i for i, _ in pairs)
+    out = sum(o for _, o in pairs)
+    return {
+        "input": inp,
+        "output": out,
+        "total": inp + out,
+        "efficiency": _efficiency(inp, out),
+    }
+
+
+def tokens_per_agent(events: Sequence[ActivityEvent]) -> dict[str, dict]:
+    """Token usage per agent, sorted from highest to lowest total tokens.
+
+    Returns ``{agent: {"input", "output", "total", "efficiency"}}`` where
+    ``efficiency`` is the input:output ratio (``None`` if the agent produced no
+    output tokens). Events without token data contribute 0.
+    """
+    buckets: dict[str, list] = defaultdict(list)
+    for e in events:
+        if e.agent and (e.input_tokens is not None or e.output_tokens is not None):
+            buckets[e.agent].append((e.input_tokens or 0, e.output_tokens or 0))
+    summary = {agent: _token_bucket(pairs) for agent, pairs in buckets.items()}
+    return dict(sorted(summary.items(), key=lambda kv: (-kv[1]["total"], kv[0])))
+
+
+def tokens_per_room(events: Sequence[ActivityEvent]) -> dict[str, dict]:
+    """Token usage per room, sorted from highest to lowest total tokens."""
+    buckets: dict[str, list] = defaultdict(list)
+    for e in events:
+        if e.room and (e.input_tokens is not None or e.output_tokens is not None):
+            buckets[e.room].append((e.input_tokens or 0, e.output_tokens or 0))
+    summary = {room: _token_bucket(pairs) for room, pairs in buckets.items()}
+    return dict(sorted(summary.items(), key=lambda kv: (-kv[1]["total"], kv[0])))
+
+
+def tokens_per_day(events: Sequence[ActivityEvent]) -> dict[str, dict]:
+    """Token usage per UTC calendar day, sorted chronologically."""
+    buckets: dict[str, list] = defaultdict(list)
+    for e in events:
+        day = e.date_iso
+        if day and (e.input_tokens is not None or e.output_tokens is not None):
+            buckets[day].append((e.input_tokens or 0, e.output_tokens or 0))
+    summary = {day: _token_bucket(pairs) for day, pairs in buckets.items()}
+    return dict(sorted(summary.items()))
+
+
+def token_totals(events: Sequence[ActivityEvent]) -> dict:
+    """Aggregate token usage across all events.
+
+    Returns ``{"input", "output", "total", "efficiency", "events_with_tokens"}``.
+    """
+    pairs = [
+        (e.input_tokens or 0, e.output_tokens or 0)
+        for e in events
+        if e.input_tokens is not None or e.output_tokens is not None
+    ]
+    bucket = _token_bucket(pairs)
+    bucket["events_with_tokens"] = len(pairs)
+    return bucket
+
+
 def compute_all(
     events: Iterable[Any],
     *,
@@ -454,7 +559,7 @@ def compute_all(
         ``messages_per_agent_per_day``, ``messages_per_day``,
         ``action_type_breakdown``, ``room_participation``,
         ``room_participation_rates``, ``busiest_hours``, ``busiest_weekdays``,
-        ``agent_last_seen``, ``active_agents``, ``room_health``.
+        ``agent_last_seen``, ``active_agents``, ``room_health``, ``token_usage``.
     """
     normalized = normalize_events(events)
     now = _reference_time(normalized, reference_time)
@@ -471,6 +576,8 @@ def compute_all(
         "earliest_event": min(timestamps).isoformat() if timestamps else None,
         "latest_event": max(timestamps).isoformat() if timestamps else None,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "total_input_tokens": sum(e.input_tokens or 0 for e in normalized),
+        "total_output_tokens": sum(e.output_tokens or 0 for e in normalized),
     }
 
     return {
@@ -492,4 +599,10 @@ def compute_all(
         "room_health": room_health(
             normalized, reference_time=reference_time, window_hours=window_hours
         ),
+        "token_usage": {
+            "totals": token_totals(normalized),
+            "per_agent": tokens_per_agent(normalized),
+            "per_room": tokens_per_room(normalized),
+            "per_day": tokens_per_day(normalized),
+        },
     }
