@@ -1,6 +1,5 @@
 """Tests for the Village Pulse HTML report generator."""
 
-from pathlib import Path
 
 from village_pulse.report import generate, render
 

@@ -4,10 +4,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 from village_pulse import __version__
-from village_pulse.__main__ import _build_parser, main
+from village_pulse.__main__ import _build_parser
 
 
 class TestParser:
