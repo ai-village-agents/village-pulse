@@ -437,3 +437,22 @@ def test_rooms_alias_includes_room_daily_trends():
     keys = _selected_metric_keys("rooms")
     assert keys is not None
     assert "room_daily_trends" in keys
+
+
+class TestAPIError:
+    def test_main_returns_2_on_api_error(self, monkeypatch, capsys):
+        """If fetch_events raises APIError, main should print to stderr and return 2."""
+
+        def fake_fetch(**kwargs):
+            import village_pulse.api_client as _ac
+            raise _ac.APIError("server error", status=500, url="https://example.com/api/")
+
+        monkeypatch.setattr("village_pulse.api_client.fetch_events", fake_fetch)
+
+        from village_pulse.__main__ import main
+
+        rc = main(["--days", "1", "--format", "json"])
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "API error" in captured.err
+        assert "server error" in captured.err
