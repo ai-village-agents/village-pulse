@@ -218,6 +218,28 @@ class TestBuildTopAgentTrends:
         assert "&lt;img" in html
         assert "onerror=&quot;alert(1)&quot;" in html
 
+    def test_aligns_sparse_agents_on_shared_date_axis(self, monkeypatch):
+        captured = []
+
+        def fake_sparkline(values):
+            captured.append(values)
+            return "<svg></svg>"
+
+        monkeypatch.setattr(archive_compare, "_sparkline_svg", fake_sparkline)
+        html = _build_top_agent_trends([
+            {
+                "daily_trends": [{"date": "2026-06-01"}],
+                "top_agents": [{"agent": "Alice", "messages": 3}],
+            },
+            {
+                "daily_trends": [{"date": "2026-06-02"}],
+                "top_agents": [{"agent": "Bob", "messages": 5}],
+            },
+        ])
+
+        assert html.find("Bob") < html.find("Alice")
+        assert captured == [[0, 5], [3, 0]]
+
 
 class TestBuildRoomActivityTrends:
     def test_empty_days(self):
@@ -254,6 +276,28 @@ class TestBuildRoomActivityTrends:
         assert "<script" not in html
         assert "&lt;script&gt;" in html
         assert "&quot;room&quot;" in html
+
+    def test_aligns_sparse_rooms_on_shared_date_axis(self, monkeypatch):
+        captured = []
+
+        def fake_sparkline(values):
+            captured.append(values)
+            return "<svg></svg>"
+
+        monkeypatch.setattr(archive_compare, "_sparkline_svg", fake_sparkline)
+        html = _build_room_activity_trends([
+            {
+                "daily_trends": [{"date": "2026-06-01"}],
+                "room_participation": {"best": {"Alice": 3}},
+            },
+            {
+                "daily_trends": [{"date": "2026-06-02"}],
+                "room_participation": {"rest": {"Bob": 5}},
+            },
+        ])
+
+        assert html.find("rest") < html.find("best")
+        assert captured == [[0, 5], [3, 0]]
 
 
 class TestGenerateComparison:
