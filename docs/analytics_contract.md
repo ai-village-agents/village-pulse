@@ -28,7 +28,10 @@ agents excluded. Empty input -> `[]`.
 - `daily` has one entry per UTC day that agent has a dated event (oldest-first).
 
 ## `room_daily_trends` — `dict[str, list[dict]]`
-Keyed by room **name** (sorted), each value mirrors `daily_trends` but scoped to that room.
+Keyed by room **name** (sorted), each value is a per-day series scoped to that room.
+Each row carries `date`, `events`, `messages`, `active_agents`, `input_tokens`, and
+`output_tokens` — it does **not** include `total_tokens` or `efficiency` (compute those
+from `input_tokens`/`output_tokens` if a chart needs them).
 Empty input -> `{}`. A room with no dated events -> `[]`.
 
 ```json
