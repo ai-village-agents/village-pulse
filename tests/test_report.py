@@ -175,6 +175,22 @@ def test_render_handles_missing_top_agent_trends():
     assert "No per-agent trend metrics were provided." in html
 
 
+def test_render_handles_explicit_empty_trend_series():
+    metrics = sample_metrics()
+    metrics["daily_trends"] = []
+    metrics["top_agents_over_time"] = []
+
+    html = render(metrics, {})
+
+    assert "Trends over time" in html
+    assert "No trend chart metrics were provided." in html
+    assert "Top agent trends" in html
+    assert "No per-agent trend metrics were provided." in html
+    assert "Daily trends" in html
+    assert "No daily trend metrics were provided." in html
+    assert '<svg class="sparkline"' not in html
+
+
 def test_render_handles_missing_token_usage():
     metrics = sample_metrics()
     metrics.pop("token_usage")
