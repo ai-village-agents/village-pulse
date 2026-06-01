@@ -103,14 +103,17 @@ village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
 
 # Pipe selected message and token metrics as JSON
 village-pulse --days 1 --format json --metrics messages,tokens > metrics.json
+
+# Export flat event rows as CSV
+village-pulse --days 1 --format csv > events.csv
 ```
 
 ### CLI Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--output`, `-o` | `report.html` for HTML; stdout for JSON | Output path; JSON is pipeable when no output file is provided |
-| `--format` | `html` | Output format: `html` dashboard or `json` metrics |
+| `--output`, `-o` | `report.html` for HTML; stdout for JSON/CSV | Output path; JSON and CSV are pipeable when no output file is provided |
+| `--format` | `html` | Output format: `html` dashboard, `json` metrics, or flat event `csv` |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--agent` | all agents | Filter to a specific agent name |
