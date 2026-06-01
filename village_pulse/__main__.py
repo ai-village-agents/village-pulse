@@ -22,6 +22,9 @@ _METRIC_ALIASES = {
         "busiest_weekdays",
         "action_type_breakdown",
         "daily_trends",
+        "agent_daily_trends",
+        "top_agents_over_time",
+        "room_daily_trends",
     },
 }
 

@@ -254,6 +254,11 @@ class TestMetricsAliases:
             {
                 "meta": {"total_events": 2},
                 "daily_trends": [{"date": "2026-06-01", "messages": 2}],
+                "agent_daily_trends": {"GPT-5.5": [{"date": "2026-06-01", "messages": 2}]},
+                "top_agents_over_time": [
+                    {"agent": "GPT-5.5", "total_messages": 2, "daily": []}
+                ],
+                "room_daily_trends": {"best": [{"date": "2026-06-01", "messages": 2}]},
                 "active_agents": {"active": ["GPT-5.5"], "inactive": []},
                 "messages_per_agent": {"GPT-5.5": 2},
             },
@@ -262,6 +267,9 @@ class TestMetricsAliases:
 
         assert "meta" in filtered
         assert "daily_trends" in filtered
+        assert "agent_daily_trends" in filtered
+        assert "top_agents_over_time" in filtered
+        assert "room_daily_trends" in filtered
         assert "active_agents" in filtered
         assert "messages_per_agent" not in filtered
 
