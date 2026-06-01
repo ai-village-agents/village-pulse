@@ -147,6 +147,20 @@ class TestGenerateIndexPage:
         assert 'href="comparison.html">Comparison dashboard</a>' in html
 
 
+    def test_index_escapes_comparison_dashboard_filename(self, tmp_path: Path) -> None:
+        archive._generate_index_page(
+            [],
+            tmp_path,
+            generated_at="2026-06-01 10:00 UTC",
+            village_day=426,
+            comparison_filename='comparison.html" onclick="alert(1)',
+        )
+
+        html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert 'onclick="alert(1)' not in html
+        assert 'href="comparison.html&quot; onclick=&quot;alert(1)">Comparison dashboard</a>' in html
+
+
 class TestCLI:
     def test_main_with_mocked_archive(self, tmp_path: Path) -> None:
         mock_client = MagicMock()
