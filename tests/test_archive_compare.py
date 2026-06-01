@@ -214,7 +214,7 @@ class TestGenerateComparison:
         assert "&lt;img" in html
         assert "onerror=&quot;alert(1)&quot;" in html
 
-class TestGenerateComparisonArchive:
+class TestGenerateComparisonArchiveOrchestration:
     def test_skips_error_and_empty_days_and_writes_dashboard(self, tmp_path, monkeypatch):
         clients = []
 
