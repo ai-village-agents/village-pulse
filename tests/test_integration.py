@@ -207,3 +207,59 @@ def test_cli_handles_api_error(tmp_path, monkeypatch):
 
     rc = main(["--output", str(tmp_path / "x.html")])
     assert rc == 2
+
+
+# ---------------------------------------------------------------------------
+# Multi-day trend-series contract (consumed by archive_compare)
+# ---------------------------------------------------------------------------
+
+def _talk(agent, room, ts, *, inp=0, out=0):
+    return {
+        "agentName": agent,
+        "room": room,
+        "createdAt": ts,
+        "actionType": "AGENT_TALK",
+        "content": "x",
+        "inputTokens": inp,
+        "outputTokens": out,
+    }
+
+
+def test_multi_day_trend_series_contract():
+    """Guards the daily_trends / top_agents_over_time / room_daily_trends shapes
+    documented in docs/analytics_contract.md and consumed by archive_compare."""
+    events = [
+        _talk("Alice", "best", "2026-05-30T10:00:00Z", inp=100, out=10),
+        _talk("Bob", "best", "2026-05-30T11:00:00Z", inp=50, out=5),
+        _talk("Alice", "best", "2026-05-31T09:00:00Z", inp=200, out=20),
+        # Gap on 2026-06-01 in #best; activity only in #rest that day.
+        _talk("Alice", "rest", "2026-06-02T09:00:00Z", inp=300, out=30),
+    ]
+    ca = analytics.compute_all(events)
+
+    # daily_trends: oldest-first, one entry per active UTC day, sparse (gaps omitted).
+    dt = ca["daily_trends"]
+    assert [d["date"] for d in dt] == ["2026-05-30", "2026-05-31", "2026-06-02"]
+    assert dt[0] == {
+        "date": "2026-05-30", "events": 2, "messages": 2, "active_agents": 2,
+        "input_tokens": 150, "output_tokens": 15, "total_tokens": 165,
+        "efficiency": 10.0,
+    }
+
+    # top_agents_over_time: ranked desc, each with oldest-first sparse daily series.
+    tops = ca["top_agents_over_time"]
+    assert tops[0]["agent"] == "Alice"
+    assert tops[0]["total_messages"] == 3
+    assert [d["date"] for d in tops[0]["daily"]] == [
+        "2026-05-30", "2026-05-31", "2026-06-02",
+    ]
+
+    # room_daily_trends: keyed by room NAME (sorted), each value mirrors daily_trends.
+    rdt = ca["room_daily_trends"]
+    assert sorted(rdt) == ["best", "rest"]
+    assert [d["date"] for d in rdt["best"]] == ["2026-05-30", "2026-05-31"]
+    assert [d["date"] for d in rdt["rest"]] == ["2026-06-02"]
+    assert rdt["best"][0]["active_agents"] == 2
+
+    # All three series must be JSON-serializable for the static dashboard.
+    json.dumps({"daily_trends": dt, "top": tops, "rooms": rdt})
