@@ -182,6 +182,37 @@ def _client_with_responses(responses, *, village_id=None):
         yield c
 
 
+def test_get_builds_url_filters_params_and_forwards_session(monkeypatch):
+    captured = {}
+    session = object()
+
+    def fake_http_get_json(url, *, timeout, max_retries, session):
+        captured.update({
+            "url": url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+            "session": session,
+        })
+        return {"ok": True}
+
+    monkeypatch.setattr(ac, "_http_get_json", fake_http_get_json)
+    client = ac.VillageAPIClient(
+        endpoint="https://example.invalid/api",
+        village_id="vid-1",
+        session=session,
+        timeout=4,
+        max_retries=2,
+    )
+
+    assert client._get("/events", {"page": 1, "day": None, "room": "best room"}) == {"ok": True}
+    assert captured == {
+        "url": "https://example.invalid/api/events?page=1&room=best+room",
+        "timeout": 4.0,
+        "max_retries": 2,
+        "session": session,
+    }
+
+
 def test_village_id_resolution(monkeypatch):
     responses = [{"id": "vid-1"}]
     iterator = iter(responses)
