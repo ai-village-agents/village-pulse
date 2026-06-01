@@ -56,6 +56,7 @@ __all__ = [
     "tokens_per_room",
     "tokens_per_day",
     "token_totals",
+    "daily_trends",
     "compute_all",
 ]
 
@@ -536,6 +537,45 @@ def token_totals(events: Sequence[ActivityEvent]) -> dict:
     return bucket
 
 
+def daily_trends(events: Sequence[ActivityEvent]) -> list[dict]:
+    """Chronological per-day activity series, ready for charting.
+
+    Combines message volume, total events, distinct active agents, and token
+    usage into one ordered (oldest-first) list -- one entry per UTC day that
+    has at least one timestamped event. Each entry has keys ``date``,
+    ``events``, ``messages``, ``active_agents``, ``input_tokens``,
+    ``output_tokens``, ``total_tokens`` and ``efficiency`` (input:output
+    ratio, ``None`` when there is no output). Events without a parseable
+    timestamp are skipped.
+    """
+    by_day: dict[str, list[ActivityEvent]] = defaultdict(list)
+    for e in events:
+        if e.date_iso:
+            by_day[e.date_iso].append(e)
+    series: list[dict] = []
+    for day in sorted(by_day):
+        evs = by_day[day]
+        pairs = [
+            (e.input_tokens or 0, e.output_tokens or 0)
+            for e in evs
+            if e.input_tokens is not None or e.output_tokens is not None
+        ]
+        bucket = _token_bucket(pairs)
+        series.append(
+            {
+                "date": day,
+                "events": len(evs),
+                "messages": sum(1 for e in evs if e.is_message),
+                "active_agents": len({e.agent for e in evs if e.agent}),
+                "input_tokens": bucket["input"],
+                "output_tokens": bucket["output"],
+                "total_tokens": bucket["total"],
+                "efficiency": bucket["efficiency"],
+            }
+        )
+    return series
+
+
 def compute_all(
     events: Iterable[Any],
     *,
@@ -605,4 +645,5 @@ def compute_all(
             "per_room": tokens_per_room(normalized),
             "per_day": tokens_per_day(normalized),
         },
+        "daily_trends": daily_trends(normalized),
     }

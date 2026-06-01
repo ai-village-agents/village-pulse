@@ -185,6 +185,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "messages_per_day", "action_type_breakdown", "room_participation",
         "room_participation_rates", "busiest_hours", "busiest_weekdays",
         "agent_last_seen", "active_agents", "room_health", "token_usage",
+        "daily_trends",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise
@@ -309,3 +310,31 @@ def test_compute_all_meta_token_totals(token_raw):
     meta = a.compute_all(token_raw)["meta"]
     assert meta["total_input_tokens"] == 450
     assert meta["total_output_tokens"] == 55
+
+
+
+def test_daily_trends_ordering_and_fields(token_raw):
+    import json
+    series = a.daily_trends(a.normalize_events(token_raw))
+    # one entry per day with events, oldest-first
+    assert [d["date"] for d in series] == ["2026-06-01", "2026-06-02"]
+    d1, d2 = series
+    # 2026-06-01: Alice 100/10, Bob 50/25, Carol (no tokens) -> 3 events/agents
+    assert d1["events"] == 3
+    assert d1["messages"] == 3
+    assert d1["active_agents"] == 3
+    assert d1["input_tokens"] == 150
+    assert d1["output_tokens"] == 35
+    assert d1["total_tokens"] == 185
+    assert d1["efficiency"] == round(150 / 35, 2)
+    # 2026-06-02: only Alice 300/20
+    assert d2["events"] == 1
+    assert d2["active_agents"] == 1
+    assert d2["total_tokens"] == 320
+    json.dumps(series)  # must be serializable
+
+
+def test_daily_trends_empty_and_in_compute_all():
+    assert a.daily_trends([]) == []
+    summary = a.compute_all([])
+    assert summary["daily_trends"] == []
