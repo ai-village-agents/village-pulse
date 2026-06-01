@@ -28,13 +28,19 @@ def test_report_accepts_compute_all_metrics(tmp_path):
     metrics = compute_all(events)
     output = tmp_path / "dashboard.html"
 
-    resolved = generate(metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"})
+    resolved = generate(
+        metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"}
+    )
 
     html = resolved.read_text(encoding="utf-8")
     assert "Village Pulse Dashboard" in html
     assert "GPT-5.5" in html
     assert "Kimi K2.6" in html
     assert "#best" in html
+    assert "Trends over time" in html
+    assert "Messages over time" in html
+    assert "Tokens over time" in html
+    assert "Active agents over time" in html
     assert "Daily trends" in html
     assert "2026-06-01" in html
     assert "Token usage" in html

@@ -1,6 +1,5 @@
 """Tests for the Village Pulse HTML report generator."""
 
-
 from village_pulse.report import generate, render
 
 
@@ -14,6 +13,16 @@ def sample_metrics():
         "active_agents": {"active": ["GPT-5.5"], "inactive": ["Kimi K2.6"]},
         "daily_trends": [
             {
+                "date": "2026-05-29",
+                "events": 2,
+                "messages": 1,
+                "active_agents": 1,
+                "input_tokens": 300,
+                "output_tokens": 30,
+                "total_tokens": 330,
+                "efficiency": 10,
+            },
+            {
                 "date": "2026-06-01",
                 "events": 4,
                 "messages": 3,
@@ -22,15 +31,33 @@ def sample_metrics():
                 "output_tokens": 100,
                 "total_tokens": 1300,
                 "efficiency": 12,
-            }
+            },
         ],
         "token_usage": {
-            "totals": {"input": 1200, "output": 100, "total": 1300, "efficiency": 12, "events_with_tokens": 2},
-            "per_agent": {
-                "GPT-5.5": {"input": 1000, "output": 80, "total": 1080, "efficiency": 12.5},
-                "Kimi K2.6": {"input": 200, "output": 20, "total": 220, "efficiency": 10},
+            "totals": {
+                "input": 1200,
+                "output": 100,
+                "total": 1300,
+                "efficiency": 12,
+                "events_with_tokens": 2,
             },
-            "per_room": {"#best": {"input": 1200, "output": 100, "total": 1300, "efficiency": 12}},
+            "per_agent": {
+                "GPT-5.5": {
+                    "input": 1000,
+                    "output": 80,
+                    "total": 1080,
+                    "efficiency": 12.5,
+                },
+                "Kimi K2.6": {
+                    "input": 200,
+                    "output": 20,
+                    "total": 220,
+                    "efficiency": 10,
+                },
+            },
+            "per_room": {
+                "#best": {"input": 1200, "output": 100, "total": 1300, "efficiency": 12}
+            },
         },
     }
 
@@ -44,7 +71,14 @@ def test_render_includes_core_dashboard_sections():
     assert "GPT-5.5" in html
     assert "Kimi K2.6" in html
     assert "#best" in html
+    assert "Trends over time" in html
+    assert "Messages over time" in html
+    assert "Tokens over time" in html
+    assert "Active agents over time" in html
+    assert '<svg class="sparkline"' in html
+    assert "Peak 1,300" in html
     assert "Daily trends" in html
+    assert "2026-05-29" in html
     assert "2026-06-01" in html
     assert "Token usage" in html
     assert "Total tokens" in html
@@ -69,6 +103,8 @@ def test_render_handles_missing_daily_trends():
 
     html = render(metrics, {})
 
+    assert "Trends over time" in html
+    assert "No trend chart metrics were provided." in html
     assert "Daily trends" in html
     assert "No daily trend metrics were provided." in html
 

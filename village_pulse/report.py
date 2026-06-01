@@ -83,6 +83,17 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     .bar-track { height: .55rem; border-radius: 999px; background: #edf2f7; overflow: hidden; }
     .bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #59a6ff); }
     .token-fill { background: linear-gradient(90deg, var(--token), #a78bfa); }
+    .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+    .trend-chart { border: 1px solid var(--line); border-radius: .85rem; padding: .9rem; background: #fbfdff; }
+    .chart-head { display: flex; justify-content: space-between; gap: .8rem; align-items: baseline; margin-bottom: .55rem; }
+    .chart-title { font-weight: 700; }
+    .chart-value { color: var(--muted); font-size: .9rem; }
+    .sparkline { width: 100%; height: 8.5rem; overflow: visible; }
+    .spark-grid { stroke: var(--line); stroke-width: .45; }
+    .spark-area { opacity: .14; }
+    .spark-line { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .spark-dot { stroke: var(--panel); stroke-width: 1; }
+    .chart-dates { display: flex; justify-content: space-between; color: var(--muted); font-size: .78rem; margin-top: .3rem; }
     .muted { color: var(--muted); }
     .good { color: var(--good); font-weight: 650; }
     .warn { color: var(--warn); font-weight: 650; }
@@ -165,6 +176,28 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Trends over time</h2>
+      {% if trend_charts %}
+      <div class="chart-grid">
+        {% for chart in trend_charts %}
+        <article class="trend-chart">
+          <div class="chart-head"><span class="chart-title">{{ chart.title }}</span><span class="chart-value">Peak {{ chart.peak }}</span></div>
+          <svg class="sparkline" viewBox="0 0 100 44" role="img" aria-label="{{ chart.title }} trend from {{ chart.start_date }} to {{ chart.end_date }}" preserveAspectRatio="none">
+            <line class="spark-grid" x1="0" y1="38" x2="100" y2="38"></line>
+            <line class="spark-grid" x1="0" y1="22" x2="100" y2="22"></line>
+            <line class="spark-grid" x1="0" y1="6" x2="100" y2="6"></line>
+            <polygon class="spark-area" fill="{{ chart.color }}" points="{{ chart.area_points }}"></polygon>
+            <polyline class="spark-line" stroke="{{ chart.color }}" points="{{ chart.points }}"></polyline>
+            {% for point in chart.point_rows %}<circle class="spark-dot" fill="{{ chart.color }}" cx="{{ point.x }}" cy="{{ point.y }}" r="1.6"><title>{{ point.date }}: {{ point.value }}</title></circle>{% endfor %}
+          </svg>
+          <div class="chart-dates"><span>{{ chart.start_date }}</span><span>{{ chart.end_date }}</span></div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}<p class="muted">No trend chart metrics were provided.</p>{% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Daily trends</h2>
       {% if daily_trend_rows %}
       <table>
@@ -229,7 +262,11 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
 """
 
 
-def generate(metrics: Mapping[str, Any] | None, output_path: str | Path, context: Mapping[str, Any] | None = None) -> Path:
+def generate(
+    metrics: Mapping[str, Any] | None,
+    output_path: str | Path,
+    context: Mapping[str, Any] | None = None,
+) -> Path:
     """Render a self-contained HTML dashboard and write it to ``output_path``.
 
     Args:
@@ -253,7 +290,9 @@ def generate(metrics: Mapping[str, Any] | None, output_path: str | Path, context
     return destination.resolve()
 
 
-def render(metrics: Mapping[str, Any] | None, context: Mapping[str, Any] | None = None) -> str:
+def render(
+    metrics: Mapping[str, Any] | None, context: Mapping[str, Any] | None = None
+) -> str:
     """Return dashboard HTML for ``metrics`` without writing a file."""
 
     metrics_dict = dict(metrics or {})
@@ -264,31 +303,74 @@ def render(metrics: Mapping[str, Any] | None, context: Mapping[str, Any] | None 
     return template.render(**view)
 
 
-def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+def _build_view_model(
+    metrics: dict[str, Any], context: dict[str, Any]
+) -> dict[str, Any]:
     meta = metrics.get("meta") if isinstance(metrics.get("meta"), Mapping) else {}
-    total_messages = _first_number(metrics, "total_messages", "message_count", "events", default=None)
+    total_messages = _first_number(
+        metrics, "total_messages", "message_count", "events", default=None
+    )
     if total_messages is None and isinstance(meta, Mapping):
-        total_messages = _safe_int(meta.get("total_messages") or meta.get("total_events"))
-    agent_counts = _mapping(metrics, "messages_per_agent", "agent_message_counts", "agents")
+        total_messages = _safe_int(
+            meta.get("total_messages") or meta.get("total_events")
+        )
+    agent_counts = _mapping(
+        metrics, "messages_per_agent", "agent_message_counts", "agents"
+    )
     if total_messages is None:
         total_messages = sum(_safe_int(value) for value in agent_counts.values())
 
-    room_metrics = _mapping(metrics, "room_health", "room_participation", "rooms", "participation_by_room")
-    active_agents, inactive_agents = _agent_status_lists(metrics.get("active_agents") or metrics.get("active"), metrics.get("inactive_agents") or metrics.get("inactive"))
-    busiest_hours = _hour_rows(metrics.get("busiest_hours") or metrics.get("messages_by_hour"))
+    room_metrics = _mapping(
+        metrics, "room_health", "room_participation", "rooms", "participation_by_room"
+    )
+    active_agents, inactive_agents = _agent_status_lists(
+        metrics.get("active_agents") or metrics.get("active"),
+        metrics.get("inactive_agents") or metrics.get("inactive"),
+    )
+    busiest_hours = _hour_rows(
+        metrics.get("busiest_hours") or metrics.get("messages_by_hour")
+    )
     trend = _mapping(metrics, "message_trend", "messages_per_day", "daily_messages")
 
-    token_usage = metrics.get("token_usage") if isinstance(metrics.get("token_usage"), Mapping) else {}
+    token_usage = (
+        metrics.get("token_usage")
+        if isinstance(metrics.get("token_usage"), Mapping)
+        else {}
+    )
     token_summary = _token_summary(token_usage, meta)
-    token_agent_rows = _token_rows(token_usage.get("per_agent") if isinstance(token_usage, Mapping) else None)
-    token_room_rows = _token_rows(token_usage.get("per_room") if isinstance(token_usage, Mapping) else None)
-    daily_trend_rows = _daily_trend_rows(metrics.get("daily_trends"))
+    token_agent_rows = _token_rows(
+        token_usage.get("per_agent") if isinstance(token_usage, Mapping) else None
+    )
+    token_room_rows = _token_rows(
+        token_usage.get("per_room") if isinstance(token_usage, Mapping) else None
+    )
+    daily_trend_values = _daily_trend_values(metrics.get("daily_trends"))
+    daily_trend_rows = _daily_trend_rows(daily_trend_values)
+    trend_charts = _trend_charts(daily_trend_values)
 
     summary_cards = [
-        {"label": "Messages", "value": total_messages, "note": "events included in this report"},
-        {"label": "Active agents", "value": len(active_agents) if active_agents else _safe_int(meta.get("unique_agents")) or len(agent_counts), "note": "agents with recent activity"},
-        {"label": "Rooms", "value": _safe_int(meta.get("unique_rooms")) or len(room_metrics), "note": "rooms represented in analytics"},
-        {"label": "Trend points", "value": len(trend), "note": "daily/hourly buckets supplied"},
+        {
+            "label": "Messages",
+            "value": total_messages,
+            "note": "events included in this report",
+        },
+        {
+            "label": "Active agents",
+            "value": len(active_agents)
+            if active_agents
+            else _safe_int(meta.get("unique_agents")) or len(agent_counts),
+            "note": "agents with recent activity",
+        },
+        {
+            "label": "Rooms",
+            "value": _safe_int(meta.get("unique_rooms")) or len(room_metrics),
+            "note": "rooms represented in analytics",
+        },
+        {
+            "label": "Trend points",
+            "value": len(trend),
+            "note": "daily/hourly buckets supplied",
+        },
     ]
 
     return {
@@ -303,13 +385,14 @@ def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[
         "token_agent_rows": token_agent_rows,
         "token_room_rows": token_room_rows,
         "daily_trend_rows": daily_trend_rows,
+        "trend_charts": trend_charts,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
     }
 
 
-def _daily_trend_rows(values: Any, *, limit: int = 14) -> list[dict[str, Any]]:
+def _daily_trend_values(values: Any, *, limit: int = 14) -> list[dict[str, Any]]:
     if not isinstance(values, Sequence) or isinstance(values, (str, bytes, bytearray)):
         return []
     rows: list[dict[str, Any]] = []
@@ -322,20 +405,105 @@ def _daily_trend_rows(values: Any, *, limit: int = 14) -> list[dict[str, Any]]:
         rows.append(
             {
                 "date": str(date),
-                "messages": _format_number(value.get("messages")),
-                "events": _format_number(value.get("events")),
-                "active_agents": _format_number(value.get("active_agents")),
-                "total_tokens": _format_number(value.get("total_tokens")),
-                "efficiency": _format_efficiency(value.get("efficiency")),
+                "messages": _safe_int(value.get("messages")),
+                "events": _safe_int(value.get("events")),
+                "active_agents": _safe_int(value.get("active_agents")),
+                "total_tokens": _safe_int(value.get("total_tokens")),
+                "efficiency": value.get("efficiency"),
             }
         )
     return rows[-limit:]
 
 
+def _daily_trend_rows(values: Any) -> list[dict[str, Any]]:
+    rows = (
+        _daily_trend_values(values)
+        if not _is_daily_trend_value_list(values)
+        else list(values)
+    )
+    return [
+        {
+            "date": str(row["date"]),
+            "messages": _format_number(row.get("messages")),
+            "events": _format_number(row.get("events")),
+            "active_agents": _format_number(row.get("active_agents")),
+            "total_tokens": _format_number(row.get("total_tokens")),
+            "efficiency": _format_efficiency(row.get("efficiency")),
+        }
+        for row in rows
+    ]
+
+
+def _trend_charts(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    if not rows:
+        return []
+    specs = [
+        ("Messages over time", "messages", "#2f6fed"),
+        ("Tokens over time", "total_tokens", "#7c3aed"),
+        ("Active agents over time", "active_agents", "#17803d"),
+    ]
+    charts: list[dict[str, Any]] = []
+    for title, key, color in specs:
+        point_rows = _sparkline_points(rows, key)
+        if not point_rows:
+            continue
+        points = " ".join(f"{point['x']},{point['y']}" for point in point_rows)
+        area_points = f"0,38 {points} 100,38"
+        values = [_safe_int(row.get(key)) for row in rows]
+        charts.append(
+            {
+                "title": title,
+                "color": color,
+                "points": points,
+                "area_points": area_points,
+                "point_rows": point_rows,
+                "peak": _format_number(max(values, default=0)),
+                "start_date": str(rows[0].get("date", "—")),
+                "end_date": str(rows[-1].get("date", "—")),
+            }
+        )
+    return charts
+
+
+def _sparkline_points(
+    rows: Sequence[Mapping[str, Any]], key: str
+) -> list[dict[str, Any]]:
+    values = [_safe_int(row.get(key)) for row in rows]
+    if not values:
+        return []
+    high = max(values) or 1
+    denominator = max(len(values) - 1, 1)
+    points: list[dict[str, Any]] = []
+    for index, (row, value) in enumerate(zip(rows, values, strict=False)):
+        x = 50.0 if len(values) == 1 else (index / denominator) * 100
+        y = 38 - ((value / high) * 32)
+        points.append(
+            {
+                "x": round(x, 2),
+                "y": round(y, 2),
+                "date": str(row.get("date", "—")),
+                "value": _format_number(value),
+            }
+        )
+    return points
+
+
+def _is_daily_trend_value_list(values: Any) -> bool:
+    return (
+        isinstance(values, Sequence)
+        and not isinstance(values, (str, bytes, bytearray))
+        and all(isinstance(value, Mapping) and "date" in value for value in values)
+    )
+
+
 def _token_summary(token_usage: Any, meta: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(token_usage, Mapping):
         return []
-    totals = token_usage.get("totals") if isinstance(token_usage.get("totals"), Mapping) else {}
+    totals = (
+        token_usage.get("totals")
+        if isinstance(token_usage.get("totals"), Mapping)
+        else {}
+    )
     input_tokens = _safe_int(totals.get("input") or meta.get("total_input_tokens"))
     output_tokens = _safe_int(totals.get("output") or meta.get("total_output_tokens"))
     total_tokens = _safe_int(totals.get("total")) or input_tokens + output_tokens
@@ -344,10 +512,26 @@ def _token_summary(token_usage: Any, meta: Mapping[str, Any]) -> list[dict[str, 
     if total_tokens == 0 and events_with_tokens == 0 and efficiency == "—":
         return []
     return [
-        {"label": "Total tokens", "value": _format_number(total_tokens), "note": "input + output tokens"},
-        {"label": "Input tokens", "value": _format_number(input_tokens), "note": "prompt/context volume"},
-        {"label": "Output tokens", "value": _format_number(output_tokens), "note": "generated response volume"},
-        {"label": "Input:output", "value": efficiency, "note": f"{events_with_tokens} events with token data"},
+        {
+            "label": "Total tokens",
+            "value": _format_number(total_tokens),
+            "note": "input + output tokens",
+        },
+        {
+            "label": "Input tokens",
+            "value": _format_number(input_tokens),
+            "note": "prompt/context volume",
+        },
+        {
+            "label": "Output tokens",
+            "value": _format_number(output_tokens),
+            "note": "generated response volume",
+        },
+        {
+            "label": "Input:output",
+            "value": efficiency,
+            "note": f"{events_with_tokens} events with token data",
+        },
     ]
 
 
@@ -392,11 +576,15 @@ def _format_number(value: Any) -> str:
     return f"{_safe_int(value):,}"
 
 
-def _first_number(metrics: Mapping[str, Any], *keys: str, default: int | None = 0) -> int | None:
+def _first_number(
+    metrics: Mapping[str, Any], *keys: str, default: int | None = 0
+) -> int | None:
     for key in keys:
         if key in metrics:
             value = metrics[key]
-            if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            if isinstance(value, Sequence) and not isinstance(
+                value, (str, bytes, bytearray)
+            ):
                 return len(value)
             return _safe_int(value)
     return default
@@ -415,7 +603,9 @@ def _agent_rows(agent_counts: Mapping[str, Any]) -> list[dict[str, Any]]:
     total = max(sum(counts.values()), 1)
     rows = [
         {"name": name, "count": count, "percent": round((count / total) * 100, 1)}
-        for name, count in sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))
+        for name, count in sorted(
+            counts.items(), key=lambda item: (-item[1], item[0].lower())
+        )
     ]
     return rows
 
@@ -424,22 +614,45 @@ def _room_rows(room_metrics: Mapping[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for room, value in sorted(room_metrics.items(), key=lambda item: item[0].lower()):
         if isinstance(value, Mapping):
-            messages = _safe_int(value.get("messages") or value.get("message_count") or value.get("count"))
-            if messages == 0 and value and all(_looks_numeric(v) for v in value.values()):
+            messages = _safe_int(
+                value.get("messages")
+                or value.get("message_count")
+                or value.get("count")
+            )
+            if (
+                messages == 0
+                and value
+                and all(_looks_numeric(v) for v in value.values())
+            ):
                 messages = sum(_safe_int(v) for v in value.values())
             agents_value = value.get("agents") or value.get("active_agents")
-            if agents_value is None and value and all(_looks_numeric(v) for v in value.values()):
+            if (
+                agents_value is None
+                and value
+                and all(_looks_numeric(v) for v in value.values())
+            ):
                 agents = len(value)
-            elif isinstance(agents_value, Sequence) and not isinstance(agents_value, (str, bytes, bytearray)):
+            elif isinstance(agents_value, Sequence) and not isinstance(
+                agents_value, (str, bytes, bytearray)
+            ):
                 agents = len(agents_value)
             else:
                 agents = _safe_int(agents_value)
-            participation = value.get("participation_rate") or value.get("participation") or "—"
+            participation = (
+                value.get("participation_rate") or value.get("participation") or "—"
+            )
         else:
             messages = _safe_int(value)
             agents = "—"
             participation = "—"
-        rows.append({"room": room, "messages": messages, "agents": agents, "participation": participation})
+        rows.append(
+            {
+                "room": room,
+                "messages": messages,
+                "agents": agents,
+                "participation": participation,
+            }
+        )
     return rows
 
 
@@ -451,18 +664,36 @@ def _hour_rows(value: Any) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for entry in value:
             if isinstance(entry, Mapping):
-                rows.append({"hour": entry.get("hour", "—"), "count": _safe_int(entry.get("count") or entry.get("messages"))})
-            elif isinstance(entry, Sequence) and len(entry) >= 2 and not isinstance(entry, (str, bytes, bytearray)):
+                rows.append(
+                    {
+                        "hour": entry.get("hour", "—"),
+                        "count": _safe_int(entry.get("count") or entry.get("messages")),
+                    }
+                )
+            elif (
+                isinstance(entry, Sequence)
+                and len(entry) >= 2
+                and not isinstance(entry, (str, bytes, bytearray))
+            ):
                 rows.append({"hour": entry[0], "count": _safe_int(entry[1])})
         return rows
     else:
         return []
-    return [{"hour": key, "count": _safe_int(count)} for key, count in sorted(items, key=lambda item: str(item[0]))]
+    return [
+        {"hour": key, "count": _safe_int(count)}
+        for key, count in sorted(items, key=lambda item: str(item[0]))
+    ]
 
 
-def _agent_status_lists(active_value: Any, inactive_value: Any = None) -> tuple[list[str], list[str]]:
-    if isinstance(active_value, Mapping) and ("active" in active_value or "inactive" in active_value):
-        return _string_list(active_value.get("active")), _string_list(active_value.get("inactive"))
+def _agent_status_lists(
+    active_value: Any, inactive_value: Any = None
+) -> tuple[list[str], list[str]]:
+    if isinstance(active_value, Mapping) and (
+        "active" in active_value or "inactive" in active_value
+    ):
+        return _string_list(active_value.get("active")), _string_list(
+            active_value.get("inactive")
+        )
     return _string_list(active_value), _string_list(inactive_value)
 
 
