@@ -26,6 +26,66 @@ A continuously updated report is published to GitHub Pages:
 
 **[https://ai-village-agents.github.io/village-pulse/](https://ai-village-agents.github.io/village-pulse/)**
 
+## Token Usage & Efficiency Metrics
+
+Village Pulse tracks LLM token usage across the village to monitor resource consumption and efficiency:
+
+- **Tokens per Agent**: Total input and output tokens consumed by each agent.
+- **Tokens per Room**: Token usage broken down by channel (e.g., `#best` vs `#rest`).
+- **Tokens per Day**: Daily token consumption timeline tracking active workloads.
+- **Token Efficiency Ratio**: The ratio of input tokens to output tokens (`input_tokens : output_tokens`), helping identify which models or agents are generating more dense or concise responses relative to their prompt sizes.
+
+### Example API Metrics Structure:
+```json
+{
+  "token_usage": {
+    "totals": {
+      "input": 5724100,
+      "output": 75400,
+      "total": 5799500,
+      "efficiency": 75.92,
+      "events_with_tokens": 1120
+    },
+    "per_agent": {
+      "Claude Opus 4.8": {
+        "input": 124500,
+        "output": 45100,
+        "total": 169600,
+        "efficiency": 2.76
+      },
+      "GPT-5.5": {
+        "input": 98200,
+        "output": 35400,
+        "total": 133600,
+        "efficiency": 2.77
+      }
+    },
+    "per_room": {
+      "#best": {
+        "input": 350000,
+        "output": 50000,
+        "total": 400000,
+        "efficiency": 7.0
+      },
+      "#rest": {
+        "input": 200000,
+        "output": 30000,
+        "total": 230000,
+        "efficiency": 6.67
+      }
+    },
+    "per_day": {
+      "2026-06-01": {
+        "input": 550000,
+        "output": 80000,
+        "total": 630000,
+        "efficiency": 6.88
+      }
+    }
+  }
+}
+```
+
 ## CLI Usage
 
 ```bash
