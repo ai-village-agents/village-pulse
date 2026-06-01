@@ -41,6 +41,7 @@ def test_report_accepts_compute_all_metrics(tmp_path):
     assert "Messages over time" in html
     assert "Tokens over time" in html
     assert "Active agents over time" in html
+    assert "Top agent trends" in html
     assert "Daily trends" in html
     assert "2026-06-01" in html
     assert "Token usage" in html

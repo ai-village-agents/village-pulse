@@ -198,6 +198,28 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Top agent trends</h2>
+      {% if agent_trend_charts %}
+      <div class="chart-grid">
+        {% for chart in agent_trend_charts %}
+        <article class="trend-chart">
+          <div class="chart-head"><span class="chart-title">{{ chart.agent }}</span><span class="chart-value">{{ chart.total_messages }} messages</span></div>
+          <svg class="sparkline" viewBox="0 0 100 44" role="img" aria-label="{{ chart.agent }} message trend from {{ chart.start_date }} to {{ chart.end_date }}" preserveAspectRatio="none">
+            <line class="spark-grid" x1="0" y1="38" x2="100" y2="38"></line>
+            <line class="spark-grid" x1="0" y1="22" x2="100" y2="22"></line>
+            <line class="spark-grid" x1="0" y1="6" x2="100" y2="6"></line>
+            <polygon class="spark-area" fill="{{ chart.color }}" points="{{ chart.area_points }}"></polygon>
+            <polyline class="spark-line" stroke="{{ chart.color }}" points="{{ chart.points }}"></polyline>
+            {% for point in chart.point_rows %}<circle class="spark-dot" fill="{{ chart.color }}" cx="{{ point.x }}" cy="{{ point.y }}" r="1.6"><title>{{ point.date }}: {{ point.value }} messages</title></circle>{% endfor %}
+          </svg>
+          <div class="chart-dates"><span>{{ chart.start_date }}</span><span>Peak {{ chart.peak }} · {{ chart.total_tokens }} tokens</span><span>{{ chart.end_date }}</span></div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}<p class="muted">No per-agent trend metrics were provided.</p>{% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Daily trends</h2>
       {% if daily_trend_rows %}
       <table>
@@ -347,6 +369,7 @@ def _build_view_model(
     daily_trend_values = _daily_trend_values(metrics.get("daily_trends"))
     daily_trend_rows = _daily_trend_rows(daily_trend_values)
     trend_charts = _trend_charts(daily_trend_values)
+    agent_trend_charts = _agent_trend_charts(metrics.get("top_agents_over_time"))
 
     summary_cards = [
         {
@@ -386,6 +409,7 @@ def _build_view_model(
         "token_room_rows": token_room_rows,
         "daily_trend_rows": daily_trend_rows,
         "trend_charts": trend_charts,
+        "agent_trend_charts": agent_trend_charts,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
@@ -486,6 +510,69 @@ def _sparkline_points(
             }
         )
     return points
+
+
+def _agent_trend_charts(values: Any, *, limit: int = 5) -> list[dict[str, Any]]:
+    if not isinstance(values, Sequence) or isinstance(values, (str, bytes, bytearray)):
+        return []
+    palette = ["#2f6fed", "#7c3aed", "#17803d", "#b7791f", "#e11d48"]
+    charts: list[dict[str, Any]] = []
+    for entry in values:
+        if len(charts) >= limit:
+            break
+        if not isinstance(entry, Mapping):
+            continue
+        agent = entry.get("agent")
+        daily = entry.get("daily")
+        if (
+            not agent
+            or not isinstance(daily, Sequence)
+            or isinstance(daily, (str, bytes, bytearray))
+        ):
+            continue
+        rows = _agent_daily_rows(daily)
+        point_rows = _sparkline_points(rows, "messages")
+        if not point_rows:
+            continue
+        points = " ".join(f"{point['x']},{point['y']}" for point in point_rows)
+        total_messages = _safe_int(entry.get("total_messages")) or sum(
+            row["messages"] for row in rows
+        )
+        total_tokens = sum(row["input_tokens"] + row["output_tokens"] for row in rows)
+        color = palette[len(charts) % len(palette)]
+        charts.append(
+            {
+                "agent": str(agent),
+                "color": color,
+                "points": points,
+                "area_points": f"0,38 {points} 100,38",
+                "point_rows": point_rows,
+                "peak": _format_number(
+                    max((row["messages"] for row in rows), default=0)
+                ),
+                "total_messages": _format_number(total_messages),
+                "total_tokens": _format_number(total_tokens),
+                "start_date": str(rows[0].get("date", "—")),
+                "end_date": str(rows[-1].get("date", "—")),
+            }
+        )
+    return charts
+
+
+def _agent_daily_rows(values: Sequence[Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for value in values:
+        if not isinstance(value, Mapping) or not value.get("date"):
+            continue
+        rows.append(
+            {
+                "date": str(value.get("date")),
+                "messages": _safe_int(value.get("messages")),
+                "input_tokens": _safe_int(value.get("input_tokens")),
+                "output_tokens": _safe_int(value.get("output_tokens")),
+            }
+        )
+    return rows
 
 
 def _is_daily_trend_value_list(values: Any) -> bool:

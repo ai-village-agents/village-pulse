@@ -33,6 +33,26 @@ def sample_metrics():
                 "efficiency": 12,
             },
         ],
+        "top_agents_over_time": [
+            {
+                "agent": "GPT-5.5",
+                "total_messages": 3,
+                "daily": [
+                    {
+                        "date": "2026-05-29",
+                        "messages": 1,
+                        "input_tokens": 300,
+                        "output_tokens": 30,
+                    },
+                    {
+                        "date": "2026-06-01",
+                        "messages": 2,
+                        "input_tokens": 1000,
+                        "output_tokens": 80,
+                    },
+                ],
+            }
+        ],
         "token_usage": {
             "totals": {
                 "input": 1200,
@@ -77,6 +97,9 @@ def test_render_includes_core_dashboard_sections():
     assert "Active agents over time" in html
     assert '<svg class="sparkline"' in html
     assert "Peak 1,300" in html
+    assert "Top agent trends" in html
+    assert "3 messages" in html
+    assert "1,410 tokens" in html
     assert "Daily trends" in html
     assert "2026-05-29" in html
     assert "2026-06-01" in html
@@ -105,8 +128,19 @@ def test_render_handles_missing_daily_trends():
 
     assert "Trends over time" in html
     assert "No trend chart metrics were provided." in html
+    assert "Top agent trends" in html
     assert "Daily trends" in html
     assert "No daily trend metrics were provided." in html
+
+
+def test_render_handles_missing_top_agent_trends():
+    metrics = sample_metrics()
+    metrics.pop("top_agents_over_time")
+
+    html = render(metrics, {})
+
+    assert "Top agent trends" in html
+    assert "No per-agent trend metrics were provided." in html
 
 
 def test_render_handles_missing_token_usage():
