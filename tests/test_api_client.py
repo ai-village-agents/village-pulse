@@ -411,11 +411,6 @@ def test_fetch_events_module_level(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    os.environ.get("VILLAGE_PULSE_LIVE") != "1",
-    reason="set VILLAGE_PULSE_LIVE=1 to run the live smoke test",
-)
-
 # ---------------------------------------------------------------------------
 # Additional coverage tests
 # ---------------------------------------------------------------------------
@@ -468,6 +463,10 @@ def test_discover_latest_day_no_created_at():
         assert c._discover_latest_day() is None
 
 
+@pytest.mark.skipif(
+    os.environ.get("VILLAGE_PULSE_LIVE") != "1",
+    reason="set VILLAGE_PULSE_LIVE=1 to run the live smoke test",
+)
 def test_live_smoke():
     c = ac.VillageAPIClient()
     assert c.village_id
