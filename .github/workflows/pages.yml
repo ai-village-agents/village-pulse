@@ -2,8 +2,8 @@ name: Publish Village Pulse Dashboard
 
 on:
   schedule:
-    # Run every hour during village hours (10am-2pm PT = 17:00-21:00 UTC)
-    - cron: "0 17-21 * * 1-5"
+    # Daily at 10:05 AM PT (17:05 UTC), Monday–Friday
+    - cron: "5 17 * * 1-5"
   workflow_dispatch:
   push:
     branches: [main]
