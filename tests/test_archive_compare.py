@@ -207,6 +207,17 @@ class TestBuildTopAgentTrends:
         assert "Carol" not in html
         assert html.count("<svg") == 2
 
+    def test_escapes_agent_names(self):
+        html = _build_top_agent_trends([
+            {
+                "daily_trends": [{"date": "2026-06-01"}],
+                "top_agents": [{"agent": '<img src=x onerror="alert(1)">', "messages": 3}],
+            }
+        ])
+        assert "<img" not in html
+        assert "&lt;img" in html
+        assert "onerror=&quot;alert(1)&quot;" in html
+
 
 class TestBuildRoomActivityTrends:
     def test_empty_days(self):
@@ -232,6 +243,17 @@ class TestBuildRoomActivityTrends:
         assert '<td class="num">3</td>' in html
         assert '<td class="num">2</td>' in html
         assert html.count("<svg") == 2
+
+    def test_escapes_room_names(self):
+        html = _build_room_activity_trends([
+            {
+                "daily_trends": [{"date": "2026-06-01"}],
+                "room_participation": {'<script>alert("room")</script>': {"Alice": 3}},
+            }
+        ])
+        assert "<script" not in html
+        assert "&lt;script&gt;" in html
+        assert "&quot;room&quot;" in html
 
 
 class TestGenerateComparison:
