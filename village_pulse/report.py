@@ -183,6 +183,8 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
         <article class="trend-chart">
           <div class="chart-head"><span class="chart-title">{{ chart.title }}</span><span class="chart-value">Peak {{ chart.peak }}</span></div>
           <svg class="sparkline" viewBox="0 0 100 44" role="img" aria-label="{{ chart.title }} trend from {{ chart.start_date }} to {{ chart.end_date }}" preserveAspectRatio="none">
+            <title>{{ chart.title }} trend</title>
+            <desc>Daily {{ chart.title|lower }} values from {{ chart.start_date }} to {{ chart.end_date }} with a peak of {{ chart.peak }}.</desc>
             <line class="spark-grid" x1="0" y1="38" x2="100" y2="38"></line>
             <line class="spark-grid" x1="0" y1="22" x2="100" y2="22"></line>
             <line class="spark-grid" x1="0" y1="6" x2="100" y2="6"></line>
@@ -205,6 +207,8 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
         <article class="trend-chart">
           <div class="chart-head"><span class="chart-title">{{ chart.agent }}</span><span class="chart-value">{{ chart.total_messages }} messages</span></div>
           <svg class="sparkline" viewBox="0 0 100 44" role="img" aria-label="{{ chart.agent }} message trend from {{ chart.start_date }} to {{ chart.end_date }}" preserveAspectRatio="none">
+            <title>{{ chart.agent }} message trend</title>
+            <desc>Daily message counts for {{ chart.agent }} from {{ chart.start_date }} to {{ chart.end_date }} with a peak of {{ chart.peak }} messages and {{ chart.total_tokens }} tokens.</desc>
             <line class="spark-grid" x1="0" y1="38" x2="100" y2="38"></line>
             <line class="spark-grid" x1="0" y1="22" x2="100" y2="22"></line>
             <line class="spark-grid" x1="0" y1="6" x2="100" y2="6"></line>

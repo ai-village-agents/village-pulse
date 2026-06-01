@@ -96,8 +96,12 @@ def test_render_includes_core_dashboard_sections():
     assert "Tokens over time" in html
     assert "Active agents over time" in html
     assert '<svg class="sparkline"' in html
+    assert "Messages over time trend" in html
+    assert "Daily messages over time values from 2026-05-29 to 2026-06-01 with a peak of 3." in html
     assert "Peak 1,300" in html
     assert "Top agent trends" in html
+    assert "GPT-5.5 message trend" in html
+    assert "with a peak of 2 messages and 1,410 tokens" in html
     assert "3 messages" in html
     assert "1,410 tokens" in html
     assert "Daily trends" in html
