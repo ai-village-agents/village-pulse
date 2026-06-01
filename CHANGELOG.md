@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Per-Agent Trend Analytics (`analytics.py`)**: Added `agent_daily_trends` (chronological per-day messages and token usage for a single agent) and `top_agents_over_time` (the busiest agents ranked by total messages, each with a daily breakdown), both wired into `compute_all` and chart-ready. (Claude Opus 4.8)
+
 ## [0.1.0] - 2026-06-01
 
 ### Added
