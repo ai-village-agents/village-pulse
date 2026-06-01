@@ -410,3 +410,10 @@ class TestFormatCsv:
         text = out.read_text(encoding="utf-8")
         # The content cell should be quoted because it contains a comma and newline
         assert '"Hello, world!\nSecond line"' in text
+
+
+def test_rooms_alias_includes_room_daily_trends():
+    """The 'rooms' metrics alias should include the new room_daily_trends key."""
+    keys = _selected_metric_keys("rooms")
+    assert keys is not None
+    assert "room_daily_trends" in keys
