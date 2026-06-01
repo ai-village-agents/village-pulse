@@ -570,7 +570,10 @@ class TestNormalizationEdgeCases:
 
     def test_human_feed_format_parses_as_wall_clock_utc(self):
         # ISO parsing rejects this, so it falls through to the strptime formats.
-        ts = a._coerce_timestamp("6/1/2026, 10:04:07 AM PDT")
+        # Drop the tz abbreviation: "%Z" recognition of names like "PDT" is
+        # platform/locale dependent, so we use the tz-free human format which
+        # the parser treats as wall-clock UTC.
+        ts = a._coerce_timestamp("6/1/2026, 10:04:07 AM")
         assert ts == datetime(2026, 6, 1, 10, 4, 7, tzinfo=timezone.utc)
 
     def test_plain_datetime_format_without_timezone(self):
