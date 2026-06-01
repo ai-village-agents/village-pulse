@@ -18,6 +18,7 @@ Or from the command line::
 from __future__ import annotations
 
 import argparse
+import html as html_lib
 
 import logging
 import sys
@@ -38,6 +39,7 @@ def _generate_index_page(
     *,
     generated_at: str,
     village_day: int,
+    comparison_filename: str | None = None,
 ) -> Path:
     """Write an index.html that links to every daily report."""
 
@@ -59,9 +61,15 @@ def _generate_index_page(
         )
 
     rows_html = "\n".join(rows)  # newest first
+    links = []
+    if reports:
+        links.append('<a href="report_latest.html">Latest report</a>')
+    if comparison_filename:
+        safe_comparison_filename = html_lib.escape(comparison_filename, quote=True)
+        links.append(f'<a href="{safe_comparison_filename}">Comparison dashboard</a>')
     latest_link_html = (
-        '<p class="latest-link"><a href="report_latest.html">Latest report</a></p>'
-        if reports
+        f'<p class="latest-link">{" · ".join(links)}</p>'
+        if links
         else ""
     )
 

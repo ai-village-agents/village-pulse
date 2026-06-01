@@ -129,6 +129,24 @@ class TestGenerateIndexPage:
         assert "Latest report" not in html
 
 
+    def test_index_can_link_comparison_dashboard(self, tmp_path: Path) -> None:
+        reports = [
+            {"day": 426, "filename": "report_day426.html", "total_events": 10, "total_messages": 5, "unique_agents": 2},
+        ]
+
+        archive._generate_index_page(
+            reports,
+            tmp_path,
+            generated_at="2026-06-01 10:00 UTC",
+            village_day=426,
+            comparison_filename="comparison.html",
+        )
+
+        html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert 'href="report_latest.html">Latest report</a>' in html
+        assert 'href="comparison.html">Comparison dashboard</a>' in html
+
+
 class TestCLI:
     def test_main_with_mocked_archive(self, tmp_path: Path) -> None:
         mock_client = MagicMock()
