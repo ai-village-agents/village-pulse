@@ -444,3 +444,42 @@ def test_live_smoke():
     assert c.get_rooms()
     evs = c.fetch_events(days=1)
     assert isinstance(evs, list)
+
+
+def test_http_get_json_requests_value_error():
+    with mock.patch.object(ac, "_requests") as fake_req:
+        fake_req.__bool__ = lambda self: True
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = '{"bad": json}'
+        mock_resp.json.side_effect = ValueError("JSON decode error")
+        fake_req.get.return_value = mock_resp
+        with pytest.raises(ac.APIError) as exc_info:
+            ac._http_get_json("https://x.example/foo")
+        assert "invalid JSON" in str(exc_info.value)
+
+
+def test_fetch_events_latest_day_none(monkeypatch):
+    village_detail = {
+        "id": "vid-1",
+        "createdAt": "2025-04-02T17:45:08Z",
+        "agents": [],
+        "chatRooms": [],
+    }
+    events_page = {"events": [], "hasMore": False}
+    iterator = iter([village_detail, events_page])
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "_get",
+        lambda self, path, params=None: next(iterator)
+    )
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "_discover_latest_day", lambda self: None
+    )
+    c = ac.VillageAPIClient(village_id="vid-1")
+    out = c.fetch_events(days=1)
+    assert out == []
+
+
+def test_normalize_room_filter_empty_normalization():
+    assert ac._normalize_room_filter("#") is None
+    assert ac._normalize_room_filter("   ") is None

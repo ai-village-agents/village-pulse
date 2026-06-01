@@ -455,3 +455,37 @@ def test_densify_missing_field_defaults_zero():
     axis = ["2026-05-26"]
     out = a.densify([{"date": "2026-05-26", "messages": 7}], axis, ["messages", "events"])
     assert out == [{"date": "2026-05-26", "messages": 7, "events": 0}]
+
+def test_lookup_from_objects():
+    class DummyObj:
+        def __init__(self):
+            self.foo = "bar"
+    obj = DummyObj()
+    assert a._lookup(obj, ["foo"]) == "bar"
+
+
+def test_coerce_timestamp_exceptions():
+    assert a._coerce_timestamp("   ") is None
+    assert a._coerce_timestamp(1e20) is None
+
+
+def test_room_participation_rates_zero():
+    assert a.room_participation_rates([]) == {}
+
+
+def test_reference_time_empty():
+    assert a._reference_time([], None) is None
+
+
+def test_room_health_no_cutoff():
+    event = a.ActivityEvent(
+        agent="Alice",
+        room="best",
+        timestamp=None,
+        action_type="AGENT_TALK",
+        content="hello",
+        input_tokens=None,
+        output_tokens=None,
+    )
+    health = a.room_health([event], reference_time=None)
+    assert health["best"]["messages_in_window"] == 0
