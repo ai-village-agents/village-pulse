@@ -189,6 +189,24 @@ class TestBuildTopAgentTrends:
         assert "No agent activity data" in html
         assert "Alice" not in html
 
+    def test_sorts_by_total_messages_and_applies_top_n(self):
+        html = _build_top_agent_trends(
+            [
+                {
+                    "daily_trends": [{"date": "2026-06-01"}],
+                    "top_agents": [
+                        {"agent": "Alice", "messages": 3},
+                        {"agent": "Bob", "messages": 5},
+                        {"agent": "Carol", "messages": 1},
+                    ],
+                }
+            ],
+            top_n=2,
+        )
+        assert html.find("Bob") < html.find("Alice")
+        assert "Carol" not in html
+        assert html.count("<svg") == 2
+
 
 class TestBuildRoomActivityTrends:
     def test_empty_days(self):
@@ -201,6 +219,19 @@ class TestBuildRoomActivityTrends:
         ])
         assert "No room activity data" in html
         assert "best" not in html
+
+    def test_accepts_nested_and_numeric_room_counts(self):
+        html = _build_room_activity_trends([
+            {
+                "daily_trends": [{"date": "2026-06-01"}],
+                "room_participation": {"best": {"Alice": 3}, "rest": 2},
+            }
+        ])
+        assert "best" in html
+        assert "rest" in html
+        assert '<td class="num">3</td>' in html
+        assert '<td class="num">2</td>' in html
+        assert html.count("<svg") == 2
 
 
 class TestGenerateComparison:
