@@ -11,7 +11,7 @@ from __future__ import annotations
 import html
 import json
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -233,7 +233,7 @@ def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[
 
     return {
         "title": html.escape(str(context.get("title") or DEFAULT_TITLE)),
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "context": context,
         "summary_cards": summary_cards,
         "agent_rows": _agent_rows(agent_counts),
