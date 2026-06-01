@@ -129,6 +129,22 @@ class TestGenerateArchive:
         assert "report_day426.html" not in index_html
 
 
+    def test_generate_archive_links_comparison_filename(self, tmp_path: Path) -> None:
+        """Archive generation can link the comparison dashboard from index.html."""
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+        mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
+
+        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+            archive.generate_archive(tmp_path, days_back=1, comparison_filename="comparison.html")
+
+        index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert 'href="report_latest.html">Latest report</a>' in index_html
+        assert 'href="comparison.html">Comparison dashboard</a>' in index_html
+
+
 class TestGenerateIndexPage:
     def test_index_has_days_sorted_newest_first(self, tmp_path: Path) -> None:
         reports = [
@@ -244,6 +260,27 @@ class TestCLI:
         assert rc == 0
         assert (tmp_path / "index.html").exists()
         assert (tmp_path / "report_day426.html").exists()
+
+    def test_main_can_link_comparison_dashboard(self, tmp_path: Path) -> None:
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {}
+        mock_client.get_rooms.return_value = {}
+        mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
+
+        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+            rc = archive.main([
+                "--output",
+                str(tmp_path),
+                "--days-back",
+                "1",
+                "--comparison-filename",
+                "comparison.html",
+            ])
+
+        assert rc == 0
+        index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert 'href="comparison.html">Comparison dashboard</a>' in index_html
 
     def test_main_failure_returns_nonzero(self, tmp_path: Path) -> None:
         from village_pulse.api_client import APIError

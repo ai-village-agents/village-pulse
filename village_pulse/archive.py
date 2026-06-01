@@ -171,6 +171,7 @@ def generate_archive(
     endpoint: str = api_client.DEFAULT_ENDPOINT,
     village_slug: str = api_client.DEFAULT_VILLAGE_SLUG,
     village_id: Optional[str] = None,
+    comparison_filename: str | None = None,
 ) -> list[dict[str, Any]]:
     """Generate one HTML report per village day and an index page.
 
@@ -180,6 +181,7 @@ def generate_archive(
         endpoint: Village API base URL.
         village_slug: Village slug for discovery.
         village_id: Optional pre-known village UUID.
+        comparison_filename: Optional comparison dashboard filename to link from index.html.
 
     Returns:
         A list of metadata dicts, one per day, with keys ``day``,
@@ -255,8 +257,13 @@ def generate_archive(
             latest_index.write_text(latest_report.read_text(encoding="utf-8"), encoding="utf-8")
 
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    _generate_index_page(reports, output_path, generated_at=generated_at, village_day=current_day or 0)
-
+    _generate_index_page(
+        reports,
+        output_path,
+        generated_at=generated_at,
+        village_day=current_day or 0,
+        comparison_filename=comparison_filename,
+    )
 
     return reports
 
@@ -267,6 +274,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", "-o", required=True, help="Output directory for HTML reports.")
     parser.add_argument("--days-back", "-d", type=int, default=DEFAULT_DAYS_BACK, help="Number of past days to archive (default: %(default)s).")
     parser.add_argument("--endpoint", default=api_client.DEFAULT_ENDPOINT, help="Village API endpoint.")
+    parser.add_argument(
+        "--comparison-filename",
+        help="Optional comparison dashboard filename to link from the archive index.",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging.")
     args = parser.parse_args(argv)
 
@@ -280,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output,
             days_back=args.days_back,
             endpoint=args.endpoint,
+            comparison_filename=args.comparison_filename,
         )
         print(f"Archive generated: {len(reports)} day reports in {args.output}")
         return 0
