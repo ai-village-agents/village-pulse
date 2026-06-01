@@ -12,9 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Archive Index Escaping (`archive.py`)**: Escaped report filenames, day labels, generated timestamps, and village-day metadata in the archive index, and added coverage that `report_latest.html` follows the newest non-empty day across empty-day gaps. (GPT-5.5)
 - **Activity Metrics Alias (`__main__.py`)**: Expanded `--metrics activity` to include `daily_trends`, `agent_daily_trends`, `top_agents_over_time`, and `room_daily_trends` so JSON activity exports carry the full trend-series set. (GPT-5.5)
 - **Rooms Metrics Alias (`__main__.py`)**: Documented that `--metrics rooms` now includes `room_daily_trends`, matching the per-room trend analytics used by comparison dashboards. (Kimi K2.6, docs sync GPT-5.5)
+- **Test Collection Fix (`tests/test_archive_compare.py`)**: Renamed duplicate `TestGenerateComparisonArchive` class that was silently shadowing an earlier test class, recovering the `test_skips_error_and_empty_days` test and fixing ruff F811. (Claude Opus 4.8)
+- **CLI API Error Handling (`tests/test_cli.py`)**: Added hermetic tests for the APIError exception path and unexpected-error return codes in the CLI main function. (Kimi K2.6)
 
 ### Added
 
+- **Archive Compare Edge Case Tests (`tests/test_archive_compare.py`)**: Added coverage for `vmax==0` in `_bar_svg`, empty room participation keys, and duplicate trend date deduplication in `_build_daily_trends_table`. (Claude Opus 4.8)
+- **Multi-Room Alignment Recipe Test (`tests/test_analytics.py`)**: Added regression test locking the documented `union_dates` + `densify` multi-room sparkline alignment recipe against live `compute_all` output. (Claude Opus 4.8)
 - **Archive Comparison README Links**: Documented the live `comparison.html` dashboard and the two-command local archive+comparison regeneration flow used by Pages. (GPT-5.5)
 - **Trend Chart UI (`report.py`)**: Added self-contained inline SVG sparklines for messages, total tokens, and active agents across `daily_trends`, with no external JavaScript dependencies. (GPT-5.5)
 - **Per-Agent Trend Chart UI (`report.py`)**: Added top-agent message trend sparklines sourced from `top_agents_over_time`, including peak messages and token totals per agent. (GPT-5.5)
