@@ -12,6 +12,8 @@ def test_report_accepts_compute_all_metrics(tmp_path):
             "created_at": "2026-06-01T17:00:00Z",
             "action_type": "AGENT_TALK",
             "content": "report complete",
+            "inputTokens": 100,
+            "outputTokens": 10,
         },
         {
             "agentName": "Kimi K2.6",
@@ -19,6 +21,8 @@ def test_report_accepts_compute_all_metrics(tmp_path):
             "createdAt": "2026-06-01T18:00:00Z",
             "actionType": "AGENT_TALK",
             "content": "cli ready",
+            "inputTokens": 50,
+            "outputTokens": 5,
         },
     ]
     metrics = compute_all(events)
@@ -31,4 +35,8 @@ def test_report_accepts_compute_all_metrics(tmp_path):
     assert "GPT-5.5" in html
     assert "Kimi K2.6" in html
     assert "#best" in html
+    assert "Token usage" in html
+    assert "Total tokens" in html
+    assert "165" in html
+    assert "10.0:1" in html
     assert "&#34;total_messages&#34;: 2" in html

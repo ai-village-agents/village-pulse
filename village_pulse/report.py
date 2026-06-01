@@ -39,6 +39,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
       --accent-soft: #e8f0ff;
       --good: #17803d;
       --warn: #b7791f;
+      --token: #7c3aed;
       --shadow: 0 12px 28px rgba(23, 32, 51, 0.08);
     }
     * { box-sizing: border-box; }
@@ -81,6 +82,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     .bar-cell { min-width: 8rem; }
     .bar-track { height: .55rem; border-radius: 999px; background: #edf2f7; overflow: hidden; }
     .bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #59a6ff); }
+    .token-fill { background: linear-gradient(90deg, var(--token), #a78bfa); }
     .muted { color: var(--muted); }
     .good { color: var(--good); font-weight: 650; }
     .warn { color: var(--warn); font-weight: 650; }
@@ -163,6 +165,44 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Token usage</h2>
+      {% if token_summary %}
+      <div class="grid" aria-label="token summary metrics">
+        {% for card in token_summary %}
+        <article>
+          <div class="stat-label">{{ card.label }}</div>
+          <div class="stat-value">{{ card.value }}</div>
+          {% if card.note %}<div class="muted">{{ card.note }}</div>{% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% if token_agent_rows %}
+      <h3>Top agents by tokens</h3>
+      <table>
+        <thead><tr><th>Agent</th><th>Total</th><th>Input</th><th>Output</th><th>Input:output</th><th class="bar-cell">Share</th></tr></thead>
+        <tbody>
+          {% for row in token_agent_rows %}
+          <tr>
+            <td>{{ row.name }}</td><td>{{ row.total }}</td><td>{{ row.input }}</td><td>{{ row.output }}</td><td>{{ row.efficiency }}</td>
+            <td class="bar-cell"><div class="bar-track"><div class="bar-fill token-fill" style="width: {{ row.percent }}%"></div></div><span class="muted">{{ row.percent }}%</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if token_room_rows %}
+      <h3>Rooms by tokens</h3>
+      <table>
+        <thead><tr><th>Room</th><th>Total</th><th>Input</th><th>Output</th><th>Input:output</th></tr></thead>
+        <tbody>
+          {% for row in token_room_rows %}<tr><td>{{ row.name }}</td><td>{{ row.total }}</td><td>{{ row.input }}</td><td>{{ row.output }}</td><td>{{ row.efficiency }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% else %}<p class="muted">No token usage metrics were provided.</p>{% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Raw metrics payload</h2>
       <p class="muted">Included for transparent debugging while the analytics schema stabilizes.</p>
       <pre>{{ raw_metrics_json }}</pre>
@@ -224,6 +264,11 @@ def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[
     busiest_hours = _hour_rows(metrics.get("busiest_hours") or metrics.get("messages_by_hour"))
     trend = _mapping(metrics, "message_trend", "messages_per_day", "daily_messages")
 
+    token_usage = metrics.get("token_usage") if isinstance(metrics.get("token_usage"), Mapping) else {}
+    token_summary = _token_summary(token_usage, meta)
+    token_agent_rows = _token_rows(token_usage.get("per_agent") if isinstance(token_usage, Mapping) else None)
+    token_room_rows = _token_rows(token_usage.get("per_room") if isinstance(token_usage, Mapping) else None)
+
     summary_cards = [
         {"label": "Messages", "value": total_messages, "note": "events included in this report"},
         {"label": "Active agents", "value": len(active_agents) if active_agents else _safe_int(meta.get("unique_agents")) or len(agent_counts), "note": "agents with recent activity"},
@@ -239,10 +284,73 @@ def _build_view_model(metrics: dict[str, Any], context: dict[str, Any]) -> dict[
         "agent_rows": _agent_rows(agent_counts),
         "room_rows": _room_rows(room_metrics),
         "busiest_hours": busiest_hours,
+        "token_summary": token_summary,
+        "token_agent_rows": token_agent_rows,
+        "token_room_rows": token_room_rows,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
     }
+
+
+def _token_summary(token_usage: Any, meta: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if not isinstance(token_usage, Mapping):
+        return []
+    totals = token_usage.get("totals") if isinstance(token_usage.get("totals"), Mapping) else {}
+    input_tokens = _safe_int(totals.get("input") or meta.get("total_input_tokens"))
+    output_tokens = _safe_int(totals.get("output") or meta.get("total_output_tokens"))
+    total_tokens = _safe_int(totals.get("total")) or input_tokens + output_tokens
+    events_with_tokens = _safe_int(totals.get("events_with_tokens"))
+    efficiency = _format_efficiency(totals.get("efficiency"))
+    if total_tokens == 0 and events_with_tokens == 0 and efficiency == "—":
+        return []
+    return [
+        {"label": "Total tokens", "value": _format_number(total_tokens), "note": "input + output tokens"},
+        {"label": "Input tokens", "value": _format_number(input_tokens), "note": "prompt/context volume"},
+        {"label": "Output tokens", "value": _format_number(output_tokens), "note": "generated response volume"},
+        {"label": "Input:output", "value": efficiency, "note": f"{events_with_tokens} events with token data"},
+    ]
+
+
+def _token_rows(values: Any, *, limit: int = 10) -> list[dict[str, Any]]:
+    if not isinstance(values, Mapping):
+        return []
+    rows: list[dict[str, Any]] = []
+    for name, value in values.items():
+        if not isinstance(value, Mapping):
+            continue
+        input_tokens = _safe_int(value.get("input"))
+        output_tokens = _safe_int(value.get("output"))
+        total = _safe_int(value.get("total")) or input_tokens + output_tokens
+        rows.append(
+            {
+                "name": str(name),
+                "input_raw": input_tokens,
+                "output_raw": output_tokens,
+                "total_raw": total,
+                "input": _format_number(input_tokens),
+                "output": _format_number(output_tokens),
+                "total": _format_number(total),
+                "efficiency": _format_efficiency(value.get("efficiency")),
+            }
+        )
+    rows.sort(key=lambda row: (-row["total_raw"], row["name"].lower()))
+    max_total = max((row["total_raw"] for row in rows), default=1) or 1
+    for row in rows:
+        row["percent"] = round((row["total_raw"] / max_total) * 100, 1)
+    return rows[:limit]
+
+
+def _format_efficiency(value: Any) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "—"
+    return f"{number:.1f}:1"
+
+
+def _format_number(value: Any) -> str:
+    return f"{_safe_int(value):,}"
 
 
 def _first_number(metrics: Mapping[str, Any], *keys: str, default: int | None = 0) -> int | None:
