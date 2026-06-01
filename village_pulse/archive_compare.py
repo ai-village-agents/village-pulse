@@ -208,7 +208,7 @@ def _build_comparison_table(day_metrics):
             f'<td class="num">{_format_number(d.get("events", 0))}</td>'
             f'<td class="num">{_format_number(d.get("agents", 0))}</td>'
             f'<td class="num">{_format_number(d.get("tokens", 0))}</td>'
-            f'<td class="num">{d.get("efficiency", 0):.1f}%</td>'
+            f'<td class="num">{(d.get("efficiency") or 0):.1f}%</td>'
             f'<td class="spark-cell">{_sparkline_svg([d.get("messages", 0)])}</td>'
             f'</tr>'
         )
@@ -304,7 +304,7 @@ def _build_daily_trends_table(day_metrics):
             f'<td class="num">{_format_number(t.get("events", 0))}</td>'
             f'<td class="num">{_format_number(t.get("active_agents", 0))}</td>'
             f'<td class="num">{_format_number(t.get("total_tokens", 0))}</td>'
-            f'<td class="num">{t.get("efficiency", 0):.1f}%</td>'
+            f'<td class="num">{(t.get("efficiency") or 0):.1f}%</td>'
             f'</tr>'
         )
 

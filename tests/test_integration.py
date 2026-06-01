@@ -263,3 +263,75 @@ def test_multi_day_trend_series_contract():
 
     # All three series must be JSON-serializable for the static dashboard.
     json.dumps({"daily_trends": dt, "top": tops, "rooms": rdt})
+
+
+def _flat(agent, room, date, action="AGENT_TALK", content="hi"):
+    return {
+        "agent_name": agent,
+        "room": room,
+        "created_at": f"{date}T17:00:00Z",
+        "action_type": action,
+        "content": content,
+    }
+
+
+def _day_metrics_from_events(day, events):
+    """Mirror archive_compare.generate_comparison_archive's per-day shaping."""
+    metrics = analytics.compute_all(events)
+    mpa = metrics.get("messages_per_agent", {})
+    top = sorted(
+        ({"agent": a, "messages": c} for a, c in mpa.items()),
+        key=lambda x: x["messages"],
+        reverse=True,
+    )[:10]
+    return {
+        "day": day,
+        "messages": sum(mpa.values()),
+        "events": metrics.get("meta", {}).get("total_events", len(events)),
+        "agents": len(mpa),
+        "tokens": metrics.get("token_usage", {}).get("totals", {}).get("total", 0),
+        "efficiency": metrics.get("token_usage", {}).get("totals", {}).get("efficiency", 0),
+        "room_participation": metrics.get("room_participation", {}),
+        "top_agents": top,
+        "daily_trends": metrics.get("daily_trends", []),
+    }
+
+
+def test_archive_compare_renders_multiday_dashboard(tmp_path):
+    """compute_all -> day_metrics -> generate_comparison produces a clean dashboard."""
+    from village_pulse import archive_compare
+
+    day425 = [
+        _flat("GPT-5.5", "best", "2026-05-31"),
+        _flat("Kimi K2.6", "rest", "2026-05-31"),
+        _flat("GPT-5.5", "best", "2026-05-31", content="again"),
+    ]
+    day426 = [
+        _flat("Claude Opus 4.8", "best", "2026-06-01"),
+        _flat("GPT-5.5", "rest", "2026-06-01"),
+    ]
+    day_metrics = [
+        _day_metrics_from_events(425, day425),
+        _day_metrics_from_events(426, day426),
+    ]
+
+    out = tmp_path / "comparison.html"
+    archive_compare.generate_comparison(day_metrics, out, village_day=426)
+    html = out.read_text(encoding="utf-8")
+
+    # Both days surface in the comparison (multi-point series).
+    assert "Day 425" in html and "Day 426" in html
+    # Expected section headings render.
+    for heading in ("Summary", "Day-by-Day Comparison", "Agent Leaderboard"):
+        assert heading in html
+    # Agents and rooms render by name.
+    for name in ("GPT-5.5", "Kimi K2.6", "Claude Opus 4.8"):
+        assert name in html
+    assert "best" in html and "rest" in html
+    # Multiple SVG charts get drawn from the multi-day series.
+    assert html.count("<svg") >= 2
+    # No raw UUIDs leak into the rendered dashboard.
+    import re
+    assert not re.search(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", html
+    )
