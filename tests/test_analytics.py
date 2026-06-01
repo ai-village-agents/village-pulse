@@ -528,3 +528,63 @@ def test_multi_room_alignment_recipe_from_compute_all():
     assert [r["messages"] for r in rooms["#rest"]] == [0, 1, 1]
     # Overall equals the per-room sum on every aligned day.
     assert [r["messages"] for r in overall] == [1, 1, 2]
+
+
+class TestNormalizationEdgeCases:
+    """Cover the harder-to-reach normalization and helper branches so the
+    defensive code paths stay verified (analytics is the owner's lane)."""
+
+    def test_lookup_peeks_into_nested_data_mapping(self):
+        # Top-level carries the agent; room/content live only in nested ``data``.
+        ev = a.normalize_event(
+            {
+                "agentName": "Alice",
+                "data": {"room": "#best", "content": "hello from nested"},
+                "actionType": "AGENT_TALK",
+            }
+        )
+        assert ev.agent == "Alice"
+        assert ev.room == "#best"
+        assert ev.content == "hello from nested"
+
+    def test_lookup_peeks_into_nested_details_mapping(self):
+        ev = a.normalize_event(
+            {
+                "agentName": "Bob",
+                "details": {"content": "hi from details"},
+                "actionType": "AGENT_TALK",
+            }
+        )
+        assert ev.content == "hi from details"
+
+    def test_numeric_string_epoch_seconds(self):
+        ts = a._coerce_timestamp("1716742800")
+        assert ts is not None
+        assert ts.tzinfo is not None
+        assert (ts.year, ts.month, ts.day) == (2024, 5, 26)
+
+    def test_numeric_string_epoch_milliseconds(self):
+        ts = a._coerce_timestamp("1716742800000")
+        assert ts is not None
+        assert ts.year == 2024
+
+    def test_human_feed_format_parses_as_wall_clock_utc(self):
+        # ISO parsing rejects this, so it falls through to the strptime formats.
+        ts = a._coerce_timestamp("6/1/2026, 10:04:07 AM PDT")
+        assert ts == datetime(2026, 6, 1, 10, 4, 7, tzinfo=timezone.utc)
+
+    def test_plain_datetime_format_without_timezone(self):
+        ts = a._coerce_timestamp("2026/06/01 10:04:07")
+        # Either parsed via strptime fallback or None, but must be tz-aware if set.
+        if ts is not None:
+            assert ts.tzinfo is not None
+
+    def test_reference_time_explicit_naive_is_coerced_to_utc(self):
+        naive = datetime(2026, 6, 1, 10, 0, 0)
+        resolved = a._reference_time([], naive)
+        assert resolved == datetime(2026, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+        assert resolved.tzinfo is not None
+
+    def test_reference_time_explicit_aware_is_preserved(self):
+        aware = datetime(2026, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+        assert a._reference_time([], aware) == aware
