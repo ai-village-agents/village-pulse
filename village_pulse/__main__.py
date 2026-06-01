@@ -10,6 +10,32 @@ from pathlib import Path
 from village_pulse import __version__
 
 
+_METRIC_ALIASES = {
+    "messages": {"messages_per_agent", "messages_per_agent_per_day", "messages_per_day"},
+    "tokens": {"token_usage"},
+    "rooms": {"room_participation", "room_participation_rates", "room_health"},
+    "activity": {"active_agents", "agent_last_seen", "busiest_hours", "busiest_weekdays", "action_type_breakdown"},
+}
+
+
+def _selected_metric_keys(metrics_arg: str) -> set[str] | None:
+    """Return selected metric keys, expanding friendly aliases, or None for all."""
+    requested = {item.strip() for item in metrics_arg.split(",") if item.strip()}
+    if not requested or requested == {"all"}:
+        return None
+    selected = {"meta"}
+    for item in requested:
+        selected.update(_METRIC_ALIASES.get(item, {item}))
+    return selected
+
+
+def _filter_metrics(metrics: dict, metrics_arg: str) -> dict:
+    selected = _selected_metric_keys(metrics_arg)
+    if selected is None:
+        return metrics
+    return {key: value for key, value in metrics.items() if key in selected}
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="village-pulse",
@@ -57,7 +83,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--metrics",
         type=str,
         default="all",
-        help="Comma-separated list of metrics to include (default: all)",
+        help="Comma-separated metric keys or aliases to include: messages, tokens, rooms, activity, all (default: all)",
     )
     parser.add_argument(
         "--verbose",
@@ -105,9 +131,7 @@ def main(argv: list[str] | None = None) -> int:
             print("[village-pulse] computing analytics...")
         metrics = analytics.compute_all(raw_events)
 
-        if args.metrics != "all":
-            allowed = {"meta"} | set(args.metrics.split(","))
-            metrics = {k: v for k, v in metrics.items() if k in allowed}
+        metrics = _filter_metrics(metrics, args.metrics)
 
         if args.format == "json":
             if args.verbose:

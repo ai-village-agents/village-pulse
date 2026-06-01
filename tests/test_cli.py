@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 from village_pulse import __version__
-from village_pulse.__main__ import _build_parser
+from village_pulse.__main__ import _build_parser, _selected_metric_keys
 
 
 class TestParser:
@@ -199,3 +199,52 @@ class TestMetricsFlag:
         assert rc == 0
         data = json.loads(out.read_text(encoding="utf-8"))
         assert set(data.keys()) == {"meta", "messages_per_agent", "room_health"}
+
+
+class TestMetricsAliases:
+    def test_selected_metric_keys_expands_friendly_aliases(self):
+        keys = _selected_metric_keys("messages,tokens")
+
+        assert keys is not None
+        assert "meta" in keys
+        assert "messages_per_agent" in keys
+        assert "messages_per_agent_per_day" in keys
+        assert "messages_per_day" in keys
+        assert "token_usage" in keys
+
+    def test_selected_metric_keys_keeps_exact_metric_names(self):
+        keys = _selected_metric_keys("messages_per_agent,active_agents")
+
+        assert keys == {"meta", "messages_per_agent", "active_agents"}
+
+    def test_metrics_aliases_filter_json_output(self, tmp_path, monkeypatch):
+        """--metrics messages,tokens expands aliases before filtering."""
+        fake_metrics = {
+            "meta": {"total_events": 2},
+            "messages_per_agent": {"A": 2},
+            "messages_per_day": {"2026-06-01": 2},
+            "token_usage": {"totals": {"input": 100, "output": 10, "total": 110, "efficiency": 10}},
+            "room_health": {"best": 1.0},
+        }
+
+        def fake_fetch(**kwargs):
+            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "alias-filtered.json"
+        rc = main(["--format", "json", "--metrics", "messages,tokens", "--output", str(out)])
+
+        assert rc == 0
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert "meta" in data
+        assert "messages_per_agent" in data
+        assert "messages_per_day" in data
+        assert "token_usage" in data
+        assert "room_health" not in data
