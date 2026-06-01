@@ -306,6 +306,26 @@ class TestMetricsAliases:
         assert "room_health" not in data
 
 
+class TestMainErrorHandling:
+    def test_main_returns_two_when_fetch_events_raises_api_error(self, monkeypatch, capsys):
+        import village_pulse.api_client as ac
+
+        def boom(**_kwargs):
+            raise ac.APIError("api unavailable", status=503)
+
+        monkeypatch.setattr(ac, "fetch_events", boom)
+
+        from village_pulse.__main__ import main
+
+        rc = main(["--format", "json", "--days", "1"])
+
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "API error:" in captured.err
+        assert "api unavailable" in captured.err
+        assert "[HTTP 503]" in captured.err
+
+
 class TestFormatCsv:
     def test_csv_output_writes_file(self, tmp_path, monkeypatch):
         """--format csv writes flat events as CSV."""
