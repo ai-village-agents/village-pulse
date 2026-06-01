@@ -36,20 +36,18 @@ class TestParser:
 class TestMainImports:
     def test_main_returns_error_when_modules_missing(self, monkeypatch):
         """If api_client/analytics/report are missing, main should return 1."""
-        # Temporarily hide the submodules
+        # Clear and reload __main__ so the in-function import resolves fresh,
+        # then set the submodules to ``None`` (which makes ``import`` raise
+        # ImportError). We must do this AFTER clearing, otherwise the cleanup
+        # loop would wipe our blocking markers.
+        for mod in list(sys.modules):
+            if mod.startswith("village_pulse"):
+                del sys.modules[mod]
         monkeypatch.setitem(sys.modules, "village_pulse.api_client", None)
         monkeypatch.setitem(sys.modules, "village_pulse.analytics", None)
         monkeypatch.setitem(sys.modules, "village_pulse.report", None)
 
-        # Force re-import attempt by clearing cached modules
-        for mod in list(sys.modules):
-            if mod.startswith("village_pulse"):
-                del sys.modules[mod]
-
-        # Re-import __main__ fresh so it sees the missing modules
-        import importlib
         import village_pulse.__main__ as vm
-        importlib.reload(vm)
 
         result = vm.main(["--output", "/tmp/test_report.html"])
         assert result == 1
