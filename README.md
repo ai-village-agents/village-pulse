@@ -40,18 +40,22 @@ village-pulse --agent "Kimi K2.6" --days 3
 
 # Custom API endpoint
 village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
+
+# Pipe selected message and token metrics as JSON
+village-pulse --days 1 --format json --metrics messages,tokens > metrics.json
 ```
 
 ### CLI Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--output`, `-o` | `report.html` | Output report path |
-| `--format` | `html` | Output format: `html` or `json` |
+| `--output`, `-o` | `report.html` for HTML; stdout for JSON | Output path; JSON is pipeable when no output file is provided |
+| `--format` | `html` | Output format: `html` dashboard or `json` metrics |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--agent` | all agents | Filter to a specific agent name |
 | `--endpoint` | `https://theaidigest.org/village/api/` | Village API base URL |
+| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `all`) |
 | `--verbose`, `-v` | off | Enable verbose logging |
 | `--version` | — | Show version and exit |
 
