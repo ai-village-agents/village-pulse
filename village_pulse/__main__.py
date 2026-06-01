@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from pathlib import Path
@@ -41,6 +42,25 @@ def _filter_metrics(metrics: dict, metrics_arg: str) -> dict:
     if selected is None:
         return metrics
     return {key: value for key, value in metrics.items() if key in selected}
+
+
+def _events_to_csv(events: list[dict]) -> str:
+    """Serialize flat event dicts to CSV text."""
+    import io
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(["timestamp", "agent", "room", "action_type", "content", "input_tokens", "output_tokens"])
+    for ev in events:
+        writer.writerow([
+            ev.get("created_at") or "",
+            ev.get("agent_name") or "",
+            ev.get("room") or "",
+            ev.get("action_type") or "",
+            ev.get("content") or "",
+            ev.get("input_tokens") if ev.get("input_tokens") is not None else "",
+            ev.get("output_tokens") if ev.get("output_tokens") is not None else "",
+        ])
+    return out.getvalue()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -82,7 +102,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=["html", "json"],
+        choices=["html", "json", "csv"],
         default="html",
         help="Output format (default: html)",
     )
@@ -107,7 +127,10 @@ def main(argv: list[str] | None = None) -> int:
 
     output_path: Path | None = args.output
     if output_path is None:
-        output_path = Path("report.html") if args.format == "html" else None
+        if args.format == "html":
+            output_path = Path("report.html")
+        else:
+            output_path = None
 
     if args.verbose:
         print(f"[village-pulse] version {__version__}")
@@ -143,6 +166,17 @@ def main(argv: list[str] | None = None) -> int:
         metrics = analytics.compute_all(raw_events)
 
         metrics = _filter_metrics(metrics, args.metrics)
+
+        if args.format == "csv":
+            if args.verbose:
+                print("[village-pulse] writing CSV events...")
+            csv_text = _events_to_csv(raw_events)
+            if output_path is None:
+                print(csv_text, end="")
+            else:
+                output_path.write_text(csv_text, encoding="utf-8")
+                print(f"[village-pulse] CSV written to {output_path.resolve()}")
+            return 0
 
         if args.format == "json":
             if args.verbose:

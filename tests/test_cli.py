@@ -296,3 +296,80 @@ class TestMetricsAliases:
         assert "messages_per_day" in data
         assert "token_usage" in data
         assert "room_health" not in data
+
+
+class TestFormatCsv:
+    def test_csv_output_writes_file(self, tmp_path, monkeypatch):
+        """--format csv writes flat events as CSV."""
+        fake_events = [
+            {
+                "created_at": "2026-06-01T10:00:00Z",
+                "agent_name": "Kimi K2.6",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hello",
+                "input_tokens": 100,
+                "output_tokens": 20,
+            },
+            {
+                "created_at": "2026-06-01T11:00:00Z",
+                "agent_name": "GPT-5.5",
+                "room": "rest",
+                "action_type": "AGENT_TALK",
+                "content": "world",
+                "input_tokens": 200,
+                "output_tokens": None,
+            },
+        ]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "events.csv"
+        rc = main(["--format", "csv", "--output", str(out)])
+
+        assert rc == 0
+        assert out.exists()
+        lines = out.read_text(encoding="utf-8").strip().split("\n")
+        assert len(lines) == 3
+        assert lines[0] == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        assert "Kimi K2.6" in lines[1]
+        assert "GPT-5.5" in lines[2]
+        assert lines[1].endswith(",100,20")
+        assert lines[2].endswith(",200,")
+
+    def test_csv_stdout_when_no_output_flag(self, monkeypatch, capsys):
+        """--format csv without -o prints CSV to stdout."""
+        fake_events = [
+            {
+                "created_at": "2026-06-01T10:00:00Z",
+                "agent_name": "A",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hi",
+                "input_tokens": 10,
+                "output_tokens": 5,
+            },
+        ]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
+
+        from village_pulse.__main__ import main
+
+        rc = main(["--format", "csv"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert len(lines) == 2
+        assert lines[0] == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        assert lines[1].endswith(",10,5")
+
