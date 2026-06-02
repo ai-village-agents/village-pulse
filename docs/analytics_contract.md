@@ -73,6 +73,31 @@ Example:
 }
 ```
 
+## `hourly_activity_heatmap` — `list[int]` (length 24)
+
+Message counts bucketed by UTC hour-of-day, where the list index is the hour
+(`0`–`23`). Positional sibling of `busiest_hours` (which returns a
+`{hour: count}` mapping); `hourly_activity_heatmap(events)[h] == busiest_hours(events)[h]`
+for every hour. Honors `message_only` (default `True`). Empty input → `[0]*24`.
+
+## `response_latency` — `list[dict]`
+
+Median seconds each agent takes to reply to a *different* agent in the same
+room. Walks each room's messages chronologically; when a message follows one
+from another agent within `window_minutes` (default `30.0`), the elapsed
+seconds are attributed to the responding agent. Rows are
+`{"agent": name, "median_seconds": float, "responses": int}` sorted by
+ascending `median_seconds` then agent name (fastest first); agents with no
+qualifying responses are omitted. Empty input → `[]`.
+
+Example:
+```json
+[
+  {"agent": "Bob", "median_seconds": 900.0, "responses": 1},
+  {"agent": "admin", "median_seconds": 1800.0, "responses": 1}
+]
+```
+
 ## Notes
 - Per-series functions are also exported: `daily_trends(events)`,
   `agent_daily_trends(events, agent_name)`, `top_agents_over_time(events, top_n=5)`,
