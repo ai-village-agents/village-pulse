@@ -237,6 +237,25 @@ class TestGenerateArchive:
         assert "report_day426.html" in index_html
 
 
+    def test_latest_digest_api_error_does_not_crash_archive(self, tmp_path: Path) -> None:
+        """An APIError during 7-day digest generation should not crash the archive."""
+        from village_pulse.api_client import APIError
+
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+        mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
+        mock_client.fetch_events.side_effect = APIError("digest fetch failed", status=500)
+
+        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+            reports = archive.generate_archive(tmp_path, days_back=1)
+
+        assert len(reports) == 1
+        assert (tmp_path / "report_day426.html").exists()
+        assert not (tmp_path / "report_latest.html").exists()
+
+
     def test_generate_archive_links_comparison_filename(self, tmp_path: Path) -> None:
         """Archive generation can link the comparison dashboard from index.html."""
         mock_client = MagicMock()
