@@ -433,6 +433,12 @@ class TestGenerateComparisonArchiveOrchestration:
 
 
 class TestArchiveCompareCLI:
+    def test_main_rejects_days_back_less_than_one(self, tmp_path, capsys):
+        rc = archive_compare.main(["--output", str(tmp_path), "--days-back", "0"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "--days-back must be >= 1" in captured.err
+
     def test_main_forwards_options_and_prints_output(self, tmp_path, monkeypatch, capsys):
         calls = []
         expected = tmp_path / "comparison.html"

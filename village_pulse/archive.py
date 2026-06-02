@@ -281,6 +281,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging.")
     args = parser.parse_args(argv)
 
+    if args.days_back < 1:
+        print("[village-pulse-archive] error: --days-back must be >= 1", file=sys.stderr)
+        return 1
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",

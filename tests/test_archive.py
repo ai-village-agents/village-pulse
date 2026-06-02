@@ -265,6 +265,12 @@ class TestGenerateIndexPage:
 
 
 class TestCLI:
+    def test_main_rejects_days_back_less_than_one(self, tmp_path: Path, capsys) -> None:
+        rc = archive.main(["--output", str(tmp_path), "--days-back", "0"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "--days-back must be >= 1" in captured.err
+
     def test_main_with_mocked_archive(self, tmp_path: Path) -> None:
         mock_client = MagicMock()
         mock_client._discover_latest_day.return_value = 426

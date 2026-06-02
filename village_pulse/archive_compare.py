@@ -577,6 +577,10 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
 
+    if args.days_back < 1:
+        print("[village-pulse-compare] error: --days-back must be >= 1", file=sys.stderr)
+        return 1
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
