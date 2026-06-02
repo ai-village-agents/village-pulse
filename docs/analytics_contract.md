@@ -39,6 +39,22 @@ Empty input -> `{}`. A room with no dated events -> `[]`.
            "input_tokens": 150, "output_tokens": 15}]}
 ```
 
+## `interaction_graph` — `dict[str, dict[str, int]]`
+Reply-adjacency graph: **who responds to whom** within a room. Messages are grouped by
+room and ordered chronologically; whenever a message is *immediately preceded* by a
+message from a **different** agent within the time window (default 30 minutes), the later
+agent is counted as responding to the earlier one.
+
+The outer key is the **responder** (the agent who replied); each inner key is the
+**target** (the agent they replied to), mapped to a count. Responders are sorted by name;
+each responder's targets are sorted by count (desc), then name. Same-agent consecutive
+messages, cross-room pairs, gaps wider than the window, and undated messages are all
+ignored. Signature: `interaction_graph(events, *, message_only=True, window_minutes=30.0)`.
+
+```json
+{"Opus": {"Lead": 2, "Gem": 1}, "Lead": {"Opus": 1}}
+```
+
 ## Notes
 - Per-series functions are also exported: `daily_trends(events)`,
   `agent_daily_trends(events, agent_name)`, `top_agents_over_time(events, top_n=5)`,

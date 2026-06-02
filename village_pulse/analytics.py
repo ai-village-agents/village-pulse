@@ -47,6 +47,7 @@ __all__ = [
     "action_type_breakdown",
     "room_participation",
     "room_participation_rates",
+    "interaction_graph",
     "busiest_hours",
     "busiest_weekdays",
     "agent_last_seen",
@@ -348,6 +349,57 @@ def room_participation_rates(
             for agent, count in agents.items()
         }
     return rates
+
+
+def interaction_graph(
+    events: Sequence[ActivityEvent],
+    *,
+    message_only: bool = True,
+    window_minutes: float = 30.0,
+) -> dict[str, dict[str, int]]:
+    """Reply-adjacency graph: who responds to whom within each room.
+
+    Messages are grouped by room and ordered chronologically. Walking each
+    room's timeline, whenever a message is *immediately preceded* by a message
+    from a **different** agent and the gap between them is within
+    ``window_minutes``, the later agent is counted as responding to the earlier
+    one.
+
+    Returns:
+        ``{responder: {target: count}}`` where the outer key is the agent who
+        replied and each inner key is the agent they replied to. Responders are
+        sorted by name; each responder's targets are sorted by count (desc),
+        then name. Messages without a timestamp are ignored.
+    """
+    window = timedelta(minutes=window_minutes)
+    by_room: dict[str, list[ActivityEvent]] = defaultdict(list)
+    for e in _filter(events, message_only=message_only):
+        if e.timestamp is None:
+            continue
+        room = e.room if e.room is not None else "(unknown)"
+        by_room[room].append(e)
+
+    graph: dict[str, Counter] = defaultdict(Counter)
+    for room_events in by_room.values():
+        room_events.sort(key=lambda e: e.timestamp)
+        prev: Optional[ActivityEvent] = None
+        for cur in room_events:
+            if (
+                prev is not None
+                and prev.agent
+                and cur.agent
+                and prev.agent != cur.agent
+                and cur.timestamp - prev.timestamp <= window
+            ):
+                graph[cur.agent][prev.agent] += 1
+            prev = cur
+
+    return {
+        responder: dict(
+            sorted(targets.items(), key=lambda kv: (-kv[1], kv[0]))
+        )
+        for responder, targets in sorted(graph.items())
+    }
 
 
 def busiest_hours(
@@ -692,7 +744,8 @@ def compute_all(
         ``messages_per_agent_per_day``, ``messages_per_day``,
         ``action_type_breakdown``, ``room_participation``,
         ``room_participation_rates``, ``busiest_hours``, ``busiest_weekdays``,
-        ``agent_last_seen``, ``active_agents``, ``room_health``, ``token_usage``.
+        ``agent_last_seen``, ``active_agents``, ``room_health``, ``token_usage``,
+        ``interaction_graph``.
     """
     normalized = normalize_events(events)
     now = _reference_time(normalized, reference_time)
@@ -721,6 +774,7 @@ def compute_all(
         "action_type_breakdown": action_type_breakdown(normalized),
         "room_participation": room_participation(normalized),
         "room_participation_rates": room_participation_rates(normalized),
+        "interaction_graph": interaction_graph(normalized),
         "busiest_hours": busiest_hours(normalized),
         "busiest_weekdays": busiest_weekdays(normalized),
         "agent_last_seen": {

@@ -186,7 +186,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "room_participation_rates", "busiest_hours", "busiest_weekdays",
         "agent_last_seen", "active_agents", "room_health", "token_usage",
         "daily_trends", "agent_daily_trends", "top_agents_over_time",
-        "room_daily_trends",
+        "room_daily_trends", "interaction_graph",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise
@@ -597,3 +597,80 @@ class TestNormalizationEdgeCases:
     def test_reference_time_explicit_aware_is_preserved(self):
         aware = datetime(2026, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
         assert a._reference_time([], aware) == aware
+
+
+class TestInteractionGraph:
+    """Reply-adjacency: who responds to whom within a room/window."""
+
+    def test_basic_direction_and_counts(self):
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:10:00Z"),
+        ])
+        g = a.interaction_graph(evs)
+        # Opus replied to Lead once; Lead replied to Opus once.
+        assert g == {"Lead": {"Opus": 1}, "Opus": {"Lead": 1}}
+
+    def test_same_agent_consecutive_is_skipped(self):
+        evs = a.normalize_events([
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+        ])
+        # Only Lead-after-Opus counts; the Opus->Opus pair is ignored.
+        assert a.interaction_graph(evs) == {"Lead": {"Opus": 1}}
+
+    def test_window_excludes_far_apart_messages(self):
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T19:00:00Z"),
+        ])
+        assert a.interaction_graph(evs, window_minutes=30.0) == {}
+        # Widen the window and the adjacency reappears.
+        assert a.interaction_graph(evs, window_minutes=180.0) == {"Opus": {"Lead": 1}}
+
+    def test_rooms_are_isolated(self):
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#rest", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+        ])
+        # Different rooms never form an adjacency.
+        assert a.interaction_graph(evs) == {}
+
+    def test_targets_sorted_by_count_desc_then_name(self):
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+            _ev("Gem", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:04:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+        ])
+        g = a.interaction_graph(evs)
+        # Opus replied to Lead twice and Gem once -> Lead first (higher count).
+        assert list(g["Opus"].keys()) == ["Lead", "Gem"]
+        assert g["Opus"] == {"Lead": 2, "Gem": 1}
+
+    def test_empty_input(self):
+        assert a.interaction_graph([]) == {}
+
+    def test_message_only_false_counts_all_actions(self):
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#best", "PAUSE", "2026-06-02T17:01:00Z"),
+        ])
+        # Default (messages only) ignores the PAUSE.
+        assert a.interaction_graph(evs) == {}
+        # message_only=False treats every action as activity.
+        assert a.interaction_graph(evs, message_only=False) == {"Opus": {"Lead": 1}}
+
+    def test_undated_messages_are_ignored(self):
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "not-a-real-timestamp"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+        ])
+        # The undated Lead message is dropped, so only Lead-after-Opus remains.
+        assert any(e.timestamp is None for e in evs)
+        assert a.interaction_graph(evs) == {"Lead": {"Opus": 1}}
