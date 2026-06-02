@@ -479,6 +479,12 @@ class TestFormatMarkdown:
             "daily_trends": [
                 {"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}
             ],
+            "conversation_depth": {
+                "total_chains": 3,
+                "max_depth": 5,
+                "mean_depth": 3.7,
+                "median_depth": 3.0,
+            },
             "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
             "interaction_rankings": {
                 "top_responders": [{"agent": "GPT-5.5", "count": 2}],
@@ -526,9 +532,33 @@ class TestFormatMarkdown:
         assert "| best | 3 | GPT-5.5: 2, Kimi K2.6: 1 |" in text
         assert "## Daily trends" in text
         assert "| 2026-06-02 | 2 | 3 | 2 |" in text
+        assert "## Conversation depth" in text
+        assert "| Total chains | 3 |" in text
+        assert "| Max depth | 5 |" in text
+        assert "| Mean depth | 3.7 |" in text
+        assert "| Median depth | 3.0 |" in text
         assert "## Top responders" in text
         assert "| GPT-5.5 | 2 |" in text
         assert "<svg" not in text
+
+    def test_markdown_skips_zero_conversation_depth(self):
+        """Markdown omits conversation depth when no reply chains exist."""
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        text = _metrics_to_markdown(
+            {
+                "meta": {"total_events": 0, "total_messages": 0},
+                "conversation_depth": {
+                    "total_chains": 0,
+                    "max_depth": 0,
+                    "mean_depth": 0.0,
+                    "median_depth": 0.0,
+                },
+            },
+            context={"days": 7},
+        )
+
+        assert "## Conversation depth" not in text
 
     def test_markdown_stdout_when_no_output_flag(self, monkeypatch, capsys):
         """--format markdown without -o prints Markdown to stdout."""

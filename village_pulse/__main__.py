@@ -208,6 +208,22 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             )
             lines.append("")
 
+    conversation = metrics.get("conversation_depth")
+    if isinstance(conversation, dict) and conversation.get("total_chains"):
+        lines.extend(["## Conversation depth", ""])
+        lines.extend(
+            _markdown_table(
+                ["Metric", "Value"],
+                [
+                    ["Total chains", conversation.get("total_chains", 0)],
+                    ["Max depth", conversation.get("max_depth", 0)],
+                    ["Mean depth", conversation.get("mean_depth", 0.0)],
+                    ["Median depth", conversation.get("median_depth", 0.0)],
+                ],
+            )
+        )
+        lines.append("")
+
     token_usage = metrics.get("token_usage")
     if isinstance(token_usage, dict):
         totals = token_usage.get("totals")
