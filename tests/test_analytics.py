@@ -144,6 +144,28 @@ def test_busiest_hours_zero_filled(sample_raw):
     assert hours[0] == 0
 
 
+def test_hourly_activity_heatmap_is_24_element_list(sample_raw):
+    heat = a.hourly_activity_heatmap(a.normalize_events(sample_raw))
+    assert isinstance(heat, list)
+    assert len(heat) == 24
+    assert heat[9] == 2  # 09:00 and 09:15
+    assert heat[11] == 1
+    assert heat[0] == 0
+    assert sum(heat) == 5  # five message events with timestamps
+
+
+def test_hourly_activity_heatmap_matches_busiest_hours(sample_raw):
+    events = a.normalize_events(sample_raw)
+    heat = a.hourly_activity_heatmap(events)
+    hours = a.busiest_hours(events)
+    assert heat == [hours[h] for h in range(24)]
+
+
+def test_hourly_activity_heatmap_empty_is_all_zero():
+    heat = a.hourly_activity_heatmap([])
+    assert heat == [0] * 24
+
+
 def test_busiest_weekdays_zero_filled(sample_raw):
     wd = a.busiest_weekdays(a.normalize_events(sample_raw))
     assert len(wd) == 7
@@ -188,6 +210,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "daily_trends", "agent_daily_trends", "top_agents_over_time",
         "room_daily_trends", "interaction_graph",
         "interaction_rankings",
+        "hourly_activity_heatmap",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise

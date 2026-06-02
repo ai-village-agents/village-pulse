@@ -95,6 +95,14 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     .spark-dot { stroke: var(--panel); stroke-width: 1; }
     .chart-dates { display: flex; justify-content: space-between; color: var(--muted); font-size: .78rem; margin-top: .3rem; }
     .muted { color: var(--muted); }
+    .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; margin-top: .6rem; }
+    .heat-cell { aspect-ratio: 1 / 1; border-radius: 4px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: .62rem; color: #1f2937; }
+    .heat-l0 { background: #f1f5f9; color: var(--muted); }
+    .heat-l1 { background: #dbeafe; }
+    .heat-l2 { background: #93c5fd; }
+    .heat-l3 { background: #3b82f6; color: #fff; }
+    .heat-l4 { background: #1d4ed8; color: #fff; }
+    .heat-axis { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; margin-top: .25rem; color: var(--muted); font-size: .58rem; text-align: center; }
     .good { color: var(--good); font-weight: 650; }
     .warn { color: var(--warn); font-weight: 650; }
     pre {
@@ -194,6 +202,19 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
         <p><span class="good">Active:</span> {{ active_agents|join(', ') if active_agents else 'none listed' }}</p>
         <p><span class="warn">Inactive:</span> {{ inactive_agents|join(', ') if inactive_agents else 'none listed' }}</p>
       </article>
+    </section>
+
+    <section class="section card">
+      <h2>Activity heatmap{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
+      {% if heatmap_cells %}
+      <p class="muted">Messages by hour of day (UTC). Darker cells indicate busier hours.</p>
+      <div class="heatmap" role="img" aria-label="Message activity by UTC hour of day">
+        {% for cell in heatmap_cells %}<div class="heat-cell heat-l{{ cell.level }}" title="{{ cell.hour }}:00 UTC — {{ cell.count }} messages">{{ cell.count }}</div>{% endfor %}
+      </div>
+      <div class="heat-axis">
+        {% for cell in heatmap_cells %}<span>{{ cell.hour }}</span>{% endfor %}
+      </div>
+      {% else %}<p class="muted">No hourly activity metrics were provided.</p>{% endif %}
     </section>
 
     <section class="section card">
@@ -458,6 +479,9 @@ def _build_view_model(
     busiest_hours = _hour_rows(
         metrics.get("busiest_hours") or metrics.get("messages_by_hour")
     )
+    heatmap_cells = _heatmap_cells(
+        metrics.get("hourly_activity_heatmap")
+    )
     trend = _mapping(metrics, "message_trend", "messages_per_day", "daily_messages")
 
     token_usage = (
@@ -513,6 +537,7 @@ def _build_view_model(
         "agent_rows": _agent_rows(agent_counts),
         "room_rows": _room_rows(room_metrics),
         "busiest_hours": busiest_hours,
+        "heatmap_cells": heatmap_cells,
         "token_summary": token_summary,
         "token_agent_rows": token_agent_rows,
         "token_room_rows": token_room_rows,
@@ -879,6 +904,40 @@ def _hour_rows(value: Any) -> list[dict[str, Any]]:
         {"hour": key, "count": _safe_int(count)}
         for key, count in sorted(items, key=lambda item: str(item[0]))
     ]
+
+
+def _heatmap_cells(value: Any) -> list[dict[str, Any]]:
+    """Build 24 hour-of-day cells from ``hourly_activity_heatmap``.
+
+    Accepts a 24-element sequence of counts (the canonical
+    :func:`analytics.hourly_activity_heatmap` output) or a ``{hour: count}``
+    mapping. Each cell carries its ``hour``, ``count`` and a 0-4 ``level``
+    bucket (relative to the peak hour) used purely for CSS shading.
+    """
+    counts = [0] * 24
+    if isinstance(value, Mapping):
+        for key, count in value.items():
+            hour = _safe_int(key)
+            if hour is not None and 0 <= hour < 24:
+                counts[hour] = _safe_int(count) or 0
+    elif isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    ):
+        for hour, count in enumerate(value):
+            if hour >= 24:
+                break
+            counts[hour] = _safe_int(count) or 0
+    else:
+        return []
+    peak = max(counts) if counts else 0
+    cells: list[dict[str, Any]] = []
+    for hour, count in enumerate(counts):
+        if peak <= 0 or count <= 0:
+            level = 0
+        else:
+            level = max(1, min(4, round(count / peak * 4)))
+        cells.append({"hour": hour, "count": count, "level": level})
+    return cells
 
 
 def _agent_status_lists(

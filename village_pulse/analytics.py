@@ -51,6 +51,7 @@ __all__ = [
     "interaction_rankings",
     "busiest_hours",
     "busiest_weekdays",
+    "hourly_activity_heatmap",
     "agent_last_seen",
     "active_agents",
     "room_health",
@@ -478,6 +479,25 @@ def busiest_weekdays(
     return {names[i]: counter.get(i, 0) for i in range(7)}
 
 
+def hourly_activity_heatmap(
+    events: Sequence[ActivityEvent], *, message_only: bool = True
+) -> list[int]:
+    """Message counts by hour-of-day as a 24-element list (index = UTC hour).
+
+    Unlike :func:`busiest_hours` (which returns a ``{hour: count}`` mapping),
+    this returns a positionally-indexed, zero-filled list so the result can be
+    rendered directly as a left-to-right hour-of-day heatmap row.
+
+    Returns:
+        ``[count_for_hour_0, count_for_hour_1, ..., count_for_hour_23]``.
+    """
+    counter: Counter[int] = Counter()
+    for e in _filter(events, message_only=message_only):
+        if e.timestamp:
+            counter[e.timestamp.hour] += 1
+    return [counter.get(hour, 0) for hour in range(24)]
+
+
 def agent_last_seen(events: Sequence[ActivityEvent]) -> dict[str, datetime]:
     """Most recent activity timestamp per agent (any action type).
 
@@ -825,6 +845,7 @@ def compute_all(
         "interaction_rankings": interaction_rankings(normalized),
         "busiest_hours": busiest_hours(normalized),
         "busiest_weekdays": busiest_weekdays(normalized),
+        "hourly_activity_heatmap": hourly_activity_heatmap(normalized),
         "agent_last_seen": {
             agent: ts.isoformat() for agent, ts in agent_last_seen(normalized).items()
         },
