@@ -86,10 +86,21 @@ def _markdown_table(headers: list[str], rows: list[list[object]]) -> list[str]:
 def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
     """Render key dashboard metrics as a clean Markdown document."""
     days = context.get("days")
-    if isinstance(days, int) and days > 1:
-        title = f"Village Pulse - {days}-Day Digest"
+    room_val = context.get("room")
+    if room_val:
+        room_str = str(room_val)
+        if not room_str.startswith("#"):
+            room_str = "#" + room_str
+        day_val = context.get("day")
+        if day_val is not None:
+            title = f"Village Pulse — Day {day_val} — {room_str}"
+        else:
+            title = f"Village Pulse — {room_str}"
     else:
-        title = "Village Pulse Dashboard"
+        if isinstance(days, int) and days > 1:
+            title = f"Village Pulse - {days}-Day Digest"
+        else:
+            title = "Village Pulse Dashboard"
 
     meta = metrics.get("meta") if isinstance(metrics.get("meta"), dict) else {}
     lines = [f"# {title}", ""]
@@ -277,12 +288,19 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.verbose:
             print("[village-pulse] fetching data...")
+        latest_day = args.day
+        if latest_day is None:
+            try:
+                client = api_client.VillageAPIClient(endpoint=args.endpoint)
+                latest_day = client._discover_latest_day()
+            except Exception:
+                latest_day = None
         raw_events = api_client.fetch_events(
             endpoint=args.endpoint,
             days=args.days,
             room=args.room,
             agent=args.agent,
-            current_day=args.day,
+            current_day=latest_day,
         )
 
         if args.verbose:
@@ -322,6 +340,7 @@ def main(argv: list[str] | None = None) -> int:
                     "days": args.days,
                     "agent": args.agent,
                     "version": __version__,
+                    "day": latest_day,
                 },
             )
             if output_path is None:
@@ -340,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
                     "days": args.days,
                     "agent": args.agent,
                     "version": __version__,
+                    "day": latest_day,
                 },
             )
             print(f"[village-pulse] report written to {output_path.resolve()}")

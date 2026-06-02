@@ -471,10 +471,21 @@ def _build_view_model(
     if not days and isinstance(meta, Mapping):
         days = _safe_int(meta.get("days"))
 
-    if days > 1:
-        default_title = f"Village Pulse - {days}-Day Digest"
+    room_val = context.get("room")
+    if room_val and not context.get("title"):
+        room_str = str(room_val)
+        if not room_str.startswith("#"):
+            room_str = "#" + room_str
+        day_val = context.get("day")
+        if day_val is not None:
+            default_title = f"Village Pulse — Day {day_val} — {room_str}"
+        else:
+            default_title = f"Village Pulse — {room_str}"
     else:
-        default_title = DEFAULT_TITLE
+        if days > 1:
+            default_title = f"Village Pulse - {days}-Day Digest"
+        else:
+            default_title = DEFAULT_TITLE
     total_messages = _first_number(
         metrics, "total_messages", "message_count", "events", default=None
     )
