@@ -194,8 +194,8 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 # Install in editable mode with dev dependencies
 pip install -e ".[dev]"
 
-# Run the test suite
-pytest tests/ -v
+# Run the test suite (CI treats warnings as failures)
+pytest tests/ -v -W error
 
 # Lint
 ruff check .
