@@ -176,6 +176,16 @@ def test_client_pipeline_with_mock_session(tmp_path):
         {"agent": "Kimi K2.6", "median_seconds": 300.0, "responses": 1},
     ]
 
+    # Conversation depth: the three alternating-agent messages form one
+    # reply-chain of depth 3 (the trailing CONSOLIDATE is not a message).
+    assert metrics["conversation_depth"] == {
+        "total_chains": 1,
+        "max_depth": 3,
+        "mean_depth": 3.0,
+        "median_depth": 3.0,
+        "depth_distribution": {3: 1},
+    }
+
     output = tmp_path / "dashboard.html"
     resolved = generate(
         metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"}
