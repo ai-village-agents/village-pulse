@@ -18,6 +18,7 @@ from village_pulse.report import (
     _trend_charts,
     _interaction_graph_rows,
     _interaction_rankings,
+    _response_latency_rows,
 )
 
 
@@ -386,6 +387,48 @@ def test_interaction_rankings_edge_cases():
     assert res["top_responders"][0] == {"agent": "Opus", "count": 5}
     assert len(res["top_targets"]) == 1
     assert res["top_targets"][0] == {"agent": "Kimi", "count": 3}
+
+
+def test_render_includes_response_speed_section_and_escapes_agents():
+    metrics = sample_metrics()
+    metrics["response_latency"] = [
+        {"agent": "Fast Agent", "median_seconds": 12.3, "responses": 4},
+        {"agent": "<b>Slow</b>", "median_seconds": 45.0, "responses": 2},
+    ]
+
+    html = render(metrics, {"days": 7})
+
+    assert "Response speed (7-Day Digest)" in html
+    assert "Median response" in html
+    assert "Fast Agent" in html
+    assert "12.3s" in html
+    assert "4" in html
+    assert "&lt;b&gt;Slow&lt;/b&gt;" in html
+    assert "<b>Slow</b>" not in html
+
+
+def test_response_latency_rows_filters_invalid_and_limits():
+    values = [
+        None,
+        "invalid",
+        {"agent": "A", "median_seconds": 10.5, "responses": "3"},
+        {"median_seconds": 20, "responses": 2},
+        {"agent": "B", "median_seconds": 30, "responses": None},
+    ]
+
+    rows = _response_latency_rows(values, limit=1)
+
+    assert rows == [{"agent": "A", "median_seconds": 10.5, "responses": 3}]
+
+
+def test_render_response_speed_empty_state():
+    metrics = sample_metrics()
+    metrics["response_latency"] = []
+
+    html = render(metrics, {})
+
+    assert "Response speed" in html
+    assert "No agent-to-agent responses detected in the window." in html
 
 
 def test_render_digest_mode():
