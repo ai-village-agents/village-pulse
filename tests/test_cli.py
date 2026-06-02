@@ -232,6 +232,34 @@ class TestMetricsFlag:
         assert set(data.keys()) == {"meta", "messages_per_agent", "room_health"}
 
 
+class TestDayFlag:
+    def test_day_flag_passed_to_fetch_events(self, tmp_path, monkeypatch):
+        """--day should be forwarded as current_day to fetch_events."""
+        captured = {}
+
+        def fake_fetch(**kwargs):
+            captured['kwargs'] = kwargs
+            return [{'agent_name': 'A', 'room': 'best', 'action_type': 'AGENT_TALK', 'content': 'x'}]
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, 'fetch_events', fake_fetch)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, 'compute_all', lambda _events: {'meta': {'total_events': 1}})
+
+        import village_pulse.report as rp
+        monkeypatch.setattr(rp, 'generate', lambda **kwargs: None)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / 'report.html'
+        rc = main(['--day', '423', '--days', '1', '--output', str(out)])
+
+        assert rc == 0
+        assert captured['kwargs']['current_day'] == 423
+        assert captured['kwargs']['days'] == 1
+
+
 class TestMetricsAliases:
     def test_selected_metric_keys_expands_friendly_aliases(self):
         keys = _selected_metric_keys("messages,tokens")

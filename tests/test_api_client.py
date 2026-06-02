@@ -399,10 +399,10 @@ def test_fetch_events_module_level(monkeypatch):
             return [{"ok": True}]
 
     monkeypatch.setattr(ac, "VillageAPIClient", FakeClient)
-    out = ac.fetch_events(days=3, room="#best", agent="kimi")
+    out = ac.fetch_events(days=3, room="#best", agent="kimi", current_day=425)
     assert out == [{"ok": True}]
     assert captured["kwargs"] == {
-        "days": 3, "room": "#best", "agent": "kimi", "action_types": None,
+        "days": 3, "room": "#best", "agent": "kimi", "action_types": None, "current_day": 425,
     }
 
 

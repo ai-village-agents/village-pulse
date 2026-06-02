@@ -477,6 +477,7 @@ def fetch_events(
     village_slug: str = DEFAULT_VILLAGE_SLUG,
     village_id: Optional[str] = None,
     action_types: Optional[Iterable[str]] = None,
+    current_day: Optional[int] = None,
 ) -> list[dict]:
     """Convenience wrapper: build a :class:`VillageAPIClient` and fetch events.
 
@@ -492,4 +493,5 @@ def fetch_events(
         room=room,
         agent=agent,
         action_types=action_types,
+        current_day=current_day,
     )

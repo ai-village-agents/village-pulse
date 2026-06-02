@@ -92,6 +92,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Number of past days to include in analysis (default: 7)",
     )
     parser.add_argument(
+        "--day",
+        type=int,
+        default=None,
+        help="Specific village day to use as the end of the analysis window (overrides auto-discovery)",
+    )
+    parser.add_argument(
         "--agent",
         type=str,
         default=None,
@@ -161,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
             days=args.days,
             room=args.room,
             agent=args.agent,
+            current_day=args.day,
         )
 
         if args.verbose:
