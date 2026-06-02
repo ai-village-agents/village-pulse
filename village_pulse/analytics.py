@@ -82,7 +82,12 @@ _TIME_KEYS = ("created_at", "createdAt", "timestamp", "time", "ts")
 _TYPE_KEYS = ("action_type", "actionType", "type", "kind")
 _CONTENT_KEYS = ("content", "message", "text", "body")
 _INTOK_KEYS = ("input_tokens", "inputTokens", "promptTokens", "prompt_tokens")
-_OUTTOK_KEYS = ("output_tokens", "outputTokens", "completionTokens", "completion_tokens")
+_OUTTOK_KEYS = (
+    "output_tokens",
+    "outputTokens",
+    "completionTokens",
+    "completion_tokens",
+)
 
 
 @dataclass(frozen=True)
@@ -190,11 +195,17 @@ def _coerce_timestamp(value: Any) -> Optional[datetime]:
         except ValueError:
             pass
         # Human feed format, e.g. "6/1/2026, 10:04:07 AM PDT".
-        for fmt in ("%m/%d/%Y, %I:%M:%S %p %Z", "%m/%d/%Y, %I:%M:%S %p",
-                    "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        for fmt in (
+            "%m/%d/%Y, %I:%M:%S %p %Z",
+            "%m/%d/%Y, %I:%M:%S %p",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%dT%H:%M:%S",
+        ):
             try:
                 parsed = datetime.strptime(text, fmt)
-                return parsed.replace(tzinfo=timezone.utc) if not parsed.tzinfo else parsed
+                return (
+                    parsed.replace(tzinfo=timezone.utc) if not parsed.tzinfo else parsed
+                )
             except ValueError:
                 continue
     return None
@@ -253,7 +264,9 @@ def normalize_events(raw_events: Iterable[Any]) -> list[ActivityEvent]:
     return out
 
 
-def _filter(events: Sequence[ActivityEvent], *, message_only: bool) -> list[ActivityEvent]:
+def _filter(
+    events: Sequence[ActivityEvent], *, message_only: bool
+) -> list[ActivityEvent]:
     """Return events, optionally restricted to message-type events."""
     if message_only:
         return [e for e in events if e.is_message]
@@ -291,10 +304,7 @@ def messages_per_agent_per_day(
     for e in _filter(events, message_only=message_only):
         if e.agent and e.date_iso:
             nested[e.agent][e.date_iso] += 1
-    return {
-        agent: dict(sorted(days.items()))
-        for agent, days in sorted(nested.items())
-    }
+    return {agent: dict(sorted(days.items())) for agent, days in sorted(nested.items())}
 
 
 def messages_per_day(
@@ -349,8 +359,7 @@ def room_participation_rates(
         if total <= 0:
             continue
         rates[room] = {
-            agent: round(count / total, 4)
-            for agent, count in agents.items()
+            agent: round(count / total, 4) for agent, count in agents.items()
         }
     return rates
 
@@ -399,9 +408,7 @@ def interaction_graph(
             prev = cur
 
     return {
-        responder: dict(
-            sorted(targets.items(), key=lambda kv: (-kv[1], kv[0]))
-        )
+        responder: dict(sorted(targets.items(), key=lambda kv: (-kv[1], kv[0])))
         for responder, targets in sorted(graph.items())
     }
 
@@ -440,9 +447,7 @@ def interaction_rankings(
     def _rank(counts: "Counter") -> list[dict[str, int]]:
         return [
             {"agent": agent, "count": count}
-            for agent, count in sorted(
-                counts.items(), key=lambda kv: (-kv[1], kv[0])
-            )
+            for agent, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
             if count
         ]
 
@@ -472,8 +477,15 @@ def busiest_weekdays(
     events: Sequence[ActivityEvent], *, message_only: bool = True
 ) -> dict[str, int]:
     """Message distribution across days of the week (Monday first, zero-filled)."""
-    names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-             "Saturday", "Sunday"]
+    names = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
     counter: Counter[int] = Counter()
     for e in _filter(events, message_only=message_only):
         if e.timestamp:
@@ -493,9 +505,7 @@ def response_latency(events, *, window_minutes=30.0):
     """
     normalized = normalize_events(events)
     messages = [
-        e
-        for e in normalized
-        if e.is_message and e.timestamp is not None and e.agent
+        e for e in normalized if e.is_message and e.timestamp is not None and e.agent
     ]
     by_room = defaultdict(list)
     for event in messages:
@@ -560,7 +570,11 @@ def _reference_time(
 ) -> Optional[datetime]:
     """Resolve the reference 'now': explicit value, else latest event time."""
     if reference_time is not None:
-        return reference_time if reference_time.tzinfo else reference_time.replace(tzinfo=timezone.utc)
+        return (
+            reference_time
+            if reference_time.tzinfo
+            else reference_time.replace(tzinfo=timezone.utc)
+        )
     stamps = [e.timestamp for e in events if e.timestamp]
     return max(stamps) if stamps else None
 
@@ -742,9 +756,7 @@ def daily_trends(events: Sequence[ActivityEvent]) -> list[dict]:
     return series
 
 
-def agent_daily_trends(
-    events: Sequence[ActivityEvent], agent_name: str
-) -> list[dict]:
+def agent_daily_trends(events: Sequence[ActivityEvent], agent_name: str) -> list[dict]:
     """Chronological per-day activity series for a single agent.
 
     Returns an oldest-first list with one entry per UTC day on which
@@ -771,9 +783,7 @@ def agent_daily_trends(
     return series
 
 
-def top_agents_over_time(
-    events: Sequence[ActivityEvent], top_n: int = 5
-) -> list[dict]:
+def top_agents_over_time(events: Sequence[ActivityEvent], top_n: int = 5) -> list[dict]:
     """Daily breakdowns for the busiest agents, ranked by total messages.
 
     Picks the ``top_n`` agents with the most message-type events overall and
@@ -796,9 +806,7 @@ def top_agents_over_time(
     ]
 
 
-def room_daily_trends(
-    events: Sequence[ActivityEvent], room_name: str
-) -> list[dict]:
+def room_daily_trends(events: Sequence[ActivityEvent], room_name: str) -> list[dict]:
     """Chronological per-day activity series for a single room.
 
     Returns an oldest-first list with one entry per UTC day on which
@@ -928,7 +936,7 @@ def union_dates(*series: "list[dict] | None") -> list[str]:
     """
     seen: set[str] = set()
     for lst in series:
-        for row in (lst or []):
+        for row in lst or []:
             date = row.get("date")
             if date:
                 seen.add(date)

@@ -158,8 +158,10 @@ def test_apierror_5xx_retries_then_succeeds():
         _FakeResp({"oops": True}, status=503, text="busy"),
         _FakeResp({"ok": True}, status=200),
     ]
-    with mock.patch.object(ac, "_requests") as fake_req, \
-         mock.patch.object(ac.time, "sleep"):
+    with (
+        mock.patch.object(ac, "_requests") as fake_req,
+        mock.patch.object(ac.time, "sleep"),
+    ):
         fake_req.get.side_effect = _fake_get_factory(responses)
         out = ac._http_get_json("https://x.example/foo", max_retries=3, backoff=0)
     assert out == {"ok": True}
@@ -187,12 +189,14 @@ def test_get_builds_url_filters_params_and_forwards_session(monkeypatch):
     session = object()
 
     def fake_http_get_json(url, *, timeout, max_retries, session):
-        captured.update({
-            "url": url,
-            "timeout": timeout,
-            "max_retries": max_retries,
-            "session": session,
-        })
+        captured.update(
+            {
+                "url": url,
+                "timeout": timeout,
+                "max_retries": max_retries,
+                "session": session,
+            }
+        )
         return {"ok": True}
 
     monkeypatch.setattr(ac, "_http_get_json", fake_http_get_json)
@@ -204,7 +208,9 @@ def test_get_builds_url_filters_params_and_forwards_session(monkeypatch):
         max_retries=2,
     )
 
-    assert client._get("/events", {"page": 1, "day": None, "room": "best room"}) == {"ok": True}
+    assert client._get("/events", {"page": 1, "day": None, "room": "best room"}) == {
+        "ok": True
+    }
     assert captured == {
         "url": "https://example.invalid/api/events?page=1&room=best+room",
         "timeout": 4.0,
@@ -336,9 +342,7 @@ def test_fetch_events_filters_and_sorts(monkeypatch):
         return next(iterator)
 
     monkeypatch.setattr(ac.VillageAPIClient, "_get", fake_get)
-    monkeypatch.setattr(
-        ac.VillageAPIClient, "_discover_latest_day", lambda self: 426
-    )
+    monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 426)
 
     c = ac.VillageAPIClient(village_id="vid-1")
     out = c.fetch_events(days=1, room="best")
@@ -349,8 +353,10 @@ def test_fetch_events_filters_and_sorts(monkeypatch):
     # Filter by agent (case-insensitive substring) - cache means only the
     # events page is fetched the second time.
     nonlocal_iter = iter([events_page])
+
     def fake_get2(self, path, params=None):
         return next(nonlocal_iter)
+
     monkeypatch.setattr(ac.VillageAPIClient, "_get", fake_get2)
     out = c.fetch_events(days=1, agent="kimi")
     assert [e["agent_name"] for e in out] == ["Kimi K2.6"]
@@ -365,21 +371,38 @@ def test_fetch_events_action_types_filter(monkeypatch):
     }
     events_page = {
         "events": [
-            {"id": "e1", "eventIndex": 1, "createdAt": "2026-06-01T17:00:00Z",
-             "data": {"actionType": "AGENT_TALK", "speakerId": "a1", "roomId": "r1", "content": "x"}},
-            {"id": "e2", "eventIndex": 2, "createdAt": "2026-06-01T17:00:01Z",
-             "data": {"actionType": "PAUSE", "speakerId": "a1", "roomId": "r1", "content": ""}},
+            {
+                "id": "e1",
+                "eventIndex": 1,
+                "createdAt": "2026-06-01T17:00:00Z",
+                "data": {
+                    "actionType": "AGENT_TALK",
+                    "speakerId": "a1",
+                    "roomId": "r1",
+                    "content": "x",
+                },
+            },
+            {
+                "id": "e2",
+                "eventIndex": 2,
+                "createdAt": "2026-06-01T17:00:01Z",
+                "data": {
+                    "actionType": "PAUSE",
+                    "speakerId": "a1",
+                    "roomId": "r1",
+                    "content": "",
+                },
+            },
         ],
         "hasMore": False,
     }
     iterator = iter([village_detail, events_page])
     monkeypatch.setattr(
-        ac.VillageAPIClient, "_get",
+        ac.VillageAPIClient,
+        "_get",
         lambda self, path, params=None: next(iterator),
     )
-    monkeypatch.setattr(
-        ac.VillageAPIClient, "_discover_latest_day", lambda self: 426
-    )
+    monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 426)
     c = ac.VillageAPIClient(village_id="vid-1")
     out = c.fetch_events(days=1, action_types=["agent_talk"])
     assert [e["action_type"] for e in out] == ["AGENT_TALK"]
@@ -402,7 +425,11 @@ def test_fetch_events_module_level(monkeypatch):
     out = ac.fetch_events(days=3, room="#best", agent="kimi", current_day=425)
     assert out == [{"ok": True}]
     assert captured["kwargs"] == {
-        "days": 3, "room": "#best", "agent": "kimi", "action_types": None, "current_day": 425,
+        "days": 3,
+        "room": "#best",
+        "agent": "kimi",
+        "action_types": None,
+        "current_day": 425,
     }
 
 
@@ -415,8 +442,10 @@ def test_fetch_events_module_level(monkeypatch):
 # Additional coverage tests
 # ---------------------------------------------------------------------------
 
+
 def test_norm_none_returns_empty_string():
     assert ac._norm(None) == ""
+
 
 def test_flatten_event_non_string_content():
     raw = {
@@ -425,37 +454,45 @@ def test_flatten_event_non_string_content():
             "actionType": "CONSOLIDATE",
             "speakerId": "a1",
             "nextSessionGoal": 12345,
-        }
+        },
     }
     flat = ac._flatten_event(raw, agents={"a1": "X"}, rooms={})
     assert flat["content"] == "12345"
 
+
 def test_http_get_json_urllib_fallback():
-    with mock.patch.object(ac, "_requests", None), \
-         mock.patch("urllib.request.urlopen") as mock_urlopen:
+    with (
+        mock.patch.object(ac, "_requests", None),
+        mock.patch("urllib.request.urlopen") as mock_urlopen,
+    ):
         mock_fh = mock.MagicMock()
-        mock_fh.read.return_value = b"{\"fallback\": true}"
+        mock_fh.read.return_value = b'{"fallback": true}'
         mock_fh.__enter__.return_value = mock_fh
         mock_urlopen.return_value = mock_fh
-        
+
         out = ac._http_get_json("https://x.example/foo", backoff=0)
         assert out == {"fallback": True}
 
+
 def test_http_get_json_urllib_fallback_invalid_json():
-    with mock.patch.object(ac, "_requests", None), \
-         mock.patch("urllib.request.urlopen") as mock_urlopen:
+    with (
+        mock.patch.object(ac, "_requests", None),
+        mock.patch("urllib.request.urlopen") as mock_urlopen,
+    ):
         mock_fh = mock.MagicMock()
-        mock_fh.read.return_value = b"{\"fallback\": invalid"
+        mock_fh.read.return_value = b'{"fallback": invalid'
         mock_fh.__enter__.return_value = mock_fh
         mock_urlopen.return_value = mock_fh
-        
+
         with pytest.raises(ac.APIError):
             ac._http_get_json("https://x.example/foo", backoff=0)
+
 
 def test_iter_raw_events_for_day_returns_early():
     c = ac.VillageAPIClient(village_id="vid-1")
     with mock.patch.object(c, "_get", return_value={}):
         assert list(c.iter_raw_events_for_day(day=426)) == []
+
 
 def test_discover_latest_day_no_created_at():
     c = ac.VillageAPIClient(village_id="vid-1")
@@ -499,12 +536,9 @@ def test_fetch_events_latest_day_none(monkeypatch):
     events_page = {"events": [], "hasMore": False}
     iterator = iter([village_detail, events_page])
     monkeypatch.setattr(
-        ac.VillageAPIClient, "_get",
-        lambda self, path, params=None: next(iterator)
+        ac.VillageAPIClient, "_get", lambda self, path, params=None: next(iterator)
     )
-    monkeypatch.setattr(
-        ac.VillageAPIClient, "_discover_latest_day", lambda self: None
-    )
+    monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: None)
     c = ac.VillageAPIClient(village_id="vid-1")
     out = c.fetch_events(days=1)
     assert out == []
@@ -516,9 +550,11 @@ def test_normalize_room_filter_empty_normalization():
 
 
 def test_http_get_json_wraps_network_failure_after_retries():
-    with mock.patch.object(ac, "_requests", None), \
-         mock.patch("urllib.request.urlopen", side_effect=OSError("offline")), \
-         mock.patch("time.sleep"):
+    with (
+        mock.patch.object(ac, "_requests", None),
+        mock.patch("urllib.request.urlopen", side_effect=OSError("offline")),
+        mock.patch("time.sleep"),
+    ):
         with pytest.raises(ac.APIError) as exc_info:
             ac._http_get_json("https://x.example/foo", max_retries=1)
     assert "GET failed after 1 attempts: offline" in str(exc_info.value)
@@ -535,5 +571,7 @@ def test_discover_latest_day_from_created_at_today():
 
     c = ac.VillageAPIClient(village_id="vid-1")
     today = datetime.now(tz=timezone.utc).date().isoformat()
-    with mock.patch.object(c, "get_village", return_value={"createdAt": f"{today}T00:00:00Z"}):
+    with mock.patch.object(
+        c, "get_village", return_value={"createdAt": f"{today}T00:00:00Z"}
+    ):
         assert c._discover_latest_day() == 1

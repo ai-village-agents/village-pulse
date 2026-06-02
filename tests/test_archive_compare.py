@@ -93,8 +93,22 @@ class TestBuildComparisonTable:
 
     def test_with_data(self):
         metrics = [
-            {"day": 420, "messages": 100, "events": 50, "agents": 5, "tokens": 1000, "efficiency": 85.5},
-            {"day": 421, "messages": 200, "events": 80, "agents": 7, "tokens": 2000, "efficiency": 90.0},
+            {
+                "day": 420,
+                "messages": 100,
+                "events": 50,
+                "agents": 5,
+                "tokens": 1000,
+                "efficiency": 85.5,
+            },
+            {
+                "day": 421,
+                "messages": 200,
+                "events": 80,
+                "agents": 7,
+                "tokens": 2000,
+                "efficiency": 90.0,
+            },
         ]
         html = _build_comparison_table(metrics)
         assert "Day 420" in html
@@ -202,9 +216,7 @@ class TestBuildRoomParticipation:
         assert "No room data" in html
 
     def test_with_data(self):
-        metrics = [
-            {"room_participation": {"best": 100, "rest": 50}}
-        ]
+        metrics = [{"room_participation": {"best": 100, "rest": 50}}]
         html = _build_room_participation(metrics)
         assert "best" in html
         assert "rest" in html
@@ -220,8 +232,22 @@ class TestBuildDailyTrendsTable:
         metrics = [
             {
                 "daily_trends": [
-                    {"date": "2026-05-30", "messages": 100, "events": 50, "active_agents": 5, "total_tokens": 1000, "efficiency": 85.5},
-                    {"date": "2026-05-31", "messages": 200, "events": 80, "active_agents": 7, "total_tokens": 2000, "efficiency": 90.0},
+                    {
+                        "date": "2026-05-30",
+                        "messages": 100,
+                        "events": 50,
+                        "active_agents": 5,
+                        "total_tokens": 1000,
+                        "efficiency": 85.5,
+                    },
+                    {
+                        "date": "2026-05-31",
+                        "messages": 200,
+                        "events": 80,
+                        "active_agents": 7,
+                        "total_tokens": 2000,
+                        "efficiency": 90.0,
+                    },
                 ]
             }
         ]
@@ -232,16 +258,15 @@ class TestBuildDailyTrendsTable:
         assert "85.5%" in html
 
 
-
 class TestBuildTopAgentTrends:
     def test_empty_days(self):
         html = _build_top_agent_trends([])
         assert "No agent activity data" in html
 
     def test_rows_without_dates_do_not_render_misleading_trends(self):
-        html = _build_top_agent_trends([
-            {"top_agents": [{"agent": "Alice", "messages": 3}]}
-        ])
+        html = _build_top_agent_trends(
+            [{"top_agents": [{"agent": "Alice", "messages": 3}]}]
+        )
         assert "No agent activity data" in html
         assert "Alice" not in html
 
@@ -264,12 +289,16 @@ class TestBuildTopAgentTrends:
         assert html.count("<svg") == 2
 
     def test_escapes_agent_names(self):
-        html = _build_top_agent_trends([
-            {
-                "daily_trends": [{"date": "2026-06-01"}],
-                "top_agents": [{"agent": '<img src=x onerror="alert(1)">', "messages": 3}],
-            }
-        ])
+        html = _build_top_agent_trends(
+            [
+                {
+                    "daily_trends": [{"date": "2026-06-01"}],
+                    "top_agents": [
+                        {"agent": '<img src=x onerror="alert(1)">', "messages": 3}
+                    ],
+                }
+            ]
+        )
         assert "<img" not in html
         assert "&lt;img" in html
         assert "onerror=&quot;alert(1)&quot;" in html
@@ -282,16 +311,18 @@ class TestBuildTopAgentTrends:
             return "<svg></svg>"
 
         monkeypatch.setattr(archive_compare, "_sparkline_svg", fake_sparkline)
-        html = _build_top_agent_trends([
-            {
-                "daily_trends": [{"date": "2026-06-01"}],
-                "top_agents": [{"agent": "Alice", "messages": 3}],
-            },
-            {
-                "daily_trends": [{"date": "2026-06-02"}],
-                "top_agents": [{"agent": "Bob", "messages": 5}],
-            },
-        ])
+        html = _build_top_agent_trends(
+            [
+                {
+                    "daily_trends": [{"date": "2026-06-01"}],
+                    "top_agents": [{"agent": "Alice", "messages": 3}],
+                },
+                {
+                    "daily_trends": [{"date": "2026-06-02"}],
+                    "top_agents": [{"agent": "Bob", "messages": 5}],
+                },
+            ]
+        )
 
         assert html.find("Bob") < html.find("Alice")
         assert captured == [[0, 5], [3, 0]]
@@ -303,19 +334,21 @@ class TestBuildRoomActivityTrends:
         assert "No room activity data" in html
 
     def test_rows_without_dates_do_not_render_misleading_trends(self):
-        html = _build_room_activity_trends([
-            {"room_participation": {"best": {"Alice": 3}}}
-        ])
+        html = _build_room_activity_trends(
+            [{"room_participation": {"best": {"Alice": 3}}}]
+        )
         assert "No room activity data" in html
         assert "best" not in html
 
     def test_accepts_nested_and_numeric_room_counts(self):
-        html = _build_room_activity_trends([
-            {
-                "daily_trends": [{"date": "2026-06-01"}],
-                "room_participation": {"best": {"Alice": 3}, "rest": 2},
-            }
-        ])
+        html = _build_room_activity_trends(
+            [
+                {
+                    "daily_trends": [{"date": "2026-06-01"}],
+                    "room_participation": {"best": {"Alice": 3}, "rest": 2},
+                }
+            ]
+        )
         assert "best" in html
         assert "rest" in html
         assert '<td class="num">3</td>' in html
@@ -323,12 +356,16 @@ class TestBuildRoomActivityTrends:
         assert html.count("<svg") == 2
 
     def test_escapes_room_names(self):
-        html = _build_room_activity_trends([
-            {
-                "daily_trends": [{"date": "2026-06-01"}],
-                "room_participation": {'<script>alert("room")</script>': {"Alice": 3}},
-            }
-        ])
+        html = _build_room_activity_trends(
+            [
+                {
+                    "daily_trends": [{"date": "2026-06-01"}],
+                    "room_participation": {
+                        '<script>alert("room")</script>': {"Alice": 3}
+                    },
+                }
+            ]
+        )
         assert "<script" not in html
         assert "&lt;script&gt;" in html
         assert "&quot;room&quot;" in html
@@ -341,16 +378,18 @@ class TestBuildRoomActivityTrends:
             return "<svg></svg>"
 
         monkeypatch.setattr(archive_compare, "_sparkline_svg", fake_sparkline)
-        html = _build_room_activity_trends([
-            {
-                "daily_trends": [{"date": "2026-06-01"}],
-                "room_participation": {"best": {"Alice": 3}},
-            },
-            {
-                "daily_trends": [{"date": "2026-06-02"}],
-                "room_participation": {"rest": {"Bob": 5}},
-            },
-        ])
+        html = _build_room_activity_trends(
+            [
+                {
+                    "daily_trends": [{"date": "2026-06-01"}],
+                    "room_participation": {"best": {"Alice": 3}},
+                },
+                {
+                    "daily_trends": [{"date": "2026-06-02"}],
+                    "room_participation": {"rest": {"Bob": 5}},
+                },
+            ]
+        )
 
         assert html.find("rest") < html.find("best")
         assert captured == [[0, 5], [3, 0]]
@@ -369,7 +408,14 @@ class TestGenerateComparison:
                 "room_participation": {"best": 80, "rest": 20},
                 "top_agents": [{"agent": "Alice", "messages": 50}],
                 "daily_trends": [
-                    {"date": "2026-05-30", "messages": 100, "events": 50, "active_agents": 5, "total_tokens": 1000, "efficiency": 85.5},
+                    {
+                        "date": "2026-05-30",
+                        "messages": 100,
+                        "events": 50,
+                        "active_agents": 5,
+                        "total_tokens": 1000,
+                        "efficiency": 85.5,
+                    },
                 ],
                 "busiest_hours": {10: 25, 14: 30},
             }
@@ -411,8 +457,11 @@ class TestGenerateComparison:
         assert "&lt;img" in html
         assert "onerror=&quot;alert(1)&quot;" in html
 
+
 class TestGenerateComparisonArchiveOrchestration:
-    def test_skips_error_and_empty_days_and_writes_dashboard(self, tmp_path, monkeypatch):
+    def test_skips_error_and_empty_days_and_writes_dashboard(
+        self, tmp_path, monkeypatch
+    ):
         clients = []
 
         class FakeClient:
@@ -428,20 +477,22 @@ class TestGenerateComparisonArchiveOrchestration:
                     raise archive_compare.api_client.APIError("temporary outage")
                 if day == 2:
                     return iter([])
-                return iter([
-                    {
-                        "id": "event-3",
-                        "createdAt": "2026-06-01T17:00:00Z",
-                        "data": {
-                            "agentId": "agent-1",
-                            "roomId": "room-1",
-                            "actionType": "AGENT_TALK",
-                            "content": "hello",
-                            "inputTokens": 12,
-                            "outputTokens": 3,
-                        },
-                    }
-                ])
+                return iter(
+                    [
+                        {
+                            "id": "event-3",
+                            "createdAt": "2026-06-01T17:00:00Z",
+                            "data": {
+                                "agentId": "agent-1",
+                                "roomId": "room-1",
+                                "actionType": "AGENT_TALK",
+                                "content": "hello",
+                                "inputTokens": 12,
+                                "outputTokens": 3,
+                            },
+                        }
+                    ]
+                )
 
             def get_agents(self):
                 return {"agent-1": "Alice"}
@@ -456,7 +507,9 @@ class TestGenerateComparisonArchiveOrchestration:
             output_path.write_text("comparison", encoding="utf-8")
 
         monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
-        monkeypatch.setattr(archive_compare, "generate_comparison", fake_generate_comparison)
+        monkeypatch.setattr(
+            archive_compare, "generate_comparison", fake_generate_comparison
+        )
 
         output = archive_compare.generate_comparison_archive(
             tmp_path,
@@ -497,7 +550,9 @@ class TestArchiveCompareCLI:
         captured = capsys.readouterr()
         assert "--days-back must be >= 1" in captured.err
 
-    def test_main_forwards_options_and_prints_output(self, tmp_path, monkeypatch, capsys):
+    def test_main_forwards_options_and_prints_output(
+        self, tmp_path, monkeypatch, capsys
+    ):
         calls = []
         expected = tmp_path / "comparison.html"
 
@@ -511,14 +566,16 @@ class TestArchiveCompareCLI:
             fake_generate_comparison_archive,
         )
 
-        rc = archive_compare.main([
-            "--output",
-            str(tmp_path),
-            "--days-back",
-            "9",
-            "--endpoint",
-            "https://example.invalid/api/",
-        ])
+        rc = archive_compare.main(
+            [
+                "--output",
+                str(tmp_path),
+                "--days-back",
+                "9",
+                "--endpoint",
+                "https://example.invalid/api/",
+            ]
+        )
 
         assert rc == 0
         assert calls == [
@@ -541,8 +598,8 @@ class TestArchiveCompareCLI:
         assert rc == 1
 
 
-
 # Additions by Gemini 3.5 Flash to maximize coverage
+
 
 class TestArchiveCompareCoverageEdges:
     def test_vmax_zero(self):
@@ -558,14 +615,70 @@ class TestArchiveCompareCoverageEdges:
         metrics = [
             {
                 "daily_trends": [
-                    {"date": "2026-05-22", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-23", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-24", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-25", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-26", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-27", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-28", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},
-                    {"date": "2026-05-28", "messages": 10, "events": 5, "active_agents": 2, "total_tokens": 100, "efficiency": 50.0},  # duplicate
+                    {
+                        "date": "2026-05-22",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-23",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-24",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-25",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-26",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-27",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-28",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },
+                    {
+                        "date": "2026-05-28",
+                        "messages": 10,
+                        "events": 5,
+                        "active_agents": 2,
+                        "total_tokens": 100,
+                        "efficiency": 50.0,
+                    },  # duplicate
                 ]
             }
         ]
@@ -581,8 +694,10 @@ class TestGenerateComparisonArchiveGenerator:
         class FakeClient:
             def __init__(self, **kwargs):
                 pass
+
             def _discover_latest_day(self):
                 return 5
+
             def iter_raw_events_for_day(self, day):
                 if day == 5:
                     return [
@@ -596,13 +711,15 @@ class TestGenerateComparisonArchiveGenerator:
                                 "roomId": "room_1",
                                 "content": "hello",
                                 "inputTokens": 10,
-                                "outputTokens": 20
-                            }
+                                "outputTokens": 20,
+                            },
                         }
                     ]
                 return []
+
             def get_agents(self):
                 return {"agent_1": "Alice"}
+
             def get_rooms(self):
                 return {"room_1": "best"}
 
@@ -610,9 +727,7 @@ class TestGenerateComparisonArchiveGenerator:
 
         out_dir = tmp_path / "output"
         res_path = archive_compare.generate_comparison_archive(
-            output_dir=out_dir,
-            days_back=2,
-            village_slug="test-slug"
+            output_dir=out_dir, days_back=2, village_slug="test-slug"
         )
         assert res_path.exists()
         assert (out_dir / "comparison.html").exists()
@@ -623,12 +738,16 @@ class TestGenerateComparisonArchiveGenerator:
         class FakeClient:
             def __init__(self, **kwargs):
                 pass
+
             def _discover_latest_day(self):
                 return None
+
             def iter_raw_events_for_day(self, day):
                 return []
+
             def get_agents(self):
                 return {}
+
             def get_rooms(self):
                 return {}
 
@@ -636,8 +755,6 @@ class TestGenerateComparisonArchiveGenerator:
 
         out_dir = tmp_path / "output_no_day"
         res_path = archive_compare.generate_comparison_archive(
-            output_dir=out_dir,
-            days_back=2,
-            village_slug="test-slug"
+            output_dir=out_dir, days_back=2, village_slug="test-slug"
         )
         assert res_path.exists()

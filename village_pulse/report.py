@@ -509,9 +509,7 @@ def _build_view_model(
     busiest_hours = _hour_rows(
         metrics.get("busiest_hours") or metrics.get("messages_by_hour")
     )
-    heatmap_cells = _heatmap_cells(
-        metrics.get("hourly_activity_heatmap")
-    )
+    heatmap_cells = _heatmap_cells(metrics.get("hourly_activity_heatmap"))
     trend = _mapping(metrics, "message_trend", "messages_per_day", "daily_messages")
 
     token_usage = (
@@ -952,9 +950,7 @@ def _heatmap_cells(value: Any) -> list[dict[str, Any]]:
             hour = _safe_int(key)
             if hour is not None and 0 <= hour < 24:
                 counts[hour] = _safe_int(count) or 0
-    elif isinstance(value, Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    ):
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for hour, count in enumerate(value):
             if hour >= 24:
                 break
@@ -1026,15 +1022,10 @@ def _interaction_graph_rows(graph: Any) -> list[dict[str, Any]]:
         for target, count in targets.items():
             cnt = _safe_int(count)
             percent = round((cnt / max_count) * 100, 1) if max_count > 0 else 0
-            formatted_targets.append({
-                "name": str(target),
-                "count": cnt,
-                "percent": percent
-            })
-        rows.append({
-            "responder": str(responder),
-            "targets": formatted_targets
-        })
+            formatted_targets.append(
+                {"name": str(target), "count": cnt, "percent": percent}
+            )
+        rows.append({"responder": str(responder), "targets": formatted_targets})
     return rows
 
 
@@ -1045,11 +1036,13 @@ def _response_latency_rows(value: Any, *, limit: int = 12) -> list[dict[str, Any
         return rows
     for row in value:
         if isinstance(row, Mapping) and "agent" in row:
-            rows.append({
-                "agent": str(row["agent"]),
-                "median_seconds": row.get("median_seconds"),
-                "responses": _safe_int(row.get("responses")),
-            })
+            rows.append(
+                {
+                    "agent": str(row["agent"]),
+                    "median_seconds": row.get("median_seconds"),
+                    "responses": _safe_int(row.get("responses")),
+                }
+            )
     return rows[:limit]
 
 
@@ -1057,24 +1050,19 @@ def _interaction_rankings(rankings: Any) -> dict[str, list[dict[str, Any]]]:
     default = {"top_responders": [], "top_targets": []}
     if not isinstance(rankings, Mapping):
         return default
-    
+
     top_responders = []
     for row in rankings.get("top_responders") or []:
         if isinstance(row, Mapping) and "agent" in row:
-            top_responders.append({
-                "agent": str(row["agent"]),
-                "count": _safe_int(row.get("count"))
-            })
-            
+            top_responders.append(
+                {"agent": str(row["agent"]), "count": _safe_int(row.get("count"))}
+            )
+
     top_targets = []
     for row in rankings.get("top_targets") or []:
         if isinstance(row, Mapping) and "agent" in row:
-            top_targets.append({
-                "agent": str(row["agent"]),
-                "count": _safe_int(row.get("count"))
-            })
-            
-    return {
-        "top_responders": top_responders,
-        "top_targets": top_targets
-    }
+            top_targets.append(
+                {"agent": str(row["agent"]), "count": _safe_int(row.get("count"))}
+            )
+
+    return {"top_responders": top_responders, "top_targets": top_targets}

@@ -59,10 +59,10 @@ def _generate_index_page(
         rows.append(
             f'<tr class="{status_class}">'
             f'<td><a href="{safe_filename}">Day {safe_day}</a></td>'
-            f'<td>{safe_msgs}</td>'
-            f'<td>{safe_total}</td>'
-            f'<td>{safe_agents}</td>'
-            f'</tr>'
+            f"<td>{safe_msgs}</td>"
+            f"<td>{safe_total}</td>"
+            f"<td>{safe_agents}</td>"
+            f"</tr>"
         )
 
     rows_html = "\n".join(rows)  # newest first
@@ -75,9 +75,7 @@ def _generate_index_page(
         safe_comparison_filename = html_lib.escape(comparison_filename, quote=True)
         links.append(f'<a href="{safe_comparison_filename}">Comparison dashboard</a>')
     latest_link_html = (
-        f'<p class="latest-link">{" · ".join(links)}</p>'
-        if links
-        else ""
+        f'<p class="latest-link">{" · ".join(links)}</p>' if links else ""
     )
 
     html = f"""<!doctype html>
@@ -198,7 +196,9 @@ def generate_archive(
 
     current_day = client._discover_latest_day()
     if current_day is None:
-        LOG.warning("Could not discover current village day; falling back to days_back range")
+        LOG.warning(
+            "Could not discover current village day; falling back to days_back range"
+        )
         current_day = days_back
 
     reports: list[dict[str, Any]] = []
@@ -239,14 +239,22 @@ def generate_archive(
             },
         )
 
-        reports.append({
-            "day": day,
-            "filename": filename,
-            "total_events": meta.get("total_events", 0),
-            "total_messages": meta.get("total_messages", 0),
-            "unique_agents": meta.get("unique_agents", 0),
-        })
-        LOG.info("Day %d → %s (%d events, %d messages)", day, filename, meta.get("total_events", 0), meta.get("total_messages", 0))
+        reports.append(
+            {
+                "day": day,
+                "filename": filename,
+                "total_events": meta.get("total_events", 0),
+                "total_messages": meta.get("total_messages", 0),
+                "unique_agents": meta.get("unique_agents", 0),
+            }
+        )
+        LOG.info(
+            "Day %d → %s (%d events, %d messages)",
+            day,
+            filename,
+            meta.get("total_events", 0),
+            meta.get("total_messages", 0),
+        )
 
     # Also generate the combined "latest" report as a 7-day digest
     if reports and current_day is not None:
@@ -283,19 +291,35 @@ def generate_archive(
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for the archive generator."""
-    parser = argparse.ArgumentParser(description="Generate a multi-day Village Pulse archive.")
-    parser.add_argument("--output", "-o", required=True, help="Output directory for HTML reports.")
-    parser.add_argument("--days-back", "-d", type=int, default=DEFAULT_DAYS_BACK, help="Number of past days to archive (default: %(default)s).")
-    parser.add_argument("--endpoint", default=api_client.DEFAULT_ENDPOINT, help="Village API endpoint.")
+    parser = argparse.ArgumentParser(
+        description="Generate a multi-day Village Pulse archive."
+    )
+    parser.add_argument(
+        "--output", "-o", required=True, help="Output directory for HTML reports."
+    )
+    parser.add_argument(
+        "--days-back",
+        "-d",
+        type=int,
+        default=DEFAULT_DAYS_BACK,
+        help="Number of past days to archive (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--endpoint", default=api_client.DEFAULT_ENDPOINT, help="Village API endpoint."
+    )
     parser.add_argument(
         "--comparison-filename",
         help="Optional comparison dashboard filename to link from the archive index.",
     )
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging.")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable debug logging."
+    )
     args = parser.parse_args(argv)
 
     if args.days_back < 1:
-        print("[village-pulse-archive] error: --days-back must be >= 1", file=sys.stderr)
+        print(
+            "[village-pulse-archive] error: --days-back must be >= 1", file=sys.stderr
+        )
         return 1
 
     logging.basicConfig(

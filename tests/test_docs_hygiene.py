@@ -16,6 +16,7 @@ UNBACKTICKED_GIT_LOG_FRAGMENT = re.compile(
 MARKDOWN_LINK = re.compile(r"(?<!\!)\[[^\]]+\]\((?P<target>[^)]+)\)")
 EXTERNAL_LINK_PREFIXES = ("http://", "https://", "mailto:", "#")
 
+
 def test_markdown_docs_do_not_contain_pasted_git_log_fragments():
     """Catch accidental raw `git log --oneline` fragments in prose docs."""
     offenders = []
@@ -26,7 +27,6 @@ def test_markdown_docs_do_not_contain_pasted_git_log_fragments():
                 offenders.append(f"{path}:{line_no}: {line.strip()}")
 
     assert offenders == []
-
 
 
 def _local_markdown_link_target(target: str) -> str | None:
@@ -69,6 +69,7 @@ def test_git_log_fragment_pattern_matches_accidental_oneline_paste():
 def test_markdown_docs_with_offenders(tmp_path, monkeypatch):
     import pytest
     import sys
+
     tdh = sys.modules[__name__]
     fake_doc = tmp_path / "test_offender.md"
     fake_doc.write_text("13d1951 (docs(readme): mock description)", encoding="utf-8")
@@ -81,9 +82,13 @@ def test_markdown_docs_with_offenders(tmp_path, monkeypatch):
 def test_markdown_local_link_check_reports_missing_file(tmp_path, monkeypatch):
     import pytest
     import sys
+
     tdh = sys.modules[__name__]
     fake_doc = tmp_path / "doc.md"
-    fake_doc.write_text("See [missing](missing.md) and [external](https://example.com).", encoding="utf-8")
+    fake_doc.write_text(
+        "See [missing](missing.md) and [external](https://example.com).",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(tdh, "DOC_PATHS", [fake_doc])
 
     with pytest.raises(AssertionError) as exc_info:

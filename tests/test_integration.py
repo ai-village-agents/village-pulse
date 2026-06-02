@@ -125,6 +125,7 @@ class _FakeSession:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_client_pipeline_with_mock_session(tmp_path):
     """Real client + fake transport feeds analytics + report end-to-end."""
     session = _FakeSession()
@@ -134,7 +135,11 @@ def test_client_pipeline_with_mock_session(tmp_path):
 
     # api_client flattened + resolved names/rooms correctly.
     assert len(events) == 4
-    assert {e["agent_name"] for e in events} == {"GPT-5.5", "Kimi K2.6", "Claude Opus 4.8"}
+    assert {e["agent_name"] for e in events} == {
+        "GPT-5.5",
+        "Kimi K2.6",
+        "Claude Opus 4.8",
+    }
     assert all(e["room"] == "best" for e in events)
     # Oldest-first ordering by event_index.
     assert [e["event_index"] for e in events] == [10, 11, 12, 13]
@@ -172,7 +177,9 @@ def test_client_pipeline_with_mock_session(tmp_path):
     ]
 
     output = tmp_path / "dashboard.html"
-    resolved = generate(metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"})
+    resolved = generate(
+        metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"}
+    )
     html = resolved.read_text(encoding="utf-8")
     assert "Village Pulse — #best" in html
     for name in ("GPT-5.5", "Kimi K2.6", "Claude Opus 4.8"):
@@ -221,6 +228,7 @@ def test_cli_default_html_builds_seven_day_window(tmp_path, monkeypatch):
         ]
 
     import village_pulse.api_client as ac  # fresh module (test_cli may have reset sys.modules)
+
     monkeypatch.setattr(ac, "fetch_events", fake_fetch)
     monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
@@ -273,6 +281,7 @@ def test_cli_end_to_end_mocked(tmp_path, monkeypatch, capsys):
         ]
 
     import village_pulse.api_client as ac  # fresh module (test_cli may have reset sys.modules)
+
     monkeypatch.setattr(ac, "fetch_events", fake_fetch)
     monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
@@ -309,6 +318,7 @@ def test_cli_handles_api_error(tmp_path, monkeypatch):
 # Multi-day trend-series contract (consumed by archive_compare)
 # ---------------------------------------------------------------------------
 
+
 def _talk(agent, room, ts, *, inp=0, out=0):
     return {
         "agentName": agent,
@@ -337,8 +347,13 @@ def test_multi_day_trend_series_contract():
     dt = ca["daily_trends"]
     assert [d["date"] for d in dt] == ["2026-05-30", "2026-05-31", "2026-06-02"]
     assert dt[0] == {
-        "date": "2026-05-30", "events": 2, "messages": 2, "active_agents": 2,
-        "input_tokens": 150, "output_tokens": 15, "total_tokens": 165,
+        "date": "2026-05-30",
+        "events": 2,
+        "messages": 2,
+        "active_agents": 2,
+        "input_tokens": 150,
+        "output_tokens": 15,
+        "total_tokens": 165,
         "efficiency": 10.0,
     }
 
@@ -347,7 +362,9 @@ def test_multi_day_trend_series_contract():
     assert tops[0]["agent"] == "Alice"
     assert tops[0]["total_messages"] == 3
     assert [d["date"] for d in tops[0]["daily"]] == [
-        "2026-05-30", "2026-05-31", "2026-06-02",
+        "2026-05-30",
+        "2026-05-31",
+        "2026-06-02",
     ]
 
     # room_daily_trends: keyed by room NAME (sorted), each value mirrors daily_trends.
@@ -386,7 +403,9 @@ def _day_metrics_from_events(day, events):
         "events": metrics.get("meta", {}).get("total_events", len(events)),
         "agents": len(mpa),
         "tokens": metrics.get("token_usage", {}).get("totals", {}).get("total", 0),
-        "efficiency": metrics.get("token_usage", {}).get("totals", {}).get("efficiency", 0),
+        "efficiency": metrics.get("token_usage", {})
+        .get("totals", {})
+        .get("efficiency", 0),
         "room_participation": metrics.get("room_participation", {}),
         "top_agents": top,
         "daily_trends": metrics.get("daily_trends", []),
@@ -428,6 +447,7 @@ def test_archive_compare_renders_multiday_dashboard(tmp_path):
     assert html.count("<svg") >= 2
     # No raw UUIDs leak into the rendered dashboard.
     import re
+
     assert not re.search(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", html
     )
@@ -438,7 +458,7 @@ def test_archive_compare_escapes_malicious_agent_and_room(tmp_path):
     from village_pulse import archive_compare
 
     evil_agent = '<script>alert("x")</script>'
-    evil_room = '<img src=x onerror=alert(1)>'
+    evil_room = "<img src=x onerror=alert(1)>"
     events = [
         _flat(evil_agent, evil_room, "2026-05-31"),
         _flat(evil_agent, evil_room, "2026-05-31"),
@@ -471,7 +491,7 @@ def test_archive_compare_renders_trend_sections_aligned_and_escaped(tmp_path):
     union_dates+densify (zero-filling absent days) and HTML-escape names."""
     from village_pulse import archive_compare
 
-    evil_agent = '<script>alert(1)</script>'
+    evil_agent = "<script>alert(1)</script>"
     day425 = [
         _flat("GPT-5.5", "best", "2026-05-31"),
         _flat("GPT-5.5", "best", "2026-05-31", content="b"),
@@ -501,12 +521,12 @@ def test_archive_compare_renders_trend_sections_aligned_and_escaped(tmp_path):
 
     # Aggregated totals across the aligned window are correct.
     # GPT-5.5: 3 (day425) + 1 (day426) = 4.
-    assert '<td>GPT-5.5</td>' in agents
+    assert "<td>GPT-5.5</td>" in agents
     assert '<td class="num">4</td>' in agents
     # Rooms: best = 3 + 3 (GPT/Opus/evil on day426) ... best total = 3+1+1+1 = 6, rest = 1.
-    assert '<td>best</td>' in rooms
+    assert "<td>best</td>" in rooms
     assert '<td class="num">6</td>' in rooms
-    assert '<td>rest</td>' in rooms
+    assert "<td>rest</td>" in rooms
     assert '<td class="num">1</td>' in rooms
 
     # Sparklines drawn per row (best + rest = 2 rooms, several agents).

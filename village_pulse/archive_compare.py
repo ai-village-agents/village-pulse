@@ -31,8 +31,8 @@ def _sparkline_svg(values, width=200, height=40):
         return (
             f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
             f'xmlns="http://www.w3.org/2000/svg">'
-            f'<text x="4" y="{height//2+4}" font-size="11" fill="#94a3b8">no data</text>'
-            f'</svg>'
+            f'<text x="4" y="{height // 2 + 4}" font-size="11" fill="#94a3b8">no data</text>'
+            f"</svg>"
         )
 
     vmin, vmax = min(values), max(values)
@@ -59,7 +59,7 @@ def _sparkline_svg(values, width=200, height=40):
         f'<polyline points="{points_str}" fill="none" stroke="#2f6fed" '
         f'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
         f'<circle cx="{last_x:.1f}" cy="{last_y:.1f}" r="3" fill="#2f6fed"/>'
-        f'</svg>'
+        f"</svg>"
     )
 
 
@@ -69,8 +69,8 @@ def _bar_svg(values, labels, width=300, height=120):
         return (
             f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
             f'xmlns="http://www.w3.org/2000/svg">'
-            f'<text x="4" y="{height//2+4}" font-size="11" fill="#94a3b8">no data</text>'
-            f'</svg>'
+            f'<text x="4" y="{height // 2 + 4}" font-size="11" fill="#94a3b8">no data</text>'
+            f"</svg>"
         )
 
     vmax = max(values)
@@ -82,8 +82,16 @@ def _bar_svg(values, labels, width=300, height=120):
     pad_x = 20
 
     bars = []
-    colors = ["#2f6fed", "#7c3aed", "#17803d", "#b7791f", "#e11d48",
-              "#0891b2", "#be185d", "#4338ca"]
+    colors = [
+        "#2f6fed",
+        "#7c3aed",
+        "#17803d",
+        "#b7791f",
+        "#e11d48",
+        "#0891b2",
+        "#be185d",
+        "#4338ca",
+    ]
     for i, (v, label) in enumerate(zip(values, labels)):
         bh = (v / vmax) * max_bar_h if vmax > 0 else 0
         x = pad_x + i * bar_w
@@ -98,9 +106,7 @@ def _bar_svg(values, labels, width=300, height=120):
 
     return (
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-        f'xmlns="http://www.w3.org/2000/svg">'
-        + "".join(bars)
-        + '</svg>'
+        f'xmlns="http://www.w3.org/2000/svg">' + "".join(bars) + "</svg>"
     )
 
 
@@ -192,9 +198,9 @@ def _build_summary_cards(day_metrics):
             f'<div class="card-title">{title}</div>'
             f'<div class="card-value">{value}</div>'
             f'<div class="card-spark">{svg}</div>'
-            f'</div>'
+            f"</div>"
         )
-    return '<div class="summary-grid">' + "".join(parts) + '</div>'
+    return '<div class="summary-grid">' + "".join(parts) + "</div>"
 
 
 def _build_comparison_table(day_metrics):
@@ -203,27 +209,23 @@ def _build_comparison_table(day_metrics):
     for d in day_metrics:
         day = d.get("day", "?")
         rows.append(
-            f'<tr>'
-            f'<td><strong>Day {html_lib.escape(str(day))}</strong></td>'
+            f"<tr>"
+            f"<td><strong>Day {html_lib.escape(str(day))}</strong></td>"
             f'<td class="num">{_format_number(d.get("messages", 0))}</td>'
             f'<td class="num">{_format_number(d.get("events", 0))}</td>'
             f'<td class="num">{_format_number(d.get("agents", 0))}</td>'
             f'<td class="num">{_format_number(d.get("tokens", 0))}</td>'
             f'<td class="num">{(d.get("efficiency") or 0):.1f}%</td>'
             f'<td class="spark-cell">{_sparkline_svg([d.get("messages", 0)])}</td>'
-            f'</tr>'
+            f"</tr>"
         )
 
     return (
-        '<table><thead><tr>'
+        "<table><thead><tr>"
         '<th>Day</th><th class="num">Messages</th><th class="num">Events</th>'
         '<th class="num">Agents</th><th class="num">Tokens</th><th class="num">Efficiency</th>'
-        '<th>Trend</th></tr></thead><tbody>'
-        + "".join(rows)
-        + '</tbody></table>'
+        "<th>Trend</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
-
-
 
 
 def _build_peak_hours_comparison(day_metrics):
@@ -265,6 +267,7 @@ def _build_peak_hours_comparison(day_metrics):
     )
     return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
 
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -280,9 +283,9 @@ def _build_agent_leaderboard(day_metrics):
 
     rows = []
     for i, (agent, total) in enumerate(sorted_agents):
-        rank_cls = f"rank-{i+1}" if i < 3 else "rank-other"
+        rank_cls = f"rank-{i + 1}" if i < 3 else "rank-other"
         rows.append(
-            f'<tr><td><span class="rank {rank_cls}">{i+1}</span>{html_lib.escape(str(agent))}</td>'
+            f'<tr><td><span class="rank {rank_cls}">{i + 1}</span>{html_lib.escape(str(agent))}</td>'
             f'<td class="num">{_format_number(total)}</td></tr>'
         )
 
@@ -290,12 +293,12 @@ def _build_agent_leaderboard(day_metrics):
 
     return (
         '<div class="leaderboard-grid">'
-        '<div>'
+        "<div>"
         '<table><thead><tr><th>Agent</th><th class="num">Messages</th></tr></thead><tbody>'
         + "".join(rows)
-        + '</tbody></table></div>'
+        + "</tbody></table></div>"
         f'<div style="display:flex;align-items:center;justify-content:center;">{chart}</div>'
-        '</div>'
+        "</div>"
     )
 
 
@@ -310,7 +313,10 @@ def _build_room_participation(day_metrics):
         return '<p style="color:var(--muted)">No room data for latest day.</p>'
 
     labels = list(rooms.keys())
-    values = [sum(agents.values()) if isinstance(agents, dict) else agents for agents in rooms.values()]
+    values = [
+        sum(agents.values()) if isinstance(agents, dict) else agents
+        for agents in rooms.values()
+    ]
     chart = _bar_svg(values, labels)
 
     return f'<div style="display:flex;align-items:center;justify-content:center;">{chart}</div>'
@@ -340,24 +346,23 @@ def _build_daily_trends_table(day_metrics):
     trs = []
     for t in rows:
         trs.append(
-            f'<tr>'
-            f'<td>{html_lib.escape(str(t.get("date", "")))}</td>'
+            f"<tr>"
+            f"<td>{html_lib.escape(str(t.get('date', '')))}</td>"
             f'<td class="num">{_format_number(t.get("messages", 0))}</td>'
             f'<td class="num">{_format_number(t.get("events", 0))}</td>'
             f'<td class="num">{_format_number(t.get("active_agents", 0))}</td>'
             f'<td class="num">{_format_number(t.get("total_tokens", 0))}</td>'
             f'<td class="num">{(t.get("efficiency") or 0):.1f}%</td>'
-            f'</tr>'
+            f"</tr>"
         )
 
     return (
-        '<table><thead><tr>'
+        "<table><thead><tr>"
         '<th>Date</th><th class="num">Messages</th><th class="num">Events</th>'
         '<th class="num">Agents</th><th class="num">Tokens</th><th class="num">Efficiency</th>'
-        '</tr></thead><tbody>'
-        + "".join(trs)
-        + '</tbody></table>'
+        "</tr></thead><tbody>" + "".join(trs) + "</tbody></table>"
     )
+
 
 def _series_date(day_row):
     """Best-effort calendar date for a day_metrics row (from its daily_trends)."""
@@ -387,7 +392,9 @@ def _build_room_activity_trends(day_metrics):
 
     axis = analytics.union_dates(*room_series.values())
     rows = []
-    for room in sorted(room_series, key=lambda r: -sum(x["messages"] for x in room_series[r])):
+    for room in sorted(
+        room_series, key=lambda r: -sum(x["messages"] for x in room_series[r])
+    ):
         dense = analytics.densify(room_series[room], axis, ["messages"])
         values = [r["messages"] for r in dense]
         rows.append(
@@ -400,9 +407,7 @@ def _build_room_activity_trends(day_metrics):
     return (
         "<table><thead><tr>"
         '<th>Room</th><th>Trend</th><th class="num">Total Messages</th>'
-        "</tr></thead><tbody>"
-        + "".join(rows)
-        + "</tbody></table>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
 
@@ -418,7 +423,7 @@ def _build_top_agent_trends(day_metrics, top_n=8):
         date = _series_date(d)
         if not date:
             continue
-        for entry in (d.get("top_agents") or []):
+        for entry in d.get("top_agents") or []:
             agent = entry.get("agent")
             msgs = entry.get("messages", 0)
             agent_series.setdefault(agent, []).append({"date": date, "messages": msgs})
@@ -442,9 +447,7 @@ def _build_top_agent_trends(day_metrics, top_n=8):
     return (
         "<table><thead><tr>"
         '<th>Agent</th><th>Trend</th><th class="num">Total Messages</th>'
-        "</tr></thead><tbody>"
-        + "".join(rows)
-        + "</tbody></table>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
 
@@ -574,7 +577,9 @@ def generate_comparison_archive(
 
         agents = client.get_agents()
         rooms = client.get_rooms()
-        events = [api_client._flatten_event(raw, agents=agents, rooms=rooms) for raw in events]
+        events = [
+            api_client._flatten_event(raw, agents=agents, rooms=rooms) for raw in events
+        ]
 
         metrics = analytics.compute_all(events)
         room_part = metrics.get("room_participation", {})
@@ -590,8 +595,12 @@ def generate_comparison_archive(
                 "messages": sum(metrics.get("messages_per_agent", {}).values()),
                 "events": metrics.get("meta", {}).get("total_events", len(events)),
                 "agents": len(metrics.get("messages_per_agent", {})),
-                "tokens": metrics.get("token_usage", {}).get("totals", {}).get("total", 0),
-                "efficiency": metrics.get("token_usage", {}).get("totals", {}).get("efficiency", 0),
+                "tokens": metrics.get("token_usage", {})
+                .get("totals", {})
+                .get("total", 0),
+                "efficiency": metrics.get("token_usage", {})
+                .get("totals", {})
+                .get("efficiency", 0),
                 "room_participation": room_part,
                 "top_agents": top,
                 "daily_trends": metrics.get("daily_trends", []),
@@ -613,19 +622,21 @@ def main(argv=None):
         "-o", "--output", required=True, help="Output directory for comparison HTML."
     )
     parser.add_argument(
-        "--days-back", type=int, default=DEFAULT_DAYS_BACK,
+        "--days-back",
+        type=int,
+        default=DEFAULT_DAYS_BACK,
         help=f"Number of past days to compare (default: {DEFAULT_DAYS_BACK}).",
     )
-    parser.add_argument(
-        "--endpoint", default=None, help="Custom API base URL."
-    )
+    parser.add_argument("--endpoint", default=None, help="Custom API base URL.")
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging."
     )
     args = parser.parse_args(argv)
 
     if args.days_back < 1:
-        print("[village-pulse-compare] error: --days-back must be >= 1", file=sys.stderr)
+        print(
+            "[village-pulse-compare] error: --days-back must be >= 1", file=sys.stderr
+        )
         return 1
 
     logging.basicConfig(

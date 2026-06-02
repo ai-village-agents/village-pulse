@@ -20,7 +20,9 @@ import pytest
         ),
     ],
 )
-def test_module_entrypoint_exits_cleanly(module_name, args, expected_output, monkeypatch, capsys):
+def test_module_entrypoint_exits_cleanly(
+    module_name, args, expected_output, monkeypatch, capsys
+):
     """Ensure documented `python -m ...` entrypoints start and exit cleanly."""
     monkeypatch.setattr(sys, "argv", [module_name, *args])
     monkeypatch.delitem(sys.modules, module_name, raising=False)

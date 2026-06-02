@@ -67,7 +67,9 @@ DEFAULT_ENDPOINT = "https://theaidigest.org/village/api/"
 # (id c3b2ff3d-..., created 2025-05-15) which resolves but is empty
 # (0 events). Don't accidentally swap to it.
 DEFAULT_VILLAGE_SLUG = "actual-launch-1"
-DEFAULT_USER_AGENT = "village-pulse/0.1 (+https://github.com/ai-village-agents/village-pulse)"
+DEFAULT_USER_AGENT = (
+    "village-pulse/0.1 (+https://github.com/ai-village-agents/village-pulse)"
+)
 
 # Action types that look like a chat-message (analytics.compute_all uses these
 # too, but we don't import from analytics to avoid a cycle).
@@ -77,7 +79,9 @@ MESSAGE_ACTION_TYPES = frozenset({"AGENT_TALK", "USER_TALK"})
 class APIError(RuntimeError):
     """Raised when the village API returns an HTTP error or unparseable body."""
 
-    def __init__(self, message: str, *, status: Optional[int] = None, url: Optional[str] = None):
+    def __init__(
+        self, message: str, *, status: Optional[int] = None, url: Optional[str] = None
+    ):
         super().__init__(message)
         self.status = status
         self.url = url
@@ -94,6 +98,7 @@ class APIError(RuntimeError):
 # ---------------------------------------------------------------------------
 # Low-level HTTP helpers
 # ---------------------------------------------------------------------------
+
 
 def _normalize_endpoint(endpoint: str) -> str:
     """Return ``endpoint`` with a trailing slash, raising on obvious garbage."""
@@ -124,7 +129,9 @@ def _http_get_json(
         try:
             if _requests is not None:
                 sess = session or _requests
-                resp = sess.get(url, timeout=timeout, headers={"User-Agent": DEFAULT_USER_AGENT})
+                resp = sess.get(
+                    url, timeout=timeout, headers={"User-Agent": DEFAULT_USER_AGENT}
+                )
                 status = resp.status_code
                 if status >= 400:
                     body = (resp.text or "")[:200]
@@ -132,9 +139,13 @@ def _http_get_json(
                 try:
                     return resp.json()
                 except ValueError as exc:
-                    raise APIError(f"invalid JSON: {exc}", status=status, url=url) from exc
+                    raise APIError(
+                        f"invalid JSON: {exc}", status=status, url=url
+                    ) from exc
             else:  # urllib fallback
-                req = urllib.request.Request(url, headers={"User-Agent": DEFAULT_USER_AGENT})
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": DEFAULT_USER_AGENT}
+                )
                 with urllib.request.urlopen(req, timeout=timeout) as fh:  # noqa: S310 - trusted host
                     raw = fh.read()
                 try:
@@ -150,8 +161,14 @@ def _http_get_json(
             last_exc = exc
         if attempt < max_retries:
             sleep_s = backoff * (2 ** (attempt - 1))
-            LOG.warning("GET %s attempt %d/%d failed: %s — retrying in %.1fs",
-                        url, attempt, max_retries, last_exc, sleep_s)
+            LOG.warning(
+                "GET %s attempt %d/%d failed: %s — retrying in %.1fs",
+                url,
+                attempt,
+                max_retries,
+                last_exc,
+                sleep_s,
+            )
             time.sleep(sleep_s)
     # exhausted
     if isinstance(last_exc, APIError):
@@ -234,7 +251,9 @@ class VillageAPIClient:
         if isinstance(data, dict) and data.get("id"):
             self._village_id = str(data["id"])
             return self._village_id
-        raise APIError(f"could not resolve village slug {self.village_slug!r}: {data!r}")
+        raise APIError(
+            f"could not resolve village slug {self.village_slug!r}: {data!r}"
+        )
 
     def get_village(self, *, refresh: bool = False) -> dict:
         """Return the full village detail blob (cached)."""
@@ -358,12 +377,15 @@ class VillageAPIClient:
                     continue
                 if room_norm is not None and _norm(flat.get("room")) != room_norm:
                     continue
-                if agent_norm is not None and agent_norm not in flat["agent_name"].lower():
+                if (
+                    agent_norm is not None
+                    and agent_norm not in flat["agent_name"].lower()
+                ):
                     continue
                 out.append(flat)
         # API returns newest-first within a page; we want oldest-first across
         # the whole window so daily buckets line up.
-        out.sort(key=lambda e: (e.get("event_index") or 0))
+        out.sort(key=lambda e: e.get("event_index") or 0)
         return out
 
     # ----------------------------------------------------------- internal
@@ -382,6 +404,7 @@ class VillageAPIClient:
             return None
         try:
             from datetime import datetime, timezone
+
             t = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
             now = datetime.now(tz=timezone.utc)
             delta_days = (now.date() - t.date()).days
@@ -393,6 +416,7 @@ class VillageAPIClient:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _norm(s: Any) -> str:
     if s is None:
@@ -438,10 +462,7 @@ def _flatten_event(
     if not isinstance(content, str):
         # Some action types (CONSOLIDATE, SEARCH_HISTORY) have content elsewhere.
         content = (
-            data.get("nextSessionGoal")
-            or data.get("query")
-            or data.get("text")
-            or ""
+            data.get("nextSessionGoal") or data.get("query") or data.get("text") or ""
         )
     if not isinstance(content, str):
         content = str(content)
@@ -467,6 +488,7 @@ def _flatten_event(
 # ---------------------------------------------------------------------------
 # Module-level convenience entry point (__main__ wires here)
 # ---------------------------------------------------------------------------
+
 
 def fetch_events(
     *,

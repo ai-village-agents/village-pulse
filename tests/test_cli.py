@@ -25,7 +25,17 @@ class TestParser:
     def test_custom_args(self):
         parser = _build_parser()
         args = parser.parse_args(
-            ["--output", "/tmp/out.html", "--room", "#best", "--days", "3", "--agent", "Kimi", "--verbose"]
+            [
+                "--output",
+                "/tmp/out.html",
+                "--room",
+                "#best",
+                "--days",
+                "3",
+                "--agent",
+                "Kimi",
+                "--verbose",
+            ]
         )
         assert args.output == Path("/tmp/out.html")
         assert args.room == "#best"
@@ -91,18 +101,28 @@ class TestFormatJson:
 
         def fake_fetch(**kwargs):
             return [
-                {"agent_name": "Kimi K2.6", "room": "best", "action_type": "AGENT_TALK", "content": "hi"},
+                {
+                    "agent_name": "Kimi K2.6",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "hi",
+                },
             ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         import village_pulse.report as rp
+
         generate_calls = []
-        monkeypatch.setattr(rp, "generate", lambda **kwargs: generate_calls.append(kwargs))
+        monkeypatch.setattr(
+            rp, "generate", lambda **kwargs: generate_calls.append(kwargs)
+        )
 
         from village_pulse.__main__ import main
 
@@ -122,17 +142,29 @@ class TestFormatJson:
         fake_metrics = {"meta": {"total_events": 1}}
 
         def fake_fetch(**kwargs):
-            return [{"agent_name": "X", "room": "best", "action_type": "AGENT_TALK", "content": "y"}]
+            return [
+                {
+                    "agent_name": "X",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "y",
+                }
+            ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         import village_pulse.report as rp
+
         generate_calls = []
-        monkeypatch.setattr(rp, "generate", lambda **kwargs: generate_calls.append(kwargs) or out)
+        monkeypatch.setattr(
+            rp, "generate", lambda **kwargs: generate_calls.append(kwargs) or out
+        )
 
         from village_pulse.__main__ import main
 
@@ -143,8 +175,6 @@ class TestFormatJson:
         assert len(generate_calls) == 1
         assert generate_calls[0]["metrics"] == fake_metrics
 
-
-
     def test_json_stdout_when_no_output_flag(self, monkeypatch, capsys):
         """--format json without -o prints JSON to stdout."""
         fake_metrics = {
@@ -153,17 +183,29 @@ class TestFormatJson:
         }
 
         def fake_fetch(**kwargs):
-            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         import village_pulse.report as rp
+
         generate_calls = []
-        monkeypatch.setattr(rp, "generate", lambda **kwargs: generate_calls.append(kwargs))
+        monkeypatch.setattr(
+            rp, "generate", lambda **kwargs: generate_calls.append(kwargs)
+        )
 
         from village_pulse.__main__ import main
 
@@ -173,6 +215,7 @@ class TestFormatJson:
         data = json.loads(captured.out)
         assert data["meta"]["total_events"] == 1
         assert generate_calls == []
+
 
 class TestMetricsFlag:
     def test_metrics_flag_filters_json_output(self, tmp_path, monkeypatch):
@@ -185,18 +228,36 @@ class TestMetricsFlag:
         }
 
         def fake_fetch(**kwargs):
-            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         from village_pulse.__main__ import main
 
         out = tmp_path / "filtered.json"
-        rc = main(["--format", "json", "--metrics", "messages_per_agent,active_agents", "--output", str(out)])
+        rc = main(
+            [
+                "--format",
+                "json",
+                "--metrics",
+                "messages_per_agent,active_agents",
+                "--output",
+                str(out),
+            ]
+        )
 
         assert rc == 0
         data = json.loads(out.read_text(encoding="utf-8"))
@@ -214,12 +275,21 @@ class TestMetricsFlag:
         }
 
         def fake_fetch(**kwargs):
-            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         from village_pulse.__main__ import main
@@ -238,31 +308,44 @@ class TestDayFlag:
         captured = {}
 
         def fake_fetch(**kwargs):
-            captured['kwargs'] = kwargs
-            return [{'agent_name': 'A', 'room': 'best', 'action_type': 'AGENT_TALK', 'content': 'x'}]
+            captured["kwargs"] = kwargs
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
 
         import village_pulse.api_client as ac
-        monkeypatch.setattr(ac, 'fetch_events', fake_fetch)
+
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
-        monkeypatch.setattr(an, 'compute_all', lambda _events: {'meta': {'total_events': 1}})
+
+        monkeypatch.setattr(
+            an, "compute_all", lambda _events: {"meta": {"total_events": 1}}
+        )
 
         import village_pulse.report as rp
-        monkeypatch.setattr(rp, 'generate', lambda **kwargs: None)
+
+        monkeypatch.setattr(rp, "generate", lambda **kwargs: None)
 
         from village_pulse.__main__ import main
 
-        out = tmp_path / 'report.html'
-        rc = main(['--day', '423', '--days', '1', '--output', str(out)])
+        out = tmp_path / "report.html"
+        rc = main(["--day", "423", "--days", "1", "--output", str(out)])
 
         assert rc == 0
-        assert captured['kwargs']['current_day'] == 423
-        assert captured['kwargs']['days'] == 1
+        assert captured["kwargs"]["current_day"] == 423
+        assert captured["kwargs"]["days"] == 1
 
 
 class TestCliValidation:
     def test_days_less_than_one_returns_error(self, capsys):
         from village_pulse.__main__ import main
+
         rc = main(["--days", "0"])
         assert rc == 1
         captured = capsys.readouterr()
@@ -270,6 +353,7 @@ class TestCliValidation:
 
     def test_day_less_than_one_returns_error(self, capsys):
         from village_pulse.__main__ import main
+
         rc = main(["--day", "0"])
         assert rc == 1
         captured = capsys.readouterr()
@@ -277,10 +361,12 @@ class TestCliValidation:
 
     def test_negative_days_returns_error(self, capsys):
         from village_pulse.__main__ import main
+
         rc = main(["--days", "-3"])
         assert rc == 1
         captured = capsys.readouterr()
         assert "--days must be >= 1" in captured.err
+
 
 class TestMetricsAliases:
     def test_selected_metric_keys_expands_friendly_aliases(self):
@@ -298,13 +384,14 @@ class TestMetricsAliases:
 
         assert keys == {"meta", "messages_per_agent", "active_agents"}
 
-
     def test_activity_alias_includes_daily_trends(self):
         filtered = _filter_metrics(
             {
                 "meta": {"total_events": 2},
                 "daily_trends": [{"date": "2026-06-01", "messages": 2}],
-                "agent_daily_trends": {"GPT-5.5": [{"date": "2026-06-01", "messages": 2}]},
+                "agent_daily_trends": {
+                    "GPT-5.5": [{"date": "2026-06-01", "messages": 2}]
+                },
                 "top_agents_over_time": [
                     {"agent": "GPT-5.5", "total_messages": 2, "daily": []}
                 ],
@@ -329,23 +416,36 @@ class TestMetricsAliases:
             "meta": {"total_events": 2},
             "messages_per_agent": {"A": 2},
             "messages_per_day": {"2026-06-01": 2},
-            "token_usage": {"totals": {"input": 100, "output": 10, "total": 110, "efficiency": 10}},
+            "token_usage": {
+                "totals": {"input": 100, "output": 10, "total": 110, "efficiency": 10}
+            },
             "room_health": {"best": 1.0},
         }
 
         def fake_fetch(**kwargs):
-            return [{"agent_name": "A", "room": "best", "action_type": "AGENT_TALK", "content": "x"}]
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch)
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         from village_pulse.__main__ import main
 
         out = tmp_path / "alias-filtered.json"
-        rc = main(["--format", "json", "--metrics", "messages,tokens", "--output", str(out)])
+        rc = main(
+            ["--format", "json", "--metrics", "messages,tokens", "--output", str(out)]
+        )
 
         assert rc == 0
         data = json.loads(out.read_text(encoding="utf-8"))
@@ -359,12 +459,26 @@ class TestMetricsAliases:
 class TestFormatMarkdown:
     def test_markdown_output_writes_file(self, tmp_path, monkeypatch):
         """--format markdown writes a readable metrics report."""
-        fake_events = [{"agent_name": "GPT-5.5", "room": "best", "action_type": "AGENT_TALK", "content": "hello"}]
+        fake_events = [
+            {
+                "agent_name": "GPT-5.5",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hello",
+            }
+        ]
         fake_metrics = {
-            "meta": {"total_events": 3, "total_messages": 2, "unique_agents": 2, "unique_rooms": 1},
+            "meta": {
+                "total_events": 3,
+                "total_messages": 2,
+                "unique_agents": 2,
+                "unique_rooms": 1,
+            },
             "messages_per_agent": {"GPT-5.5": 2, "Kimi K2.6": 1},
             "room_participation": {"best": {"GPT-5.5": 2, "Kimi K2.6": 1}},
-            "daily_trends": [{"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}],
+            "daily_trends": [
+                {"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}
+            ],
             "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
             "interaction_rankings": {
                 "top_responders": [{"agent": "GPT-5.5", "count": 2}],
@@ -373,16 +487,31 @@ class TestFormatMarkdown:
         }
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         from village_pulse.__main__ import main
 
         out = tmp_path / "report.md"
-        rc = main(["--format", "markdown", "--days", "7", "--room", "best", "--output", str(out)])
+        rc = main(
+            [
+                "--format",
+                "markdown",
+                "--days",
+                "7",
+                "--room",
+                "best",
+                "--output",
+                str(out),
+            ]
+        )
 
         assert rc == 0
         text = out.read_text(encoding="utf-8")
@@ -404,14 +533,21 @@ class TestFormatMarkdown:
     def test_markdown_stdout_when_no_output_flag(self, monkeypatch, capsys):
         """--format markdown without -o prints Markdown to stdout."""
         fake_metrics = {
-            "meta": {"total_events": 1, "total_messages": 1, "unique_agents": 1, "unique_rooms": 1},
+            "meta": {
+                "total_events": 1,
+                "total_messages": 1,
+                "unique_agents": 1,
+                "unique_rooms": 1,
+            },
             "messages_per_agent": {"A|B": 1},
         }
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         from village_pulse.__main__ import main
@@ -427,7 +563,9 @@ class TestFormatMarkdown:
 
 
 class TestMainErrorHandling:
-    def test_main_returns_two_when_fetch_events_raises_api_error(self, monkeypatch, capsys):
+    def test_main_returns_two_when_fetch_events_raises_api_error(
+        self, monkeypatch, capsys
+    ):
         import village_pulse.api_client as ac
 
         def boom(**_kwargs):
@@ -471,10 +609,14 @@ class TestFormatCsv:
         ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
 
         from village_pulse.__main__ import main
@@ -486,7 +628,10 @@ class TestFormatCsv:
         assert out.exists()
         lines = out.read_text(encoding="utf-8").strip().split("\n")
         assert len(lines) == 3
-        assert lines[0] == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        assert (
+            lines[0]
+            == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        )
         assert "Kimi K2.6" in lines[1]
         assert "GPT-5.5" in lines[2]
         assert lines[1].endswith(",100,20")
@@ -507,10 +652,14 @@ class TestFormatCsv:
         ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
 
         from village_pulse.__main__ import main
@@ -520,9 +669,11 @@ class TestFormatCsv:
         captured = capsys.readouterr()
         lines = captured.out.strip().split("\n")
         assert len(lines) == 2
-        assert lines[0] == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        assert (
+            lines[0]
+            == "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        )
         assert lines[1].endswith(",10,5")
-
 
     def test_csv_escapes_commas_and_newlines(self, tmp_path, monkeypatch):
         """CSV writer must quote cells containing commas or newlines."""
@@ -539,10 +690,14 @@ class TestFormatCsv:
         ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
 
         from village_pulse.__main__ import main
@@ -566,19 +721,32 @@ class TestCLIExtraEdges:
     def test_verbose_output(self, monkeypatch, capsys):
         """Test main when --verbose is specified."""
         fake_metrics = {"meta": {"total_events": 1}}
-        fake_events = [{"agent_name": "Kimi K2.6", "room": "best", "action_type": "AGENT_TALK", "content": "hi"}]
+        fake_events = [
+            {
+                "agent_name": "Kimi K2.6",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hi",
+            }
+        ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         import village_pulse.report as rp
+
         monkeypatch.setattr(rp, "generate", lambda **kwargs: Path("report.html"))
 
         from village_pulse.__main__ import main
+
         rc = main(["--verbose", "--format", "json"])
         assert rc == 0
         captured = capsys.readouterr()
@@ -590,16 +758,28 @@ class TestCLIExtraEdges:
 
     def test_verbose_csv_output(self, monkeypatch, capsys):
         """Test verbose printing with --format csv."""
-        fake_events = [{"agent_name": "Kimi", "room": "best", "action_type": "AGENT_TALK", "content": "hi"}]
+        fake_events = [
+            {
+                "agent_name": "Kimi",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hi",
+            }
+        ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
 
         from village_pulse.__main__ import main
+
         rc = main(["--verbose", "--format", "csv"])
         assert rc == 0
         captured = capsys.readouterr()
@@ -608,11 +788,14 @@ class TestCLIExtraEdges:
     def test_api_error_handling(self, monkeypatch, capsys):
         """Test that main returns 2 on APIError."""
         import village_pulse.api_client as ac
+
         def fake_fetch_raise(**kwargs):
             raise ac.APIError("Fake API failure")
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch_raise)
 
         from village_pulse.__main__ import main
+
         rc = main([])
         assert rc == 2
         captured = capsys.readouterr()
@@ -621,39 +804,52 @@ class TestCLIExtraEdges:
     def test_unexpected_exception_handling(self, monkeypatch, capsys):
         """Test that main returns 3 on unexpected exception."""
         import village_pulse.api_client as ac
+
         def fake_fetch_raise_unexpected(**kwargs):
             raise ValueError("Something went terribly wrong")
+
         monkeypatch.setattr(ac, "fetch_events", fake_fetch_raise_unexpected)
 
         from village_pulse.__main__ import main
+
         rc = main([])
         assert rc == 3
         captured = capsys.readouterr()
-        assert "[village-pulse] unexpected error: Something went terribly wrong" in captured.err
+        assert (
+            "[village-pulse] unexpected error: Something went terribly wrong"
+            in captured.err
+        )
 
     def test_default_html_output_path(self, monkeypatch, tmp_path):
         """Test default output_path is Path('report.html') if format is html and output is None."""
         import os
+
         orig_cwd = os.getcwd()
         os.chdir(str(tmp_path))
         try:
             fake_metrics = {"meta": {"total_events": 0}}
             import village_pulse.api_client as ac
+
             monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
 
             import village_pulse.analytics as an
+
             monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
             import village_pulse.report as rp
+
             generate_calls = []
+
             def fake_generate(**kwargs):
                 generate_calls.append(kwargs)
                 p = Path("report.html")
                 p.write_text("dummy html", encoding="utf-8")
                 return p
+
             monkeypatch.setattr(rp, "generate", fake_generate)
 
             from village_pulse.__main__ import main
+
             rc = main([])
             assert rc == 0
             assert len(generate_calls) == 1
@@ -665,19 +861,32 @@ class TestCLIExtraEdges:
     def test_verbose_html_output(self, monkeypatch, capsys):
         """Test verbose printing with HTML report generation."""
         fake_metrics = {"meta": {"total_events": 1}}
-        fake_events = [{"agent_name": "Kimi K2.6", "room": "best", "action_type": "AGENT_TALK", "content": "hi"}]
+        fake_events = [
+            {
+                "agent_name": "Kimi K2.6",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hi",
+            }
+        ]
 
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
 
         import village_pulse.analytics as an
+
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
 
         import village_pulse.report as rp
+
         monkeypatch.setattr(rp, "generate", lambda **kwargs: Path("report.html"))
 
         from village_pulse.__main__ import main
+
         rc = main(["--verbose"])
         assert rc == 0
         captured = capsys.readouterr()
@@ -687,10 +896,12 @@ class TestCLIExtraEdges:
 class TestCLIInternalEdgeCases:
     def test_markdown_escape_none(self):
         from village_pulse.__main__ import _markdown_escape
+
         assert _markdown_escape(None) == ""
 
     def test_metrics_to_markdown_various_contexts(self):
         from village_pulse.__main__ import _metrics_to_markdown
+
         metrics = {
             "meta": {"total_events": 5, "total_messages": 3},
             "room_participation": {"best": 12},
@@ -712,22 +923,29 @@ class TestCLIInternalEdgeCases:
 
     def test_main_discover_latest_day_exception(self, monkeypatch):
         import village_pulse.api_client as ac
+
         def fake_discover(self):
             raise ValueError("API Offline")
+
         monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", fake_discover)
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
-        
+
         from village_pulse.__main__ import main
+
         # should catch the exception and run main successfully without crash
         rc = main(["--room", "best"])
         assert rc == 0
 
     def test_main_markdown_verbose(self, monkeypatch, capsys):
         import village_pulse.api_client as ac
+
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
-        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
-        
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 427
+        )
+
         from village_pulse.__main__ import main
+
         rc = main(["--format", "markdown", "--verbose", "--room", "best"])
         assert rc == 0
         captured = capsys.readouterr()

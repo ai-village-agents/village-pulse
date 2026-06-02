@@ -32,12 +32,18 @@ def sample_raw():
         _ev("Bob", "#best", "AGENT_TALK", "2026-06-01T09:15:00Z", "hello"),
         _ev("Bob", "#rest", "AGENT_TALK", "2026-05-31T23:00:00Z", "yesterday"),
         _ev("Alice", "#best", "PAUSE", "2026-06-01T10:31:00Z"),
-        {"userName": "admin", "roomId": "#best", "actionType": "USER_TALK",
-         "createdAt": "2026-06-01T11:00:00Z", "content": "note"},
+        {
+            "userName": "admin",
+            "roomId": "#best",
+            "actionType": "USER_TALK",
+            "createdAt": "2026-06-01T11:00:00Z",
+            "content": "note",
+        },
     ]
 
 
 # --- normalization -------------------------------------------------------
+
 
 def test_normalize_basic_fields(sample_raw):
     events = a.normalize_events(sample_raw)
@@ -61,14 +67,17 @@ def test_normalize_is_idempotent(sample_raw):
     assert once == twice
 
 
-@pytest.mark.parametrize("value,expected_year", [
-    ("2026-06-01T09:00:00Z", 2026),
-    ("2026-06-01T09:00:00+00:00", 2026),
-    ("2026-06-01 09:00:00", 2026),
-    (1700000000, 2023),          # epoch seconds
-    (1700000000000, 2023),       # epoch milliseconds
-    (datetime(2026, 6, 1, tzinfo=timezone.utc), 2026),
-])
+@pytest.mark.parametrize(
+    "value,expected_year",
+    [
+        ("2026-06-01T09:00:00Z", 2026),
+        ("2026-06-01T09:00:00+00:00", 2026),
+        ("2026-06-01 09:00:00", 2026),
+        (1700000000, 2023),  # epoch seconds
+        (1700000000000, 2023),  # epoch milliseconds
+        (datetime(2026, 6, 1, tzinfo=timezone.utc), 2026),
+    ],
+)
 def test_timestamp_formats(value, expected_year):
     [e] = a.normalize_events([{"agentName": "X", "createdAt": value}])
     assert e.timestamp is not None
@@ -92,6 +101,7 @@ def test_missing_fields_are_safe():
 
 # --- metrics -------------------------------------------------------------
 
+
 def test_messages_per_agent_excludes_nonmessages(sample_raw):
     result = a.messages_per_agent(a.normalize_events(sample_raw))
     # Alice 2 AGENT_TALK (PAUSE excluded), Bob 2, admin 1
@@ -99,9 +109,7 @@ def test_messages_per_agent_excludes_nonmessages(sample_raw):
 
 
 def test_messages_per_agent_counts_all_when_not_message_only(sample_raw):
-    result = a.messages_per_agent(
-        a.normalize_events(sample_raw), message_only=False
-    )
+    result = a.messages_per_agent(a.normalize_events(sample_raw), message_only=False)
     assert result["Alice"] == 3  # includes the PAUSE
 
 
@@ -222,16 +230,30 @@ def test_room_health_shape(sample_raw):
 
 # --- compute_all ---------------------------------------------------------
 
+
 def test_compute_all_keys_and_serializable(sample_raw):
     import json
+
     summary = a.compute_all(sample_raw)
     expected = {
-        "meta", "messages_per_agent", "messages_per_agent_per_day",
-        "messages_per_day", "action_type_breakdown", "room_participation",
-        "room_participation_rates", "busiest_hours", "busiest_weekdays",
-        "agent_last_seen", "active_agents", "room_health", "token_usage",
-        "daily_trends", "agent_daily_trends", "top_agents_over_time",
-        "room_daily_trends", "interaction_graph",
+        "meta",
+        "messages_per_agent",
+        "messages_per_agent_per_day",
+        "messages_per_day",
+        "action_type_breakdown",
+        "room_participation",
+        "room_participation_rates",
+        "busiest_hours",
+        "busiest_weekdays",
+        "agent_last_seen",
+        "active_agents",
+        "room_health",
+        "token_usage",
+        "daily_trends",
+        "agent_daily_trends",
+        "top_agents_over_time",
+        "room_daily_trends",
+        "interaction_graph",
         "interaction_rankings",
         "hourly_activity_heatmap",
         "response_latency",
@@ -252,6 +274,7 @@ def test_compute_all_meta(sample_raw):
 
 def test_compute_all_empty_input():
     import json
+
     summary = a.compute_all([])
     assert summary["meta"]["total_events"] == 0
     assert summary["active_agents"] == {"active": [], "inactive": []}
@@ -266,6 +289,7 @@ def test_compute_all_accepts_activityevent_objects(sample_raw):
 
 
 # --- token usage ---------------------------------------------------------
+
 
 def _tok_ev(agent, room, inp, out, action="AGENT_TALK", when="2026-06-01T09:00:00Z"):
     return {
@@ -314,9 +338,16 @@ def test_coerce_int_rejects_junk():
 
 def test_tokens_per_agent(token_raw):
     result = a.tokens_per_agent(a.normalize_events(token_raw))
-    assert list(result.keys()) == ["Alice", "Bob"]  # Carol has no tokens; sorted by total
-    assert result["Alice"] == {"input": 400, "output": 30, "total": 430,
-                               "efficiency": round(400 / 30, 2)}
+    assert list(result.keys()) == [
+        "Alice",
+        "Bob",
+    ]  # Carol has no tokens; sorted by total
+    assert result["Alice"] == {
+        "input": 400,
+        "output": 30,
+        "total": 430,
+        "efficiency": round(400 / 30, 2),
+    }
     assert result["Bob"]["total"] == 75
 
 
@@ -349,6 +380,7 @@ def test_token_efficiency_none_when_no_output():
 
 def test_compute_all_includes_token_usage(token_raw):
     import json
+
     tu = a.compute_all(token_raw)["token_usage"]
     assert set(tu.keys()) == {"totals", "per_agent", "per_room", "per_day"}
     assert tu["totals"]["total"] == 505
@@ -361,9 +393,9 @@ def test_compute_all_meta_token_totals(token_raw):
     assert meta["total_output_tokens"] == 55
 
 
-
 def test_daily_trends_ordering_and_fields(token_raw):
     import json
+
     series = a.daily_trends(a.normalize_events(token_raw))
     # one entry per day with events, oldest-first
     assert [d["date"] for d in series] == ["2026-06-01", "2026-06-02"]
@@ -391,20 +423,31 @@ def test_daily_trends_empty_and_in_compute_all():
 
 def test_agent_daily_trends(token_raw):
     import json
+
     events = a.normalize_events(token_raw)
     alice = a.agent_daily_trends(events, "Alice")
     assert [d["date"] for d in alice] == ["2026-06-01", "2026-06-02"]
-    assert alice[0] == {"date": "2026-06-01", "messages": 1,
-                        "input_tokens": 100, "output_tokens": 10}
-    assert alice[1] == {"date": "2026-06-02", "messages": 1,
-                        "input_tokens": 300, "output_tokens": 20}
+    assert alice[0] == {
+        "date": "2026-06-01",
+        "messages": 1,
+        "input_tokens": 100,
+        "output_tokens": 10,
+    }
+    assert alice[1] == {
+        "date": "2026-06-02",
+        "messages": 1,
+        "input_tokens": 300,
+        "output_tokens": 20,
+    }
     # Bob only appears on one day; Carol has no tokens but is still a message.
     bob = a.agent_daily_trends(events, "Bob")
-    assert bob == [{"date": "2026-06-01", "messages": 1,
-                    "input_tokens": 50, "output_tokens": 25}]
+    assert bob == [
+        {"date": "2026-06-01", "messages": 1, "input_tokens": 50, "output_tokens": 25}
+    ]
     carol = a.agent_daily_trends(events, "Carol")
-    assert carol == [{"date": "2026-06-01", "messages": 1,
-                      "input_tokens": 0, "output_tokens": 0}]
+    assert carol == [
+        {"date": "2026-06-01", "messages": 1, "input_tokens": 0, "output_tokens": 0}
+    ]
     # Unknown agent and empty input both yield an empty series.
     assert a.agent_daily_trends(events, "Nobody") == []
     assert a.agent_daily_trends([], "Alice") == []
@@ -413,6 +456,7 @@ def test_agent_daily_trends(token_raw):
 
 def test_top_agents_over_time(token_raw):
     import json
+
     events = a.normalize_events(token_raw)
     top = a.top_agents_over_time(events, top_n=2)
     # Ranked by total messages (Alice 2, then Bob/Carol 1 -> name tiebreak).
@@ -435,18 +479,32 @@ def test_room_daily_trends(token_raw):
     assert [d["date"] for d in best] == ["2026-06-01", "2026-06-02"]
     # 06-01 in #best: Alice (100/10) + Carol (no tokens), both messages
     assert best[0] == {
-        "date": "2026-06-01", "events": 2, "messages": 2,
-        "active_agents": 2, "input_tokens": 100, "output_tokens": 10,
+        "date": "2026-06-01",
+        "events": 2,
+        "messages": 2,
+        "active_agents": 2,
+        "input_tokens": 100,
+        "output_tokens": 10,
     }
     assert best[1] == {
-        "date": "2026-06-02", "events": 1, "messages": 1,
-        "active_agents": 1, "input_tokens": 300, "output_tokens": 20,
+        "date": "2026-06-02",
+        "events": 1,
+        "messages": 1,
+        "active_agents": 1,
+        "input_tokens": 300,
+        "output_tokens": 20,
     }
     rest = a.room_daily_trends(events, "#rest")
-    assert rest == [{
-        "date": "2026-06-01", "events": 1, "messages": 1,
-        "active_agents": 1, "input_tokens": 50, "output_tokens": 25,
-    }]
+    assert rest == [
+        {
+            "date": "2026-06-01",
+            "events": 1,
+            "messages": 1,
+            "active_agents": 1,
+            "input_tokens": 50,
+            "output_tokens": 25,
+        }
+    ]
     assert a.room_daily_trends(events, "#nowhere") == []
     assert a.room_daily_trends([], "#best") == []
     # wired into compute_all for all rooms, empty -> {}
@@ -457,8 +515,9 @@ def test_room_daily_trends(token_raw):
 
 def test_agent_trends_in_compute_all(token_raw):
     summary = a.compute_all(token_raw)
-    assert summary["agent_daily_trends"]["Alice"] == \
-        a.agent_daily_trends(a.normalize_events(token_raw), "Alice")
+    assert summary["agent_daily_trends"]["Alice"] == a.agent_daily_trends(
+        a.normalize_events(token_raw), "Alice"
+    )
     assert [r["agent"] for r in summary["top_agents_over_time"]][0] == "Alice"
     empty = a.compute_all([])
     assert empty["agent_daily_trends"] == {}
@@ -501,13 +560,17 @@ def test_densify_none_series_is_all_zero():
 
 def test_densify_missing_field_defaults_zero():
     axis = ["2026-05-26"]
-    out = a.densify([{"date": "2026-05-26", "messages": 7}], axis, ["messages", "events"])
+    out = a.densify(
+        [{"date": "2026-05-26", "messages": 7}], axis, ["messages", "events"]
+    )
     assert out == [{"date": "2026-05-26", "messages": 7, "events": 0}]
+
 
 def test_lookup_from_objects():
     class DummyObj:
         def __init__(self):
             self.foo = "bar"
+
     obj = DummyObj()
     assert a._lookup(obj, ["foo"]) == "bar"
 
@@ -523,7 +586,11 @@ def test_room_participation_rates_zero():
 
 def test_room_participation_rates_zero_total():
     from unittest import mock
-    with mock.patch("village_pulse.analytics.room_participation", return_value={"empty_room": {"agent1": 0}}):
+
+    with mock.patch(
+        "village_pulse.analytics.room_participation",
+        return_value={"empty_room": {"agent1": 0}},
+    ):
         assert a.room_participation_rates([], message_only=False) == {}
 
 
@@ -651,50 +718,60 @@ class TestInteractionGraph:
     """Reply-adjacency: who responds to whom within a room/window."""
 
     def test_basic_direction_and_counts(self):
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:10:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:10:00Z"),
+            ]
+        )
         g = a.interaction_graph(evs)
         # Opus replied to Lead once; Lead replied to Opus once.
         assert g == {"Lead": {"Opus": 1}, "Opus": {"Lead": 1}}
 
     def test_same_agent_consecutive_is_skipped(self):
-        evs = a.normalize_events([
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+            ]
+        )
         # Only Lead-after-Opus counts; the Opus->Opus pair is ignored.
         assert a.interaction_graph(evs) == {"Lead": {"Opus": 1}}
 
     def test_window_excludes_far_apart_messages(self):
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T19:00:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T19:00:00Z"),
+            ]
+        )
         assert a.interaction_graph(evs, window_minutes=30.0) == {}
         # Widen the window and the adjacency reappears.
         assert a.interaction_graph(evs, window_minutes=180.0) == {"Opus": {"Lead": 1}}
 
     def test_rooms_are_isolated(self):
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#rest", "AGENT_TALK", "2026-06-02T17:01:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#rest", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+            ]
+        )
         # Different rooms never form an adjacency.
         assert a.interaction_graph(evs) == {}
 
     def test_targets_sorted_by_count_desc_then_name(self):
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
-            _ev("Gem", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:04:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+                _ev("Gem", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:04:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+            ]
+        )
         g = a.interaction_graph(evs)
         # Opus replied to Lead twice and Gem once -> Lead first (higher count).
         assert list(g["Opus"].keys()) == ["Lead", "Gem"]
@@ -704,21 +781,25 @@ class TestInteractionGraph:
         assert a.interaction_graph([]) == {}
 
     def test_message_only_false_counts_all_actions(self):
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#best", "PAUSE", "2026-06-02T17:01:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#best", "PAUSE", "2026-06-02T17:01:00Z"),
+            ]
+        )
         # Default (messages only) ignores the PAUSE.
         assert a.interaction_graph(evs) == {}
         # message_only=False treats every action as activity.
         assert a.interaction_graph(evs, message_only=False) == {"Opus": {"Lead": 1}}
 
     def test_undated_messages_are_ignored(self):
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "not-a-real-timestamp"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "not-a-real-timestamp"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+            ]
+        )
         # The undated Lead message is dropped, so only Lead-after-Opus remains.
         assert any(e.timestamp is None for e in evs)
         assert a.interaction_graph(evs) == {"Lead": {"Opus": 1}}
@@ -727,12 +808,14 @@ class TestInteractionGraph:
 class TestInteractionRankings:
     def test_out_and_in_degree(self):
         # Alice<->Bob exchange, plus Carol replies to Alice -> Alice received 2.
-        evs = a.normalize_events([
-            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
-            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
-            _ev("Carol", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+                _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+                _ev("Carol", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+            ]
+        )
         ranks = a.interaction_rankings(evs)
         # Each of the three made exactly one reply -> tie broken by name.
         assert ranks["top_responders"] == [
@@ -748,14 +831,16 @@ class TestInteractionRankings:
 
     def test_count_desc_then_name(self):
         # Bob replies to Alice three times; Alice replies to Bob once.
-        evs = a.normalize_events([
-            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
-            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
-            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
-            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:04:00Z"),
-            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+                _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+                _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+                _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:04:00Z"),
+                _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+            ]
+        )
         ranks = a.interaction_rankings(evs)
         assert ranks["top_responders"] == [
             {"agent": "Bob", "count": 3},
@@ -774,12 +859,14 @@ class TestInteractionRankings:
 
     def test_matches_graph_totals(self):
         # Rankings must equal the row/column sums of interaction_graph.
-        evs = a.normalize_events([
-            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
-            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
-            _ev("Lead", "#general", "AGENT_TALK", "2026-06-02T17:02:00Z"),
-            _ev("Gem", "#general", "AGENT_TALK", "2026-06-02T17:03:00Z"),
-        ])
+        evs = a.normalize_events(
+            [
+                _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+                _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+                _ev("Lead", "#general", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+                _ev("Gem", "#general", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+            ]
+        )
         graph = a.interaction_graph(evs)
         ranks = a.interaction_rankings(evs)
         out = {row["agent"]: row["count"] for row in ranks["top_responders"]}
