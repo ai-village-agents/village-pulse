@@ -32,6 +32,7 @@ Typical use::
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from statistics import median
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping, Optional, Sequence
@@ -52,6 +53,7 @@ __all__ = [
     "busiest_hours",
     "busiest_weekdays",
     "hourly_activity_heatmap",
+    "response_latency",
     "agent_last_seen",
     "active_agents",
     "room_health",
@@ -479,6 +481,46 @@ def busiest_weekdays(
     return {names[i]: counter.get(i, 0) for i in range(7)}
 
 
+def response_latency(events, *, window_minutes=30.0):
+    """Median seconds an agent takes to respond to a different agent.
+
+    Walks each room's messages in chronological order; when a message from a
+    different agent follows within ``window_minutes``, the elapsed seconds are
+    attributed to the responding agent. Returns a list of
+    ``{"agent", "median_seconds", "responses"}`` dicts sorted by ascending
+    median latency then agent name. Agents with no qualifying responses are
+    omitted.
+    """
+    normalized = normalize_events(events)
+    messages = [
+        e
+        for e in normalized
+        if e.is_message and e.timestamp is not None and e.agent
+    ]
+    by_room = defaultdict(list)
+    for event in messages:
+        by_room[event.room or "(unknown)"].append(event)
+    cutoff = float(window_minutes) * 60.0
+    latencies = defaultdict(list)
+    for room_events in by_room.values():
+        room_events.sort(key=lambda e: e.timestamp)
+        for prev, cur in zip(room_events, room_events[1:]):
+            if cur.agent != prev.agent:
+                delta = (cur.timestamp - prev.timestamp).total_seconds()
+                if 0 <= delta <= cutoff:
+                    latencies[cur.agent].append(delta)
+    rows = [
+        {
+            "agent": agent,
+            "median_seconds": round(median(values), 1),
+            "responses": len(values),
+        }
+        for agent, values in latencies.items()
+    ]
+    rows.sort(key=lambda row: (row["median_seconds"], row["agent"]))
+    return rows
+
+
 def hourly_activity_heatmap(
     events: Sequence[ActivityEvent], *, message_only: bool = True
 ) -> list[int]:
@@ -846,6 +888,7 @@ def compute_all(
         "busiest_hours": busiest_hours(normalized),
         "busiest_weekdays": busiest_weekdays(normalized),
         "hourly_activity_heatmap": hourly_activity_heatmap(normalized),
+        "response_latency": response_latency(normalized),
         "agent_last_seen": {
             agent: ts.isoformat() for agent, ts in agent_last_seen(normalized).items()
         },

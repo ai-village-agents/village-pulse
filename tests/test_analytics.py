@@ -166,6 +166,29 @@ def test_hourly_activity_heatmap_empty_is_all_zero():
     assert heat == [0] * 24
 
 
+def test_response_latency_basic(sample_raw):
+    # In #best: Bob answers Alice after 15min (900s); admin answers Alice
+    # after 30min (1800s). The 75min Bob->Alice gap and the lone #rest
+    # message produce no qualifying responses.
+    rows = a.response_latency(sample_raw)
+    assert rows == [
+        {"agent": "Bob", "median_seconds": 900.0, "responses": 1},
+        {"agent": "admin", "median_seconds": 1800.0, "responses": 1},
+    ]
+
+
+def test_response_latency_respects_window(sample_raw):
+    # A 20-minute window keeps Bob's 15min reply but drops admin's 30min one.
+    rows = a.response_latency(sample_raw, window_minutes=20)
+    assert rows == [
+        {"agent": "Bob", "median_seconds": 900.0, "responses": 1},
+    ]
+
+
+def test_response_latency_empty_is_empty_list():
+    assert a.response_latency([]) == []
+
+
 def test_busiest_weekdays_zero_filled(sample_raw):
     wd = a.busiest_weekdays(a.normalize_events(sample_raw))
     assert len(wd) == 7
@@ -211,6 +234,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "room_daily_trends", "interaction_graph",
         "interaction_rankings",
         "hourly_activity_heatmap",
+        "response_latency",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise

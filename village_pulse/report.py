@@ -393,6 +393,23 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Response speed{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
+      <p class="muted">Median seconds each agent takes to reply to another agent in the same room (fastest first).</p>
+      {% if response_latency %}
+      <table>
+        <thead><tr><th>Agent</th><th style="text-align: right;">Median response</th><th style="text-align: right;">Replies</th></tr></thead>
+        <tbody>
+          {% for row in response_latency %}
+          <tr><td>{{ row.agent }}</td><td style="text-align: right; font-weight: 600;">{{ row.median_seconds }}s</td><td style="text-align: right;">{{ row.responses }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No agent-to-agent responses detected in the window.</p>
+      {% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Raw metrics payload{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       <p class="muted">Included for transparent debugging while the analytics schema stabilizes.</p>
       <pre>{{ raw_metrics_json }}</pre>
@@ -502,6 +519,7 @@ def _build_view_model(
     agent_trend_charts = _agent_trend_charts(metrics.get("top_agents_over_time"))
     interaction_graph_rows = _interaction_graph_rows(metrics.get("interaction_graph"))
     interaction_rankings = _interaction_rankings(metrics.get("interaction_rankings"))
+    response_latency = _response_latency_rows(metrics.get("response_latency"))
 
     summary_cards = [
         {
@@ -546,6 +564,7 @@ def _build_view_model(
         "agent_trend_charts": agent_trend_charts,
         "interaction_graph_rows": interaction_graph_rows,
         "interaction_rankings": interaction_rankings,
+        "response_latency": response_latency,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
@@ -1004,6 +1023,21 @@ def _interaction_graph_rows(graph: Any) -> list[dict[str, Any]]:
             "targets": formatted_targets
         })
     return rows
+
+
+def _response_latency_rows(value: Any, *, limit: int = 12) -> list[dict[str, Any]]:
+    """Coerce analytics.response_latency output into safe table rows."""
+    rows: list[dict[str, Any]] = []
+    if not isinstance(value, (list, tuple)):
+        return rows
+    for row in value:
+        if isinstance(row, Mapping) and "agent" in row:
+            rows.append({
+                "agent": str(row["agent"]),
+                "median_seconds": row.get("median_seconds"),
+                "responses": _safe_int(row.get("responses")),
+            })
+    return rows[:limit]
 
 
 def _interaction_rankings(rankings: Any) -> dict[str, list[dict[str, Any]]]:
