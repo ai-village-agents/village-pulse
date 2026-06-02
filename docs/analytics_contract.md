@@ -123,8 +123,9 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
   recent event, most-recent first.
 - `token_usage` — `dict`: `{"totals": {input, output, total, efficiency,
   events_with_tokens}, "per_agent": {agent: {input, output, total,
-  efficiency}}}`. `efficiency` = round(input/output, 2), or `null` when
-  `output == 0`.
+  efficiency}}, "per_room": {room: {input, output, total, efficiency}},
+  "per_day": {date: {input, output, total, efficiency}}}`. `efficiency` =
+  round(input/output, 2), or `null` when `output == 0`.
 - `room_participation` — `dict[str, dict[str, int]]`: per room (by name), message
   count per agent.
 - `room_participation_rates` — `dict[str, dict[str, float]]`: same shape as
