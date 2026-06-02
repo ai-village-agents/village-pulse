@@ -50,9 +50,19 @@ def _sparkline_svg(values, width=200, height=40):
         points.append(f"{x:.1f},{y:.1f}")
 
     points_str = " ".join(points)
-    last_x = pad + plot_w
     last_y = pad + plot_h - ((values[-1] - vmin) / (vmax - vmin)) * plot_h
 
+    # Single value: center the marker for a cleaner look
+    if len(values) == 1:
+        cx = width / 2
+        return (
+            f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+            f'xmlns="http://www.w3.org/2000/svg">'
+            f'<circle cx="{cx:.1f}" cy="{last_y:.1f}" r="4" fill="#2f6fed"/>'
+            f"</svg>"
+        )
+
+    last_x = pad + plot_w
     return (
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
         f'xmlns="http://www.w3.org/2000/svg">'

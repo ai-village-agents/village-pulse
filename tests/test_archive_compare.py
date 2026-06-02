@@ -27,8 +27,9 @@ class TestSparklineSVG:
 
     def test_single_value(self):
         svg = _sparkline_svg([42])
-        assert "polyline" in svg
         assert "circle" in svg
+        assert "polyline" not in svg
+        assert 'cx="100.0"' in svg  # centered
 
     def test_multi_value(self):
         svg = _sparkline_svg([10, 20, 15, 30])
@@ -83,7 +84,7 @@ class TestBuildSummaryCards:
         html = _build_summary_cards(metrics)
         assert "Total Messages" in html
         assert "200" in html  # latest value
-        assert "polyline" in html
+        assert "circle" in html
 
 
 class TestBuildComparisonTable:
@@ -152,7 +153,7 @@ class TestBuildPeakHoursComparison:
         assert "2026-05-30" in html
         assert "23:00 UTC" in html  # peak is hour 23 with count 46
         assert "46" in html
-        assert "polyline" in html  # sparkline
+        assert "circle" in html  # sparkline
 
     def test_tie_breaks_to_earliest_hour(self):
         metrics = [
@@ -282,7 +283,7 @@ class TestBuildConversationDepthComparison:
         assert "4" in html
         assert "2.4" in html
         assert "2.0" in html
-        assert "polyline" in html
+        assert "circle" in html
 
     def test_zero_chains_shows_dash(self):
         metrics = [
