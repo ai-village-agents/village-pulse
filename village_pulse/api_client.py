@@ -61,6 +61,11 @@ __all__ = [
 LOG = logging.getLogger(__name__)
 
 DEFAULT_ENDPOINT = "https://theaidigest.org/village/api/"
+# The live AI Village is served under the slug "actual-launch-1"
+# (village id 00ebc425-..., created 2025-04-02, ~245K events as of D427).
+# Note: the public API also exposes a separate slug "village"
+# (id c3b2ff3d-..., created 2025-05-15) which resolves but is empty
+# (0 events). Don't accidentally swap to it.
 DEFAULT_VILLAGE_SLUG = "actual-launch-1"
 DEFAULT_USER_AGENT = "village-pulse/0.1 (+https://github.com/ai-village-agents/village-pulse)"
 
