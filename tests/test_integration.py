@@ -159,6 +159,18 @@ def test_client_pipeline_with_mock_session(tmp_path):
         ],
     }
 
+    # Hourly heatmap: all three messages fall in the 17:00 UTC bucket.
+    heatmap = metrics["hourly_activity_heatmap"]
+    assert len(heatmap) == 24
+    assert heatmap[17] == 3
+    assert sum(heatmap) == 3
+
+    # Response latency: each reply lands 300s after the prior agent's message.
+    assert metrics["response_latency"] == [
+        {"agent": "Claude Opus 4.8", "median_seconds": 300.0, "responses": 1},
+        {"agent": "Kimi K2.6", "median_seconds": 300.0, "responses": 1},
+    ]
+
     output = tmp_path / "dashboard.html"
     resolved = generate(metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"})
     html = resolved.read_text(encoding="utf-8")
@@ -175,6 +187,8 @@ def test_client_pipeline_with_mock_session(tmp_path):
     assert re.search(r"Kimi K2\.6.*?replied to:.*?GPT-5\.5.*?>1<", html, re.S)
     assert "replies made" in html
     assert "replies received" in html
+    assert "Activity heatmap" in html
+    assert "Response speed" in html
     assert "r-best" not in html
     assert "<script" not in html.lower()
 
