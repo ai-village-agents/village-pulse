@@ -19,6 +19,7 @@ from village_pulse.report import (
     _interaction_graph_rows,
     _interaction_rankings,
     _response_latency_rows,
+    _heatmap_cells,
 )
 
 
@@ -116,7 +117,10 @@ def test_render_includes_core_dashboard_sections():
     assert "Active agents over time" in html
     assert '<svg class="sparkline"' in html
     assert "Messages over time trend" in html
-    assert "Daily messages over time values from 2026-05-29 to 2026-06-01 with a peak of 3." in html
+    assert (
+        "Daily messages over time values from 2026-05-29 to 2026-06-01 with a peak of 3."
+        in html
+    )
     assert "Peak 1,300" in html
     assert "Top agent trends" in html
     assert "GPT-5.5 message trend" in html
@@ -154,9 +158,9 @@ def test_render_escapes_agent_names_in_trend_svg_metadata():
     html = render(metrics, {})
 
     assert '<script>alert("x")</script>' not in html
-    assert '&lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt; message trend' in html
+    assert "&lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt; message trend" in html
     assert (
-        'Daily message counts for &lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt; from 2026-06-01'
+        "Daily message counts for &lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt; from 2026-06-01"
         in html
     )
 
@@ -218,6 +222,7 @@ def test_render_handles_missing_token_usage():
 
     assert "Token usage" in html
     assert "No token usage metrics were provided." in html
+
 
 def test_daily_trend_values_skips_non_mapping_and_missing_date():
     values = [
@@ -311,7 +316,9 @@ def test_hour_rows_handles_various_inputs():
     assert mapping_result[0] == {"hour": "17", "count": 2}
 
     # Sequence of mappings
-    seq_mapping = _hour_rows([{"hour": "17", "count": 2}, {"hour": "18", "messages": 1}])
+    seq_mapping = _hour_rows(
+        [{"hour": "17", "count": 2}, {"hour": "18", "messages": 1}]
+    )
     assert len(seq_mapping) == 2
     assert seq_mapping[0] == {"hour": "17", "count": 2}
 
@@ -362,9 +369,9 @@ def test_interaction_graph_rows_edge_cases():
 
     # Valid mapping but with invalid/empty targets to hit line 903
     graph = {
-        "Opus": None,               # hits targets is not a Mapping -> continue
-        "Kimi": {},                 # hits not targets -> continue
-        "GPT": {"Lead": 3},         # valid
+        "Opus": None,  # hits targets is not a Mapping -> continue
+        "Kimi": {},  # hits not targets -> continue
+        "GPT": {"Lead": 3},  # valid
     }
     rows = _interaction_graph_rows(graph)
     assert len(rows) == 1
@@ -375,7 +382,10 @@ def test_interaction_graph_rows_edge_cases():
 def test_interaction_rankings_edge_cases():
     # Non-mapping
     assert _interaction_rankings(None) == {"top_responders": [], "top_targets": []}
-    assert _interaction_rankings("not-a-mapping") == {"top_responders": [], "top_targets": []}
+    assert _interaction_rankings("not-a-mapping") == {
+        "top_responders": [],
+        "top_targets": [],
+    }
 
     # Empty list or non-mapping elements in rankings lists
     rankings = {
@@ -436,6 +446,7 @@ def test_render_digest_mode():
     html = render(metrics, {"room": "#best", "days": 7, "version": "0.1.0"})
     assert "Village Pulse - 7-Day Digest — #best" in html
 
+
 def test_render_digest_mode_no_room():
     metrics = sample_metrics()
     html = render(metrics, {"days": 7, "version": "0.1.0"})
@@ -461,3 +472,21 @@ def test_room_title_formatting_variations():
     # 4. Room without hash prefix, no day (should auto-prefix with #)
     html4 = render(sample_metrics(), {"room": "best", "version": "0.1.0"})
     assert "Village Pulse — #best" in html4
+
+
+def test_heatmap_cells_edge_cases():
+    # 1. Mapping input
+    mapping_res = _heatmap_cells({"5": 10, "-1": 5, "24": 5})
+    assert len(mapping_res) == 24
+    assert mapping_res[5]["count"] == 10
+    assert mapping_res[5]["level"] == 4
+    assert mapping_res[0]["count"] == 0
+
+    # 2. Sequence longer than 24
+    seq_res = _heatmap_cells([1] * 26)
+    assert len(seq_res) == 24
+    for i in range(24):
+        assert seq_res[i]["count"] == 1
+
+    # 3. Invalid input type (string)
+    assert _heatmap_cells("invalid_type") == []

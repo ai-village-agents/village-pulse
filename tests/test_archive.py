@@ -13,7 +13,12 @@ from unittest.mock import MagicMock, patch
 from village_pulse import archive
 
 
-def _make_raw_event(event_index: int, action_type: str = "AGENT_TALK", agent_name: str = "TestAgent", room: str = "best") -> dict:
+def _make_raw_event(
+    event_index: int,
+    action_type: str = "AGENT_TALK",
+    agent_name: str = "TestAgent",
+    room: str = "best",
+) -> dict:
     return {
         "id": f"ev-{event_index}",
         "eventIndex": event_index,
@@ -41,7 +46,10 @@ class TestGenerateArchive:
             _make_raw_event(2, agent_name="Bob"),
         ]
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=3)
 
         assert len(reports) == 3
@@ -68,9 +76,14 @@ class TestGenerateArchive:
         mock_client._discover_latest_day.return_value = 426
         mock_client.get_agents.return_value = {}
         mock_client.get_rooms.return_value = {}
-        mock_client.iter_raw_events_for_day.side_effect = lambda day: [] if day == 425 else [_make_raw_event(1)]
+        mock_client.iter_raw_events_for_day.side_effect = lambda day: (
+            [] if day == 425 else [_make_raw_event(1)]
+        )
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=3)
 
         days = {r["day"] for r in reports}
@@ -94,14 +107,16 @@ class TestGenerateArchive:
 
         mock_client.iter_raw_events_for_day.side_effect = _side_effect
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=3)
 
         days = {r["day"] for r in reports}
         assert 426 in days
         assert 425 not in days
         assert 424 in days
-
 
     def test_latest_report_is_seven_day_digest(self, tmp_path: Path) -> None:
         """report_latest.html should be a 7-day digest, not a copy of the latest day."""
@@ -131,7 +146,10 @@ class TestGenerateArchive:
             }
         ]
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=3)
 
         assert [r["day"] for r in reports] == [425, 424]
@@ -144,6 +162,43 @@ class TestGenerateArchive:
         assert "report_day425.html" in index_html
         assert "report_day426.html" not in index_html
 
+    def test_latest_report_empty_seven_day_digest(self, tmp_path: Path) -> None:
+        """If 7-day digest events are empty, log and skip the latest report."""
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+        mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
+        mock_client.fetch_events.return_value = []
+
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
+            _ = archive.generate_archive(tmp_path, days_back=1)
+
+        assert not (tmp_path / "report_latest.html").exists()
+
+    def test_latest_report_seven_day_digest_api_error(self, tmp_path: Path) -> None:
+        """If fetch_events raises APIError, log warning and continue without crashing."""
+        from village_pulse.api_client import APIError
+
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+        mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
+        mock_client.fetch_events.side_effect = APIError(
+            "simulated digest failure", status=500
+        )
+
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
+            _ = archive.generate_archive(tmp_path, days_back=1)
+
+        assert not (tmp_path / "report_latest.html").exists()
 
     def test_generate_archive_links_comparison_filename(self, tmp_path: Path) -> None:
         """Archive generation can link the comparison dashboard from index.html."""
@@ -153,14 +208,21 @@ class TestGenerateArchive:
         mock_client.get_rooms.return_value = {"room-1": "best"}
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
-            archive.generate_archive(tmp_path, days_back=1, comparison_filename="comparison.html")
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
+            archive.generate_archive(
+                tmp_path, days_back=1, comparison_filename="comparison.html"
+            )
 
         index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
         assert 'href="report_latest.html">Latest report</a>' in index_html
         assert 'href="comparison.html">Comparison dashboard</a>' in index_html
 
-    def test_falls_back_to_days_back_when_latest_day_missing(self, tmp_path: Path) -> None:
+    def test_falls_back_to_days_back_when_latest_day_missing(
+        self, tmp_path: Path
+    ) -> None:
         """If latest-day discovery fails, archive still renders a days_back window."""
         mock_client = MagicMock()
         mock_client._discover_latest_day.return_value = None
@@ -168,7 +230,10 @@ class TestGenerateArchive:
         mock_client.get_rooms.return_value = {"room-1": "best"}
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=2)
 
         assert [r["day"] for r in reports] == [2, 1]
@@ -182,11 +247,31 @@ class TestGenerateArchive:
 class TestGenerateIndexPage:
     def test_index_has_days_sorted_newest_first(self, tmp_path: Path) -> None:
         reports = [
-            {"day": 3, "filename": "report_day3.html", "total_events": 10, "total_messages": 5, "unique_agents": 2},
-            {"day": 2, "filename": "report_day2.html", "total_events": 0, "total_messages": 0, "unique_agents": 0},
-            {"day": 1, "filename": "report_day1.html", "total_events": 20, "total_messages": 15, "unique_agents": 3},
+            {
+                "day": 3,
+                "filename": "report_day3.html",
+                "total_events": 10,
+                "total_messages": 5,
+                "unique_agents": 2,
+            },
+            {
+                "day": 2,
+                "filename": "report_day2.html",
+                "total_events": 0,
+                "total_messages": 0,
+                "unique_agents": 0,
+            },
+            {
+                "day": 1,
+                "filename": "report_day1.html",
+                "total_events": 20,
+                "total_messages": 15,
+                "unique_agents": 3,
+            },
         ]
-        archive._generate_index_page(reports, tmp_path, generated_at="2026-06-01 10:00 UTC", village_day=3)
+        archive._generate_index_page(
+            reports, tmp_path, generated_at="2026-06-01 10:00 UTC", village_day=3
+        )
 
         html = (tmp_path / "index.html").read_text(encoding="utf-8")
         # Newest first in table body
@@ -197,17 +282,24 @@ class TestGenerateIndexPage:
         assert pos2 < pos1
 
     def test_index_omits_latest_link_when_no_reports(self, tmp_path: Path) -> None:
-        archive._generate_index_page([], tmp_path, generated_at="2026-06-01 10:00 UTC", village_day=426)
+        archive._generate_index_page(
+            [], tmp_path, generated_at="2026-06-01 10:00 UTC", village_day=426
+        )
 
         html = (tmp_path / "index.html").read_text(encoding="utf-8")
         assert "Village Pulse Archive" in html
         assert "report_latest.html" not in html
         assert "Latest report" not in html
 
-
     def test_index_can_link_comparison_dashboard(self, tmp_path: Path) -> None:
         reports = [
-            {"day": 426, "filename": "report_day426.html", "total_events": 10, "total_messages": 5, "unique_agents": 2},
+            {
+                "day": 426,
+                "filename": "report_day426.html",
+                "total_events": 10,
+                "total_messages": 5,
+                "unique_agents": 2,
+            },
         ]
 
         archive._generate_index_page(
@@ -222,8 +314,9 @@ class TestGenerateIndexPage:
         assert 'href="report_latest.html">Latest report</a>' in html
         assert 'href="comparison.html">Comparison dashboard</a>' in html
 
-
-    def test_index_can_link_comparison_dashboard_without_reports(self, tmp_path: Path) -> None:
+    def test_index_can_link_comparison_dashboard_without_reports(
+        self, tmp_path: Path
+    ) -> None:
         archive._generate_index_page(
             [],
             tmp_path,
@@ -237,7 +330,6 @@ class TestGenerateIndexPage:
         assert "report_latest.html" not in html
         assert "Latest report" not in html
 
-
     def test_index_escapes_comparison_dashboard_filename(self, tmp_path: Path) -> None:
         archive._generate_index_page(
             [],
@@ -249,8 +341,10 @@ class TestGenerateIndexPage:
 
         html = (tmp_path / "index.html").read_text(encoding="utf-8")
         assert 'onclick="alert(1)' not in html
-        assert 'href="comparison.html&quot; onclick=&quot;alert(1)">Comparison dashboard</a>' in html
-
+        assert (
+            'href="comparison.html&quot; onclick=&quot;alert(1)">Comparison dashboard</a>'
+            in html
+        )
 
     def test_index_escapes_report_filename_and_metadata(self, tmp_path: Path) -> None:
         reports = [
@@ -271,13 +365,19 @@ class TestGenerateIndexPage:
         )
 
         html = (tmp_path / "index.html").read_text(encoding="utf-8")
-        assert '<script>alert' not in html
+        assert "<script>alert" not in html
         assert 'onclick="alert(1)' not in html
-        assert 'href="report_day426.html&quot; onclick=&quot;alert(1)">Day &lt;script&gt;alert(&quot;day&quot;)&lt;/script&gt;</a>' in html
-        assert '&lt;script&gt;alert(&quot;events&quot;)&lt;/script&gt;' in html
-        assert '&lt;script&gt;alert(&quot;agents&quot;)&lt;/script&gt;' in html
-        assert 'Current village day: &lt;script&gt;alert(&quot;village&quot;)&lt;/script&gt;' in html
-        assert 'Generated &lt;script&gt;alert(&quot;time&quot;)&lt;/script&gt;' in html
+        assert (
+            'href="report_day426.html&quot; onclick=&quot;alert(1)">Day &lt;script&gt;alert(&quot;day&quot;)&lt;/script&gt;</a>'
+            in html
+        )
+        assert "&lt;script&gt;alert(&quot;events&quot;)&lt;/script&gt;" in html
+        assert "&lt;script&gt;alert(&quot;agents&quot;)&lt;/script&gt;" in html
+        assert (
+            "Current village day: &lt;script&gt;alert(&quot;village&quot;)&lt;/script&gt;"
+            in html
+        )
+        assert "Generated &lt;script&gt;alert(&quot;time&quot;)&lt;/script&gt;" in html
 
 
 class TestCLI:
@@ -294,7 +394,10 @@ class TestCLI:
         mock_client.get_rooms.return_value = {}
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             rc = archive.main(["--output", str(tmp_path), "--days-back", "2"])
 
         assert rc == 0
@@ -308,15 +411,20 @@ class TestCLI:
         mock_client.get_rooms.return_value = {}
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
-            rc = archive.main([
-                "--output",
-                str(tmp_path),
-                "--days-back",
-                "1",
-                "--comparison-filename",
-                "comparison.html",
-            ])
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
+            rc = archive.main(
+                [
+                    "--output",
+                    str(tmp_path),
+                    "--days-back",
+                    "1",
+                    "--comparison-filename",
+                    "comparison.html",
+                ]
+            )
 
         assert rc == 0
         index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
@@ -328,7 +436,10 @@ class TestCLI:
         mock_client = MagicMock()
         mock_client._discover_latest_day.side_effect = APIError("boom", status=500)
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             rc = archive.main(["--output", str(tmp_path), "--days-back", "2"])
 
         assert rc == 1
