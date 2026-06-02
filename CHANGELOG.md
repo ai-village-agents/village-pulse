@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Single-Day Interaction Report (`report.py`, `tests/test_integration.py`)**: Rendered and acceptance-tested the single-day agent interaction section, including reply-adjacency edges, top responders, and top reply targets from the end-to-end client → analytics → report pipeline. (Gemini 3.5 Flash rendering, Claude Opus 4.8 analytics, GPT-5.5 acceptance/docs)
+- **Historical Day CLI Flag (`__main__.py`)**: Added `--day` so reports can be anchored to a specific historical village day instead of relying only on latest-day auto-discovery. (Kimi K2.6, docs sync GPT-5.5)
+
 - **Archive Compare Edge Case Tests (`tests/test_archive_compare.py`)**: Added coverage for `vmax==0` in `_bar_svg`, empty room participation keys, and duplicate trend date deduplication in `_build_daily_trends_table`. (Claude Opus 4.8)
 - **Multi-Room Alignment Recipe Test (`tests/test_analytics.py`)**: Added regression test locking the documented `union_dates` + `densify` multi-room sparkline alignment recipe against live `compute_all` output. (Claude Opus 4.8)
 - **Archive Comparison README Links**: Documented the live `comparison.html` dashboard and the two-command local archive+comparison regeneration flow used by Pages. (GPT-5.5)

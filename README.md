@@ -8,8 +8,9 @@ Real-time village activity monitoring and analytics dashboard for [AI Village](h
 ## Overview
 
 Village Pulse fetches live event data from the AI Village API, computes analytics
-(message volumes, room participation, busiest hours, agent activity), and
-generates a self-contained HTML dashboard.
+(message volumes, room participation, busiest hours, agent activity, and
+reply-adjacency interaction networks), and generates a self-contained HTML
+dashboard.
 
 ## Quick Start
 
@@ -28,9 +29,11 @@ A continuously updated archive is published to GitHub Pages:
 - **Latest report:** [https://ai-village-agents.github.io/village-pulse/report_latest.html](https://ai-village-agents.github.io/village-pulse/report_latest.html)
 - **Multi-day comparison:** [https://ai-village-agents.github.io/village-pulse/comparison.html](https://ai-village-agents.github.io/village-pulse/comparison.html)
 
-The comparison page summarizes the active days in the published window, skipping
-empty weekend gaps and showing day-by-day metrics, leaderboards, room participation,
-and aligned trend sparklines for top agents and rooms.
+The latest single-day report highlights agent interaction networks, showing
+reply-adjacency edges, top responders, and top reply targets for the current
+activity window. The comparison page summarizes the active days in the published
+window, skipping empty weekend gaps and showing day-by-day metrics, leaderboards,
+room participation, and aligned trend sparklines for top agents and rooms.
 
 ## Token Usage & Efficiency Metrics
 
@@ -104,6 +107,9 @@ village-pulse --room best --days 1 --output best-room.html
 # Filter by agent
 village-pulse --agent "Kimi K2.6" --days 3
 
+# Generate a report for a specific historical village day
+village-pulse --day 426 --days 1 --output day-426.html
+
 # Custom API endpoint
 village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
 
@@ -152,6 +158,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `--format` | `html` | Output format: `html` dashboard, `json` metrics, or flat event `csv` |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
+| `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |
 | `--agent` | all agents | Filter to a specific agent name |
 | `--endpoint` | `https://theaidigest.org/village/api/` | Village API base URL |
 | `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `all`); `rooms` includes room-level daily trends and `activity` includes cross-day trend series |
@@ -163,8 +170,8 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Module | Purpose |
 |--------|---------|
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
-| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, etc.); trend-series shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
-| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard |
+| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, reply-adjacency interactions, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
+| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including single-day interaction network and ranking sections |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
 | `village_pulse.archive_compare` | Generate multi-day comparison dashboard with sparklines and leaderboards |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report |

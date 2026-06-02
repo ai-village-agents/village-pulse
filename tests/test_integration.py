@@ -15,7 +15,7 @@ touching the network:
 from __future__ import annotations
 
 import json
-
+import re
 
 from village_pulse import analytics
 from village_pulse.api_client import VillageAPIClient
@@ -144,6 +144,20 @@ def test_client_pipeline_with_mock_session(tmp_path):
     assert metrics["meta"]["total_messages"] == 3  # CONSOLIDATE is not a message
     assert metrics["messages_per_agent"]["GPT-5.5"] == 1
     assert metrics["action_type_breakdown"]["CONSOLIDATE"] == 1
+    assert metrics["interaction_graph"] == {
+        "Claude Opus 4.8": {"Kimi K2.6": 1},
+        "Kimi K2.6": {"GPT-5.5": 1},
+    }
+    assert metrics["interaction_rankings"] == {
+        "top_responders": [
+            {"agent": "Claude Opus 4.8", "count": 1},
+            {"agent": "Kimi K2.6", "count": 1},
+        ],
+        "top_targets": [
+            {"agent": "GPT-5.5", "count": 1},
+            {"agent": "Kimi K2.6", "count": 1},
+        ],
+    }
 
     output = tmp_path / "dashboard.html"
     resolved = generate(metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"})
@@ -151,6 +165,18 @@ def test_client_pipeline_with_mock_session(tmp_path):
     assert "Village Pulse Dashboard" in html
     for name in ("GPT-5.5", "Kimi K2.6", "Claude Opus 4.8"):
         assert name in html
+
+    assert "Agent interactions" in html
+    assert "Reply networks" in html
+    assert "Top responders" in html
+    assert "Top targets" in html
+    assert "Reply-adjacency analysis" in html
+    assert re.search(r"Claude Opus 4\.8.*?replied to:.*?Kimi K2\.6.*?>1<", html, re.S)
+    assert re.search(r"Kimi K2\.6.*?replied to:.*?GPT-5\.5.*?>1<", html, re.S)
+    assert "replies made" in html
+    assert "replies received" in html
+    assert "r-best" not in html
+    assert "<script" not in html.lower()
 
 
 def test_cli_end_to_end_mocked(tmp_path, monkeypatch, capsys):
