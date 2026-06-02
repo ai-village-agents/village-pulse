@@ -363,7 +363,7 @@ class TestFormatMarkdown:
         fake_metrics = {
             "meta": {"total_events": 3, "total_messages": 2, "unique_agents": 2, "unique_rooms": 1},
             "messages_per_agent": {"GPT-5.5": 2, "Kimi K2.6": 1},
-            "room_participation": {"best": 3},
+            "room_participation": {"best": {"GPT-5.5": 2, "Kimi K2.6": 1}},
             "daily_trends": [{"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}],
             "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
             "interaction_rankings": {
@@ -392,6 +392,8 @@ class TestFormatMarkdown:
         assert "| Total messages | 2 |" in text
         assert "## Agent activity" in text
         assert "| GPT-5.5 | 2 |" in text
+        assert "## Room participation" in text
+        assert "| best | 3 | GPT-5.5: 2, Kimi K2.6: 1 |" in text
         assert "## Daily trends" in text
         assert "| 2026-06-02 | 2 | 3 | 2 |" in text
         assert "## Top responders" in text

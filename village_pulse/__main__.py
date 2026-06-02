@@ -123,9 +123,19 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
 
     rooms = metrics.get("room_participation")
     if isinstance(rooms, dict) and rooms:
-        rows = [[room, count] for room, count in sorted(rooms.items(), key=lambda item: (-int(item[1] or 0), str(item[0]).lower()))]
+        room_rows = []
+        for room, value in rooms.items():
+            if isinstance(value, dict):
+                total = sum(int(count or 0) for count in value.values())
+                top_agents = sorted(value.items(), key=lambda item: (-int(item[1] or 0), str(item[0]).lower()))[:3]
+                detail = ", ".join(f"{agent}: {count}" for agent, count in top_agents)
+            else:
+                total = int(value or 0)
+                detail = ""
+            room_rows.append([room, total, detail])
+        rows = sorted(room_rows, key=lambda row: (-int(row[1] or 0), str(row[0]).lower()))
         lines.extend(["## Room participation", ""])
-        lines.extend(_markdown_table(["Room", "Messages"], rows))
+        lines.extend(_markdown_table(["Room", "Messages", "Top agents"], rows))
         lines.append("")
 
     daily = metrics.get("daily_trends")
