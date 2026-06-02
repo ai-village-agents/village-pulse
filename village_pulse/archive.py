@@ -248,13 +248,26 @@ def generate_archive(
         })
         LOG.info("Day %d → %s (%d events, %d messages)", day, filename, meta.get("total_events", 0), meta.get("total_messages", 0))
 
-    # Also generate the combined "latest" report for convenience
-    if reports:
-        latest_day = reports[0]["day"]
-        latest_report = output_path / f"report_day{latest_day}.html"
+    # Also generate the combined "latest" report as a 7-day digest
+    if reports and current_day is not None:
         latest_index = output_path / "report_latest.html"
-        if latest_report.exists():
-            latest_index.write_text(latest_report.read_text(encoding="utf-8"), encoding="utf-8")
+        try:
+            digest_events = client.fetch_events(days=7, current_day=current_day)
+            if digest_events:
+                digest_metrics = analytics.compute_all(digest_events)
+                report.generate(
+                    digest_metrics,
+                    latest_index,
+                    context={
+                        "days": 7,
+                        "version": "0.1.0",
+                    },
+                )
+                LOG.info("Latest digest → %s", latest_index.name)
+            else:
+                LOG.info("No events for 7-day digest; skipping latest report")
+        except api_client.APIError as exc:
+            LOG.warning("API error generating 7-day digest: %s", exc)
 
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     _generate_index_page(

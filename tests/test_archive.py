@@ -103,8 +103,8 @@ class TestGenerateArchive:
         assert 424 in days
 
 
-    def test_latest_report_uses_newest_non_empty_day(self, tmp_path: Path) -> None:
-        """report_latest.html should point at the newest day that produced a report."""
+    def test_latest_report_is_seven_day_digest(self, tmp_path: Path) -> None:
+        """report_latest.html should be a 7-day digest, not a copy of the latest day."""
         mock_client = MagicMock()
         mock_client._discover_latest_day.return_value = 426
         mock_client.get_agents.return_value = {"room-1": "Alice"}
@@ -116,13 +116,29 @@ class TestGenerateArchive:
             return [_make_raw_event(day, agent_name=f"Agent{day}")]
 
         mock_client.iter_raw_events_for_day.side_effect = _side_effect
+        mock_client.fetch_events.return_value = [
+            {
+                "event_id": "ev-digest-1",
+                "agent_name": "Alice",
+                "room": "best",
+                "room_id": "room-1",
+                "created_at": "2026-06-01T10:00:00.000Z",
+                "action_type": "AGENT_TALK",
+                "content": "digest message",
+                "cost": 1,
+                "input_tokens": 100,
+                "output_tokens": 10,
+            }
+        ]
 
         with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
             reports = archive.generate_archive(tmp_path, days_back=3)
 
         assert [r["day"] for r in reports] == [425, 424]
         assert not (tmp_path / "report_day426.html").exists()
-        assert (tmp_path / "report_latest.html").read_text(encoding="utf-8") == (tmp_path / "report_day425.html").read_text(encoding="utf-8")
+        latest_html = (tmp_path / "report_latest.html").read_text(encoding="utf-8")
+        assert "Village Pulse - 7-Day Digest" in latest_html
+        assert "Window: 7 days" in latest_html
         index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
         assert 'href="report_latest.html">Latest report</a>' in index_html
         assert "report_day425.html" in index_html
