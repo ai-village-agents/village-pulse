@@ -127,8 +127,29 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
       {% endfor %}
     </section>
 
+    {% if days > 1 and trend_charts %}
     <section class="section card">
-      <h2>Agent activity</h2>
+      <h2>Activity digest trend ({{ days }} days)</h2>
+      <p class="muted" style="margin-top: 0;">Daily message volume trend across the active days in the digest period.</p>
+      {% for chart in trend_charts if chart.title == 'Messages over time' %}
+      <div style="border: 1px solid var(--line); border-radius: .85rem; padding: 1rem; background: #fbfdff; margin-top: 0.5rem;">
+        <div class="chart-head"><span class="chart-title">{{ chart.title }} (Daily sparkline)</span><span class="chart-value">Peak {{ chart.peak }} messages</span></div>
+        <svg class="sparkline" viewBox="0 0 100 44" role="img" aria-label="{{ chart.title }} trend from {{ chart.start_date }} to {{ chart.end_date }}" preserveAspectRatio="none" style="height: 5rem;">
+          <line class="spark-grid" x1="0" y1="38" x2="100" y2="38"></line>
+          <line class="spark-grid" x1="0" y1="22" x2="100" y2="22"></line>
+          <line class="spark-grid" x1="0" y1="6" x2="100" y2="6"></line>
+          <polygon class="spark-area" fill="{{ chart.color }}" points="{{ chart.area_points }}"></polygon>
+          <polyline class="spark-line" stroke="{{ chart.color }}" points="{{ chart.points }}"></polyline>
+          {% for point in chart.point_rows %}<circle class="spark-dot" fill="{{ chart.color }}" cx="{{ point.x }}" cy="{{ point.y }}" r="1.6"><title>{{ point.date }}: {{ point.value }}</title></circle>{% endfor %}
+        </svg>
+        <div class="chart-dates"><span>{{ chart.start_date }}</span><span>{{ chart.end_date }}</span></div>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="section card">
+      <h2>Agent activity{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       {% if agent_rows %}
       <table>
         <thead><tr><th>Agent</th><th>Messages</th><th class="bar-cell">Share</th></tr></thead>
@@ -146,7 +167,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
-      <h2>Room participation</h2>
+      <h2>Room participation{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       {% if room_rows %}
       <table>
         <thead><tr><th>Room</th><th>Messages</th><th>Agents</th><th>Participation</th></tr></thead>
@@ -161,7 +182,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
 
     <section class="grid section" aria-label="trend details">
       <article class="card">
-        <h2>Busiest hours</h2>
+        <h2>Busiest hours{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
         {% if busiest_hours %}
         <table><thead><tr><th>Hour</th><th>Messages</th></tr></thead><tbody>
           {% for hour in busiest_hours %}<tr><td>{{ hour.hour }}</td><td>{{ hour.count }}</td></tr>{% endfor %}
@@ -169,14 +190,14 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
         {% else %}<p class="muted">No hourly activity metrics were provided.</p>{% endif %}
       </article>
       <article class="card">
-        <h2>Agent status</h2>
+        <h2>Agent status{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
         <p><span class="good">Active:</span> {{ active_agents|join(', ') if active_agents else 'none listed' }}</p>
         <p><span class="warn">Inactive:</span> {{ inactive_agents|join(', ') if inactive_agents else 'none listed' }}</p>
       </article>
     </section>
 
     <section class="section card">
-      <h2>Trends over time</h2>
+      <h2>Trends over time{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       {% if trend_charts %}
       <div class="chart-grid">
         {% for chart in trend_charts %}
@@ -200,7 +221,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
-      <h2>Top agent trends</h2>
+      <h2>Top agent trends{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       {% if agent_trend_charts %}
       <div class="chart-grid">
         {% for chart in agent_trend_charts %}
@@ -224,7 +245,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
-      <h2>Daily trends</h2>
+      <h2>Daily trends{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       {% if daily_trend_rows %}
       <table>
         <thead><tr><th>Date</th><th>Messages</th><th>Events</th><th>Active agents</th><th>Total tokens</th><th>Input:output</th></tr></thead>
@@ -238,7 +259,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
-      <h2>Token usage</h2>
+      <h2>Token usage{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       {% if token_summary %}
       <div class="grid" aria-label="token summary metrics">
         {% for card in token_summary %}
@@ -276,7 +297,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
-      <h2>Agent interactions</h2>
+      <h2>Agent interactions{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       <p class="muted">Reply-adjacency analysis showing who responds to whom (within a 30-minute window) and overall reply activity.</p>
       
       {% if interaction_graph_rows or interaction_rankings.top_responders or interaction_rankings.top_targets %}
@@ -351,7 +372,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
-      <h2>Raw metrics payload</h2>
+      <h2>Raw metrics payload{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       <p class="muted">Included for transparent debugging while the analytics schema stabilizes.</p>
       <pre>{{ raw_metrics_json }}</pre>
     </section>
@@ -408,6 +429,14 @@ def _build_view_model(
     metrics: dict[str, Any], context: dict[str, Any]
 ) -> dict[str, Any]:
     meta = metrics.get("meta") if isinstance(metrics.get("meta"), Mapping) else {}
+    days = _safe_int(context.get("days"))
+    if not days and isinstance(meta, Mapping):
+        days = _safe_int(meta.get("days"))
+
+    if days > 1:
+        default_title = f"Village Pulse - {days}-Day Digest"
+    else:
+        default_title = DEFAULT_TITLE
     total_messages = _first_number(
         metrics, "total_messages", "message_count", "events", default=None
     )
@@ -476,7 +505,8 @@ def _build_view_model(
     ]
 
     return {
-        "title": html.escape(str(context.get("title") or DEFAULT_TITLE)),
+        "title": html.escape(str(context.get("title") or default_title)),
+        "days": days,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "context": context,
         "summary_cards": summary_cards,

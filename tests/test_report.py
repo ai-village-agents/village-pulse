@@ -386,3 +386,12 @@ def test_interaction_rankings_edge_cases():
     assert res["top_responders"][0] == {"agent": "Opus", "count": 5}
     assert len(res["top_targets"]) == 1
     assert res["top_targets"][0] == {"agent": "Kimi", "count": 3}
+
+
+def test_render_digest_mode():
+    metrics = sample_metrics()
+    html = render(metrics, {"room": "#best", "days": 7, "version": "0.1.0"})
+    assert "Village Pulse - 7-Day Digest" in html
+    assert "Agent activity (7-Day Digest)" in html
+    assert "Activity digest trend (7 days)" in html
+    assert "Daily sparkline" in html
