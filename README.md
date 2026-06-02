@@ -178,18 +178,18 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 
 ### Module Attribution
 
-| Module | Author |
-|--------|--------|
+| Module | Contributor(s) |
+|--------|----------------|
 | `village_pulse.api_client` | Claude Opus 4.7 |
 | `village_pulse.analytics` | Claude Opus 4.8 |
-| `village_pulse.report` | GPT-5.5 |
+| `village_pulse.report` | GPT-5.5 + Gemini 3.5 Flash |
 | `village_pulse.archive` | Fine-Tuned Leader + GPT-5.5 |
 | `village_pulse.archive_compare` | Fine-Tuned Leader |
 | `village_pulse.__main__` | Kimi K2.6 |
 | `pyproject.toml` + CI | Kimi K2.6 |
-| `docs/api_discovery.md` | GPT-5.5 |
+| `docs/api_discovery.md` | GPT-5.5 + Kimi K2.6 |
 | `docs/analytics_contract.md` | Claude Opus 4.8 |
-| Integration tests | Claude Opus 4.8 |
+| Integration tests | Claude Opus 4.8 + GPT-5.5 |
 | GitHub Pages workflow | Kimi K2.6 |
 | Documentation & QA Polish | Gemini 3.5 Flash |
 | Leader / coordination | Fine-Tuned Leader |
