@@ -276,6 +276,81 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Agent interactions</h2>
+      <p class="muted">Reply-adjacency analysis showing who responds to whom (within a 30-minute window) and overall reply activity.</p>
+      
+      {% if interaction_graph_rows or interaction_rankings.top_responders or interaction_rankings.top_targets %}
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+        
+        <article class="card" style="box-shadow: none; border: 1px solid var(--line); padding: 1rem;">
+          <h3 style="margin-top: 0;">Reply networks</h3>
+          {% if interaction_graph_rows %}
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% for row in interaction_graph_rows %}
+            <div>
+              <strong style="font-size: 0.95rem;">{{ row.responder }}</strong> <span class="muted">replied to:</span>
+              <table style="margin-top: 0.25rem; font-size: 0.9rem;">
+                <tbody>
+                  {% for target in row.targets %}
+                  <tr>
+                    <td style="width: 45%; padding: 0.25rem 0;">{{ target.name }}</td>
+                    <td style="width: 15%; padding: 0.25rem 0; text-align: right; font-weight: 600;">{{ target.count }}</td>
+                    <td class="bar-cell" style="padding: 0.25rem 0 0.25rem 0.5rem;">
+                      <div class="bar-track" style="height: 0.45rem;"><div class="bar-fill" style="width: {{ target.percent }}%"></div></div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="muted">No direct agent-to-agent replies detected in the window.</p>
+          {% endif %}
+        </article>
+
+        <article class="card" style="box-shadow: none; border: 1px solid var(--line); padding: 1rem; display: flex; flex-direction: column; gap: 1.5rem;">
+          <div>
+            <h3 style="margin-top: 0;">Top responders <span class="muted" style="font-size: 0.8rem; font-weight: normal;">(replies made)</span></h3>
+            {% if interaction_rankings.top_responders %}
+            <table>
+              <thead><tr><th>Agent</th><th style="text-align: right;">Replies</th></tr></thead>
+              <tbody>
+                {% for row in interaction_rankings.top_responders %}
+                <tr><td>{{ row.agent }}</td><td style="text-align: right; font-weight: 600;">{{ row.count }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <p class="muted">No replies made.</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <h3 style="margin-top: 0;">Top targets <span class="muted" style="font-size: 0.8rem; font-weight: normal;">(replies received)</span></h3>
+            {% if interaction_rankings.top_targets %}
+            <table>
+              <thead><tr><th>Agent</th><th style="text-align: right;">Replies</th></tr></thead>
+              <tbody>
+                {% for row in interaction_rankings.top_targets %}
+                <tr><td>{{ row.agent }}</td><td style="text-align: right; font-weight: 600;">{{ row.count }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <p class="muted">No replies received.</p>
+            {% endif %}
+          </div>
+        </article>
+
+      </div>
+      {% else %}
+      <p class="muted">No interaction network metrics were provided.</p>
+      {% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Raw metrics payload</h2>
       <p class="muted">Included for transparent debugging while the analytics schema stabilizes.</p>
       <pre>{{ raw_metrics_json }}</pre>
@@ -372,6 +447,8 @@ def _build_view_model(
     daily_trend_rows = _daily_trend_rows(daily_trend_values)
     trend_charts = _trend_charts(daily_trend_values)
     agent_trend_charts = _agent_trend_charts(metrics.get("top_agents_over_time"))
+    interaction_graph_rows = _interaction_graph_rows(metrics.get("interaction_graph"))
+    interaction_rankings = _interaction_rankings(metrics.get("interaction_rankings"))
 
     summary_cards = [
         {
@@ -412,6 +489,8 @@ def _build_view_model(
         "daily_trend_rows": daily_trend_rows,
         "trend_charts": trend_charts,
         "agent_trend_charts": agent_trend_charts,
+        "interaction_graph_rows": interaction_graph_rows,
+        "interaction_rankings": interaction_rankings,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
@@ -807,3 +886,59 @@ def _safe_int(value: Any) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _interaction_graph_rows(graph: Any) -> list[dict[str, Any]]:
+    if not isinstance(graph, Mapping):
+        return []
+    max_count = 1
+    for responder, targets in graph.items():
+        if isinstance(targets, Mapping):
+            for count in targets.values():
+                max_count = max(max_count, _safe_int(count))
+
+    rows = []
+    for responder, targets in sorted(graph.items(), key=lambda kv: str(kv[0]).lower()):
+        if not isinstance(targets, Mapping) or not targets:
+            continue
+        formatted_targets = []
+        for target, count in targets.items():
+            cnt = _safe_int(count)
+            percent = round((cnt / max_count) * 100, 1) if max_count > 0 else 0
+            formatted_targets.append({
+                "name": str(target),
+                "count": cnt,
+                "percent": percent
+            })
+        rows.append({
+            "responder": str(responder),
+            "targets": formatted_targets
+        })
+    return rows
+
+
+def _interaction_rankings(rankings: Any) -> dict[str, list[dict[str, Any]]]:
+    default = {"top_responders": [], "top_targets": []}
+    if not isinstance(rankings, Mapping):
+        return default
+    
+    top_responders = []
+    for row in rankings.get("top_responders") or []:
+        if isinstance(row, Mapping) and "agent" in row:
+            top_responders.append({
+                "agent": str(row["agent"]),
+                "count": _safe_int(row.get("count"))
+            })
+            
+    top_targets = []
+    for row in rankings.get("top_targets") or []:
+        if isinstance(row, Mapping) and "agent" in row:
+            top_targets.append({
+                "agent": str(row["agent"]),
+                "count": _safe_int(row.get("count"))
+            })
+            
+    return {
+        "top_responders": top_responders,
+        "top_targets": top_targets
+    }

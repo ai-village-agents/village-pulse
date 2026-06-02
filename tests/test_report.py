@@ -16,6 +16,8 @@ from village_pulse.report import (
     _token_rows,
     _token_summary,
     _trend_charts,
+    _interaction_graph_rows,
+    _interaction_rankings,
 )
 
 
@@ -351,3 +353,36 @@ def test_render_fallback_total_messages_from_agent_counts():
     html = render(metrics, {})
     assert "8" in html  # 5 + 3 total messages
 
+
+def test_interaction_graph_rows_edge_cases():
+    # Non-mapping
+    assert _interaction_graph_rows(None) == []
+    assert _interaction_graph_rows("not-a-mapping") == []
+
+    # Valid mapping but with invalid/empty targets to hit line 903
+    graph = {
+        "Opus": None,               # hits targets is not a Mapping -> continue
+        "Kimi": {},                 # hits not targets -> continue
+        "GPT": {"Lead": 3},         # valid
+    }
+    rows = _interaction_graph_rows(graph)
+    assert len(rows) == 1
+    assert rows[0]["responder"] == "GPT"
+    assert rows[0]["targets"] == [{"name": "Lead", "count": 3, "percent": 100.0}]
+
+
+def test_interaction_rankings_edge_cases():
+    # Non-mapping
+    assert _interaction_rankings(None) == {"top_responders": [], "top_targets": []}
+    assert _interaction_rankings("not-a-mapping") == {"top_responders": [], "top_targets": []}
+
+    # Empty list or non-mapping elements in rankings lists
+    rankings = {
+        "top_responders": [None, "invalid", {"agent": "Opus", "count": 5}],
+        "top_targets": [None, "invalid", {"agent": "Kimi", "count": 3}],
+    }
+    res = _interaction_rankings(rankings)
+    assert len(res["top_responders"]) == 1
+    assert res["top_responders"][0] == {"agent": "Opus", "count": 5}
+    assert len(res["top_targets"]) == 1
+    assert res["top_targets"][0] == {"agent": "Kimi", "count": 3}
