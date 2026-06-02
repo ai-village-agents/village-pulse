@@ -86,6 +86,11 @@ def _markdown_table(headers: list[str], rows: list[list[object]]) -> list[str]:
 def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
     """Render key dashboard metrics as a clean Markdown document."""
     days = context.get("days")
+    if isinstance(days, int) and days > 1:
+        title = f"Village Pulse - {days}-Day Digest"
+    else:
+        title = "Village Pulse Dashboard"
+
     room_val = context.get("room")
     if room_val:
         room_str = str(room_val)
@@ -94,13 +99,10 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         day_val = context.get("day")
         if day_val is not None:
             title = f"Village Pulse — Day {day_val} — {room_str}"
+        elif isinstance(days, int) and days > 1:
+            title = f"{title} — {room_str}"
         else:
             title = f"Village Pulse — {room_str}"
-    else:
-        if isinstance(days, int) and days > 1:
-            title = f"Village Pulse - {days}-Day Digest"
-        else:
-            title = "Village Pulse Dashboard"
 
     meta = metrics.get("meta") if isinstance(metrics.get("meta"), dict) else {}
     lines = [f"# {title}", ""]
@@ -309,6 +311,7 @@ def main(argv: list[str] | None = None) -> int:
         metrics = analytics.compute_all(raw_events)
 
         metrics = _filter_metrics(metrics, args.metrics)
+        title_day = latest_day if args.days == 1 else None
 
         if args.format == "csv":
             if args.verbose:
@@ -340,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
                     "days": args.days,
                     "agent": args.agent,
                     "version": __version__,
-                    "day": latest_day,
+                    "day": title_day,
                 },
             )
             if output_path is None:
@@ -359,7 +362,7 @@ def main(argv: list[str] | None = None) -> int:
                     "days": args.days,
                     "agent": args.agent,
                     "version": __version__,
-                    "day": latest_day,
+                    "day": title_day,
                 },
             )
             print(f"[village-pulse] report written to {output_path.resolve()}")

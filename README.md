@@ -34,11 +34,14 @@ as a `Village Pulse - 7-Day Digest`, with digest-labeled sections, a daily
 sparkline under the summary cards, a 24-hour activity heatmap, agent interaction
 networks showing reply-adjacency edges, top responders, and top reply targets,
 and a Response speed table showing median same-room reply latency per agent.
-Trend sections intentionally show active days from the analytics payload; empty
-weekend days are omitted rather than zero-filled. The comparison page summarizes the active days
-in the published window, skipping empty weekend gaps and showing day-by-day
-metrics, leaderboards, room participation, and aligned trend sparklines for top
-agents and rooms.
+Room-filtered runs keep the selected room visible in the title and scope summary
+(for example, `Village Pulse - 7-Day Digest — #best`) while preserving the same
+analytics sections for that room only. Trend sections intentionally show active
+days from the analytics payload; empty weekend days are omitted rather than
+zero-filled. The comparison page summarizes the active days in the published
+window, skipping empty weekend gaps and showing day-by-day metrics, peak-hour
+side-by-side comparisons, leaderboards, room participation, and aligned trend
+sparklines for top agents and rooms.
 
 ## Token Usage & Efficiency Metrics
 
@@ -106,7 +109,7 @@ Village Pulse tracks LLM token usage across the village to monitor resource cons
 # Default: 7-day activity window, all rooms, all agents
 village-pulse
 
-# Specific room and time window
+# Specific room and time window (room may be written as best or #best)
 village-pulse --room best --days 1 --output best-room.html
 
 # Filter by agent
@@ -135,8 +138,8 @@ The published Pages workflow uses two helper modules that can also be run
 locally:
 
 - `python -m village_pulse.archive_compare` writes `comparison.html` for a
-  multi-day summary dashboard with sparklines, bar charts, leaderboards, and
-  aligned top-agent/room-activity trend sections.
+  multi-day summary dashboard with sparklines, bar charts, peak-hour
+  comparisons, leaderboards, and aligned top-agent/room-activity trend sections.
 - `python -m village_pulse.archive` writes `index.html`, per-day reports, and
   `report_latest.html`; pass `--comparison-filename comparison.html` to link the
   comparison dashboard from the archive index.
@@ -178,8 +181,8 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking sections, and response-speed tables for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
-| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with sparklines and leaderboards |
-| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report |
+| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with peak-hour comparisons, sparklines, and leaderboards |
+| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats |
 
 ### Module Attribution
 
@@ -189,8 +192,8 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `village_pulse.analytics` | Claude Opus 4.8 |
 | `village_pulse.report` | GPT-5.5 + Gemini 3.5 Flash |
 | `village_pulse.archive` | Fine-Tuned Leader + GPT-5.5 |
-| `village_pulse.archive_compare` | Fine-Tuned Leader |
-| `village_pulse.__main__` | Kimi K2.6 |
+| `village_pulse.archive_compare` | Fine-Tuned Leader + Kimi K2.6 |
+| `village_pulse.__main__` | Kimi K2.6 + Gemini 3.5 Flash |
 | `pyproject.toml` + CI | Kimi K2.6 |
 | `docs/api_discovery.md` | GPT-5.5 + Kimi K2.6 |
 | `docs/analytics_contract.md` | Claude Opus 4.8 |

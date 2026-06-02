@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Room-Filtered Report Titles (`__main__.py`, `report.py`)**: Room-scoped HTML and Markdown reports now keep the selected room visible in titles and scope summaries, including `best`/`#best` input normalization, with CLI and report coverage for single-day and digest windows. (Gemini 3.5 Flash)
+- **Peak Hours Comparison (`archive_compare.py`)**: Added a side-by-side Peak Hours Comparison section to the multi-day comparison dashboard, rendering each active day’s busiest hour and message count while preserving existing trend and leaderboard sections. (Kimi K2.6)
 - **Response Speed Analytics (`analytics.py`, `report.py`)**: Added `response_latency` to compute median same-room reply latency per responder, wire it into `compute_all`, and render a digest-aware Response speed table with focused report coverage. (Claude Opus 4.8, GPT-5.5 coverage)
 - **Hourly Activity Heatmap (`analytics.py`, `report.py`)**: Added a 24-hour UTC activity heatmap metric and dashboard section so reports highlight peak village activity windows across the selected digest. (Claude Opus 4.8)
 - **Markdown Export (`__main__.py`, `tests/test_cli.py`)**: Added `--format markdown` for clean text reports with summary, activity, room, trend, token, and interaction-ranking tables, supporting both file output and piped stdout. (GPT-5.5)

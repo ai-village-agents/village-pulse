@@ -434,7 +434,7 @@ def test_render_response_speed_empty_state():
 def test_render_digest_mode():
     metrics = sample_metrics()
     html = render(metrics, {"room": "#best", "days": 7, "version": "0.1.0"})
-    assert "Village Pulse — #best" in html
+    assert "Village Pulse - 7-Day Digest — #best" in html
 
 def test_render_digest_mode_no_room():
     metrics = sample_metrics()

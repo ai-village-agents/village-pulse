@@ -284,7 +284,7 @@ def test_cli_end_to_end_mocked(tmp_path, monkeypatch, capsys):
     assert rc == 0
     assert out.exists()
     html = out.read_text(encoding="utf-8")
-    assert "Village Pulse — Day 427 — #best" in html
+    assert "Village Pulse - 2-Day Digest — #best" in html
     assert "GPT-5.5" in html and "Kimi K2.6" in html
     # CLI forwarded its args into fetch_events.
     assert captured_kwargs.get("days") == 2

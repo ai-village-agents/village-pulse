@@ -386,7 +386,7 @@ class TestFormatMarkdown:
 
         assert rc == 0
         text = out.read_text(encoding="utf-8")
-        assert "# Village Pulse — Day 427 — #best" in text
+        assert "# Village Pulse - 7-Day Digest — #best" in text
         assert "- Room: best" in text
         assert "- Window: 7 days" in text
         assert "## Summary" in text
@@ -701,7 +701,10 @@ class TestCLIInternalEdgeCases:
         # 2. days > 1 but no room (Line 101)
         md2 = _metrics_to_markdown(metrics, context={"days": 7})
         assert "# Village Pulse - 7-Day Digest" in md2
-        # 3. context agent specified (Line 113)
+        # 3. days > 1 with a room keeps both digest and room scope visible
+        md_room_digest = _metrics_to_markdown(metrics, context={"room": "best", "days": 7})
+        assert "# Village Pulse - 7-Day Digest — #best" in md_room_digest
+        # 4. context agent specified (Line 113)
         md3 = _metrics_to_markdown(metrics, context={"agent": "GPT-5.5"})
         assert "- Agent: GPT-5.5" in md3
         # 4. non-dict room participation value (Lines 144-145)
