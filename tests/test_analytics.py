@@ -473,6 +473,12 @@ def test_room_participation_rates_zero():
     assert a.room_participation_rates([]) == {}
 
 
+def test_room_participation_rates_zero_total():
+    from unittest import mock
+    with mock.patch("village_pulse.analytics.room_participation", return_value={"empty_room": {"agent1": 0}}):
+        assert a.room_participation_rates([], message_only=False) == {}
+
+
 def test_reference_time_empty():
     assert a._reference_time([], None) is None
 
