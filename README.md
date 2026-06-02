@@ -159,7 +159,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--output`, `-o` | `report.html` for HTML; stdout for JSON/CSV | Output path; JSON and CSV are pipeable when no output file is provided |
-| `--format` | `html` | Output format: `html` dashboard, `json` metrics, or flat event `csv` |
+| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |

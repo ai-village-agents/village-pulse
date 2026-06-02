@@ -356,6 +356,73 @@ class TestMetricsAliases:
         assert "room_health" not in data
 
 
+class TestFormatMarkdown:
+    def test_markdown_output_writes_file(self, tmp_path, monkeypatch):
+        """--format markdown writes a readable metrics report."""
+        fake_events = [{"agent_name": "GPT-5.5", "room": "best", "action_type": "AGENT_TALK", "content": "hello"}]
+        fake_metrics = {
+            "meta": {"total_events": 3, "total_messages": 2, "unique_agents": 2, "unique_rooms": 1},
+            "messages_per_agent": {"GPT-5.5": 2, "Kimi K2.6": 1},
+            "room_participation": {"best": 3},
+            "daily_trends": [{"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}],
+            "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
+            "interaction_rankings": {
+                "top_responders": [{"agent": "GPT-5.5", "count": 2}],
+                "top_targets": [{"agent": "Kimi K2.6", "count": 2}],
+            },
+        }
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "report.md"
+        rc = main(["--format", "markdown", "--days", "7", "--room", "best", "--output", str(out)])
+
+        assert rc == 0
+        text = out.read_text(encoding="utf-8")
+        assert "# Village Pulse - 7-Day Digest" in text
+        assert "- Room: best" in text
+        assert "- Window: 7 days" in text
+        assert "## Summary" in text
+        assert "| Total messages | 2 |" in text
+        assert "## Agent activity" in text
+        assert "| GPT-5.5 | 2 |" in text
+        assert "## Daily trends" in text
+        assert "| 2026-06-02 | 2 | 3 | 2 |" in text
+        assert "## Top responders" in text
+        assert "| GPT-5.5 | 2 |" in text
+        assert "<svg" not in text
+
+    def test_markdown_stdout_when_no_output_flag(self, monkeypatch, capsys):
+        """--format markdown without -o prints Markdown to stdout."""
+        fake_metrics = {
+            "meta": {"total_events": 1, "total_messages": 1, "unique_agents": 1, "unique_rooms": 1},
+            "messages_per_agent": {"A|B": 1},
+        }
+
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
+
+        import village_pulse.analytics as an
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        rc = main(["--format", "markdown", "--days", "1"])
+
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "# Village Pulse Dashboard" in captured.out
+        assert "- Window: 1 day" in captured.out
+        assert "1-Day Digest" not in captured.out
+        assert "A\\|B" in captured.out
+
+
 class TestMainErrorHandling:
     def test_main_returns_two_when_fetch_events_raises_api_error(self, monkeypatch, capsys):
         import village_pulse.api_client as ac

@@ -66,6 +66,105 @@ def _events_to_csv(events: list[dict]) -> str:
     return out.getvalue()
 
 
+def _markdown_escape(value: object) -> str:
+    """Return a compact Markdown-safe string for table cells."""
+    if value is None:
+        return ""
+    text = str(value).replace("\n", " ").replace("\r", " ")
+    return text.replace("|", "\\|")
+
+
+def _markdown_table(headers: list[str], rows: list[list[object]]) -> list[str]:
+    """Build a GitHub-flavored Markdown table."""
+    lines = ["| " + " | ".join(headers) + " |"]
+    lines.append("| " + " | ".join("---" for _ in headers) + " |")
+    for row in rows:
+        lines.append("| " + " | ".join(_markdown_escape(cell) for cell in row) + " |")
+    return lines
+
+
+def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
+    """Render key dashboard metrics as a clean Markdown document."""
+    days = context.get("days")
+    if isinstance(days, int) and days > 1:
+        title = f"Village Pulse - {days}-Day Digest"
+    else:
+        title = "Village Pulse Dashboard"
+
+    meta = metrics.get("meta") if isinstance(metrics.get("meta"), dict) else {}
+    lines = [f"# {title}", ""]
+    scope = context.get("room") or "All rooms"
+    lines.extend([
+        f"- Room: {scope}",
+        f"- Window: {days} day{'s' if days != 1 else ''}" if days else "- Window: not specified",
+    ])
+    if context.get("agent"):
+        lines.append(f"- Agent: {context['agent']}")
+    if context.get("version"):
+        lines.append(f"- Version: {context['version']}")
+    lines.append("")
+
+    summary_rows = [
+        ["Total events", meta.get("total_events", 0)],
+        ["Total messages", meta.get("total_messages", 0)],
+        ["Unique agents", meta.get("unique_agents", 0)],
+        ["Unique rooms", meta.get("unique_rooms", 0)],
+    ]
+    lines.extend(["## Summary", ""])
+    lines.extend(_markdown_table(["Metric", "Value"], summary_rows))
+    lines.append("")
+
+    messages = metrics.get("messages_per_agent")
+    if isinstance(messages, dict) and messages:
+        rows = [[agent, count] for agent, count in sorted(messages.items(), key=lambda item: (-int(item[1] or 0), str(item[0]).lower()))]
+        lines.extend(["## Agent activity", ""])
+        lines.extend(_markdown_table(["Agent", "Messages"], rows))
+        lines.append("")
+
+    rooms = metrics.get("room_participation")
+    if isinstance(rooms, dict) and rooms:
+        rows = [[room, count] for room, count in sorted(rooms.items(), key=lambda item: (-int(item[1] or 0), str(item[0]).lower()))]
+        lines.extend(["## Room participation", ""])
+        lines.extend(_markdown_table(["Room", "Messages"], rows))
+        lines.append("")
+
+    daily = metrics.get("daily_trends")
+    if isinstance(daily, list) and daily:
+        rows = []
+        for item in daily:
+            if isinstance(item, dict):
+                rows.append([item.get("date", ""), item.get("messages", 0), item.get("events", 0), item.get("active_agents", 0)])
+        if rows:
+            lines.extend(["## Daily trends", ""])
+            lines.extend(_markdown_table(["Date", "Messages", "Events", "Active agents"], rows))
+            lines.append("")
+
+    token_usage = metrics.get("token_usage")
+    if isinstance(token_usage, dict):
+        totals = token_usage.get("totals")
+        if isinstance(totals, dict) and totals:
+            lines.extend(["## Token usage", ""])
+            lines.extend(_markdown_table(["Metric", "Value"], [[key, value] for key, value in totals.items()]))
+            lines.append("")
+
+    rankings = metrics.get("interaction_rankings")
+    if isinstance(rankings, dict):
+        top_responders = rankings.get("top_responders")
+        top_targets = rankings.get("top_targets")
+        if isinstance(top_responders, list) and top_responders:
+            lines.extend(["## Top responders", ""])
+            rows = [[item.get("agent", ""), item.get("count", 0)] for item in top_responders if isinstance(item, dict)]
+            lines.extend(_markdown_table(["Agent", "Replies made"], rows))
+            lines.append("")
+        if isinstance(top_targets, list) and top_targets:
+            lines.extend(["## Top targets", ""])
+            rows = [[item.get("agent", ""), item.get("count", 0)] for item in top_targets if isinstance(item, dict)]
+            lines.extend(_markdown_table(["Agent", "Replies received"], rows))
+            lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="village-pulse",
@@ -111,7 +210,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--format",
-        choices=["html", "json", "csv"],
+        choices=["html", "json", "csv", "markdown"],
         default="html",
         help="Output format (default: html)",
     )
@@ -203,6 +302,23 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 output_path.write_text(json_text, encoding="utf-8")
                 print(f"[village-pulse] JSON written to {output_path.resolve()}")
+        elif args.format == "markdown":
+            if args.verbose:
+                print("[village-pulse] writing Markdown report...")
+            markdown_text = _metrics_to_markdown(
+                metrics,
+                context={
+                    "room": args.room,
+                    "days": args.days,
+                    "agent": args.agent,
+                    "version": __version__,
+                },
+            )
+            if output_path is None:
+                print(markdown_text, end="")
+            else:
+                output_path.write_text(markdown_text, encoding="utf-8")
+                print(f"[village-pulse] Markdown written to {output_path.resolve()}")
         else:
             if args.verbose:
                 print("[village-pulse] generating report...")
