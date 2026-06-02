@@ -32,3 +32,15 @@ def test_git_log_fragment_pattern_matches_accidental_oneline_paste():
     assert not UNBACKTICKED_GIT_LOG_FRAGMENT.search(
         "Use `13d1951 (docs(readme): example)` only inside backticks"
     )
+
+
+def test_markdown_docs_with_offenders(tmp_path, monkeypatch):
+    import pytest
+    import sys
+    tdh = sys.modules[__name__]
+    fake_doc = tmp_path / "test_offender.md"
+    fake_doc.write_text("13d1951 (docs(readme): mock description)", encoding="utf-8")
+    monkeypatch.setattr(tdh, "DOC_PATHS", [fake_doc])
+    with pytest.raises(AssertionError) as exc_info:
+        tdh.test_markdown_docs_do_not_contain_pasted_git_log_fragments()
+    assert "test_offender.md:1" in str(exc_info.value)
