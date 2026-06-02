@@ -504,3 +504,76 @@ def test_heatmap_cells_edge_cases():
 
     # 3. Invalid input type (string)
     assert _heatmap_cells("invalid_type") == []
+
+
+def test_conversation_depth_view_edge_cases():
+    from village_pulse.report import _conversation_depth_view
+
+    # 1. Non-mapping input
+    res1 = _conversation_depth_view("not_a_mapping")
+    assert res1["total_chains"] == 0
+    assert res1["max_depth"] == 0
+    assert res1["mean_depth"] == 0.0
+    assert res1["median_depth"] == 0.0
+    assert res1["distribution_rows"] == []
+
+    # 2. Non-numeric or missing numeric inputs
+    res2 = _conversation_depth_view({
+        "total_chains": "invalid",
+        "max_depth": None,
+        "mean_depth": "abc",
+        "median_depth": "def",
+    })
+    assert res2["total_chains"] == 0
+    assert res2["max_depth"] == 0
+    assert res2["mean_depth"] == 0.0
+    assert res2["median_depth"] == 0.0
+
+    # 3. Invalid or malformed depth_distribution
+    res3 = _conversation_depth_view({
+        "depth_distribution": "not_a_mapping"
+    })
+    assert res3["distribution_rows"] == []
+
+    # 4. depth_distribution with invalid/non-numeric keys or values
+    res4 = _conversation_depth_view({
+        "depth_distribution": {
+            "invalid_key": 5,
+            "2": "invalid_val",
+            "3": 10,
+            "4": -5,
+        }
+    })
+    assert len(res4["distribution_rows"]) == 1
+    assert res4["distribution_rows"][0]["depth"] == 3
+    assert res4["distribution_rows"][0]["count"] == 10
+    assert res4["distribution_rows"][0]["percent"] == 100.0
+
+
+def test_render_includes_conversation_depth():
+    from village_pulse.report import render
+    metrics = sample_metrics()
+    metrics["conversation_depth"] = {
+        "total_chains": 12,
+        "max_depth": 5,
+        "mean_depth": 3.4,
+        "median_depth": 3.0,
+        "depth_distribution": {
+            "2": 8,
+            "3": 3,
+            "5": 1,
+        }
+    }
+    html = render(metrics, {"version": "0.1.0"})
+    assert "Conversation depth" in html
+    assert "Total chains" in html
+    assert "12" in html
+    assert "Max depth (longest chain)" in html
+    assert "5" in html
+    assert "Mean depth" in html
+    assert "3.4" in html
+    assert "Median depth" in html
+    assert "3.0" in html
+    assert "Depth 2" in html
+    assert "Depth 3" in html
+    assert "Depth 5" in html

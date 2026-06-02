@@ -410,6 +410,56 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
     </section>
 
     <section class="section card">
+      <h2>Conversation depth{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
+      <p class="muted">Alternating-agent reply chains within the room (30-minute rolling window). Lone messages (depth 1) are excluded.</p>
+      {% if conversation_depth and conversation_depth.total_chains > 0 %}
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+        <div>
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600;">Aggregate metrics</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--line);"><td style="padding: 0.5rem 0; color: var(--muted);">Total chains</td><td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ conversation_depth.total_chains }}</td></tr>
+              <tr style="border-bottom: 1px solid var(--line);"><td style="padding: 0.5rem 0; color: var(--muted);">Max depth (longest chain)</td><td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ conversation_depth.max_depth }}</td></tr>
+              <tr style="border-bottom: 1px solid var(--line);"><td style="padding: 0.5rem 0; color: var(--muted);">Mean depth</td><td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ conversation_depth.mean_depth }}</td></tr>
+              <tr style="border-bottom: 1px solid var(--line);"><td style="padding: 0.5rem 0; color: var(--muted);">Median depth</td><td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ conversation_depth.median_depth }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600;">Depth distribution</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--line);">
+                <th style="text-align: left; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Chain depth</th>
+                <th style="text-align: right; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Count</th>
+                <th style="text-align: right; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); width: 40%;">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in conversation_depth.distribution_rows %}
+              <tr style="border-bottom: 1px solid var(--line);">
+                <td style="padding: 0.5rem 0;">Depth {{ row.depth }}</td>
+                <td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ row.count }}</td>
+                <td style="padding: 0.5rem 0; text-align: right; vertical-align: middle;">
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                    <span style="color: var(--muted); font-size: 0.8rem;">{{ row.percent | round(1) }}%</span>
+                    <div style="width: 60px; height: 8px; background-color: var(--line); border-radius: 4px; overflow: hidden; display: inline-block;">
+                      <div style="width: {{ row.percent }}%; height: 100%; background-color: var(--accent); border-radius: 4px;"></div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">No alternating conversation chains detected.</p>
+      {% endif %}
+    </section>
+
+    <section class="section card">
       <h2>Raw metrics payload{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       <p class="muted">Included for transparent debugging while the analytics schema stabilizes.</p>
       <pre>{{ raw_metrics_json }}</pre>
@@ -531,6 +581,7 @@ def _build_view_model(
     interaction_graph_rows = _interaction_graph_rows(metrics.get("interaction_graph"))
     interaction_rankings = _interaction_rankings(metrics.get("interaction_rankings"))
     response_latency = _response_latency_rows(metrics.get("response_latency"))
+    conversation_depth = _conversation_depth_view(metrics.get("conversation_depth"))
 
     summary_cards = [
         {
@@ -576,6 +627,7 @@ def _build_view_model(
         "interaction_graph_rows": interaction_graph_rows,
         "interaction_rankings": interaction_rankings,
         "response_latency": response_latency,
+        "conversation_depth": conversation_depth,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
@@ -1066,3 +1118,61 @@ def _interaction_rankings(rankings: Any) -> dict[str, list[dict[str, Any]]]:
             )
 
     return {"top_responders": top_responders, "top_targets": top_targets}
+
+
+def _conversation_depth_view(value: Any) -> dict[str, Any]:
+    """Coerce analytics.conversation_depth output into a safe dictionary for template rendering."""
+    default = {
+        "total_chains": 0,
+        "max_depth": 0,
+        "mean_depth": 0.0,
+        "median_depth": 0.0,
+        "distribution_rows": [],
+    }
+    if not isinstance(value, Mapping):
+        return default
+
+    total_chains = _safe_int(value.get("total_chains"))
+    max_depth = _safe_int(value.get("max_depth"))
+
+    try:
+        mean_depth = float(value.get("mean_depth", 0.0))
+    except (ValueError, TypeError):
+        mean_depth = 0.0
+
+    try:
+        median_depth = float(value.get("median_depth", 0.0))
+    except (ValueError, TypeError):
+        median_depth = 0.0
+
+    distribution_rows = []
+    depth_distribution = value.get("depth_distribution")
+    if isinstance(depth_distribution, Mapping):
+        total_dist_chains = 0
+        valid_items = []
+        for k, v in depth_distribution.items():
+            try:
+                depth_val = int(k)
+            except (ValueError, TypeError):
+                continue
+            count_val = _safe_int(v)
+            if count_val > 0:
+                total_dist_chains += count_val
+                valid_items.append((depth_val, count_val))
+
+        for depth_val, count_val in valid_items:
+            percent = (count_val / total_dist_chains * 100.0) if total_dist_chains > 0 else 0.0
+            distribution_rows.append({
+                "depth": depth_val,
+                "count": count_val,
+                "percent": percent,
+            })
+        distribution_rows.sort(key=lambda x: x["depth"])
+
+    return {
+        "total_chains": total_chains,
+        "max_depth": max_depth,
+        "mean_depth": round(mean_depth, 1),
+        "median_depth": round(median_depth, 1),
+        "distribution_rows": distribution_rows,
+    }
