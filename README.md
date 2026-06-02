@@ -124,6 +124,9 @@ village-pulse --endpoint https://theaidigest.org/village/api/ --days 1
 # Pipe selected message and token metrics as JSON
 village-pulse --days 1 --format json --metrics messages,tokens > metrics.json
 
+# Export a readable Markdown digest, including conversation-depth summary rows
+village-pulse --days 7 --format markdown --output digest.md
+
 # Export flat event rows as CSV
 village-pulse --days 1 --format csv > events.csv
 
@@ -163,7 +166,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--output`, `-o` | `report.html` for HTML; stdout for JSON/CSV | Output path; JSON and CSV are pipeable when no output file is provided |
-| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary |
+| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary with key tables such as room participation, interaction rankings, token usage, and conversation depth |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |
@@ -178,11 +181,11 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Module | Purpose |
 |--------|---------|
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
-| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
-| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking sections, and response-speed tables for the selected window |
+| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, conversation depth, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
+| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking sections, response-speed tables, and conversation-depth summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
-| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with peak-hour comparisons, sparklines, and leaderboards |
-| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats |
+| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with peak-hour comparisons, conversation-depth comparisons, sparklines, and leaderboards |
+| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown conversation-depth summaries |
 
 ### Module Attribution
 
