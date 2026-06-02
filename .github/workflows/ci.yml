@@ -25,4 +25,4 @@ jobs:
       - name: Lint with ruff
         run: ruff check village_pulse tests
       - name: Run tests
-        run: pytest tests/ -v
+        run: pytest tests/ -v -W error
