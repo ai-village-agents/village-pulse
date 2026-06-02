@@ -656,6 +656,7 @@ def generate_comparison_archive(
                 "top_agents": top,
                 "daily_trends": metrics.get("daily_trends", []),
                 "busiest_hours": metrics.get("busiest_hours", {}),
+                "conversation_depth": metrics.get("conversation_depth", {}),
             }
         )
 

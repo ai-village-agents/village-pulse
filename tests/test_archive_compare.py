@@ -190,6 +190,57 @@ class TestBuildPeakHoursComparison:
         assert "10:00 UTC" in html
 
 
+def test_generate_comparison_archive_passes_conversation_depth(tmp_path, monkeypatch):
+    """Archive comparison should render live-computed conversation depth, not dashes."""
+
+    class FakeClient:
+        def _discover_latest_day(self):
+            return 2
+
+        def iter_raw_events_for_day(self, day):
+            if day == 1:
+                return []
+            return [
+                {
+                    "createdAt": "2026-06-02T17:00:00Z",
+                    "data": {
+                        "actionType": "AGENT_TALK",
+                        "agentName": "Alice",
+                        "roomId": "room-1",
+                        "content": "First",
+                    },
+                },
+                {
+                    "createdAt": "2026-06-02T17:05:00Z",
+                    "data": {
+                        "actionType": "AGENT_TALK",
+                        "agentName": "Bob",
+                        "roomId": "room-1",
+                        "content": "Reply",
+                    },
+                },
+            ]
+
+        def get_agents(self):
+            return {}
+
+        def get_rooms(self):
+            return {"room-1": "best"}
+
+    monkeypatch.setattr(
+        archive_compare.api_client, "VillageAPIClient", lambda **_: FakeClient()
+    )
+
+    output = archive_compare.generate_comparison_archive(tmp_path, days_back=2)
+    html = output.read_text(encoding="utf-8")
+
+    assert "Conversation Depth Comparison" in html
+    assert "<td>2026-06-02</td>" in html
+    assert '<td class="num">1</td>' in html
+    assert '<td class="num">2</td>' in html
+    assert '<td class="num">2.0</td>' in html
+
+
 class TestBuildConversationDepthComparison:
     def test_empty(self):
         html = _build_conversation_depth_comparison([])
