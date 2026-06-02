@@ -289,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.verbose:
             print("[village-pulse] fetching data...")
         latest_day = args.day
-        if latest_day is None:
+        if latest_day is None and args.room is not None:
             try:
                 client = api_client.VillageAPIClient(endpoint=args.endpoint)
                 latest_day = client._discover_latest_day()

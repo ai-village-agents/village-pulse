@@ -174,7 +174,7 @@ def test_client_pipeline_with_mock_session(tmp_path):
     output = tmp_path / "dashboard.html"
     resolved = generate(metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"})
     html = resolved.read_text(encoding="utf-8")
-    assert "Village Pulse Dashboard" in html
+    assert "Village Pulse — #best" in html
     for name in ("GPT-5.5", "Kimi K2.6", "Claude Opus 4.8"):
         assert name in html
 
@@ -222,6 +222,7 @@ def test_cli_default_html_builds_seven_day_window(tmp_path, monkeypatch):
 
     import village_pulse.api_client as ac  # fresh module (test_cli may have reset sys.modules)
     monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+    monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
     from village_pulse.__main__ import main
 
@@ -273,6 +274,7 @@ def test_cli_end_to_end_mocked(tmp_path, monkeypatch, capsys):
 
     import village_pulse.api_client as ac  # fresh module (test_cli may have reset sys.modules)
     monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+    monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
     from village_pulse.__main__ import main
 
@@ -282,7 +284,7 @@ def test_cli_end_to_end_mocked(tmp_path, monkeypatch, capsys):
     assert rc == 0
     assert out.exists()
     html = out.read_text(encoding="utf-8")
-    assert "Village Pulse - 2-Day Digest" in html
+    assert "Village Pulse — Day 427 — #best" in html
     assert "GPT-5.5" in html and "Kimi K2.6" in html
     # CLI forwarded its args into fetch_events.
     assert captured_kwargs.get("days") == 2

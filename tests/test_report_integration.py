@@ -33,7 +33,7 @@ def test_report_accepts_compute_all_metrics(tmp_path):
     )
 
     html = resolved.read_text(encoding="utf-8")
-    assert "Village Pulse Dashboard" in html
+    assert "Village Pulse — #best" in html
     assert "GPT-5.5" in html
     assert "Kimi K2.6" in html
     assert "#best" in html

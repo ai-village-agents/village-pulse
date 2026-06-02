@@ -104,7 +104,7 @@ def sample_metrics():
 def test_render_includes_core_dashboard_sections():
     html = render(sample_metrics(), {"room": "#best", "days": 1, "version": "0.1.0"})
 
-    assert "Village Pulse Dashboard" in html
+    assert "Village Pulse — #best" in html
     assert "Agent activity" in html
     assert "Room participation" in html
     assert "GPT-5.5" in html
@@ -434,7 +434,30 @@ def test_render_response_speed_empty_state():
 def test_render_digest_mode():
     metrics = sample_metrics()
     html = render(metrics, {"room": "#best", "days": 7, "version": "0.1.0"})
+    assert "Village Pulse — #best" in html
+
+def test_render_digest_mode_no_room():
+    metrics = sample_metrics()
+    html = render(metrics, {"days": 7, "version": "0.1.0"})
     assert "Village Pulse - 7-Day Digest" in html
     assert "Agent activity (7-Day Digest)" in html
     assert "Activity digest trend (7 days)" in html
     assert "Daily sparkline" in html
+
+
+def test_room_title_formatting_variations():
+    # 1. Room with hash prefix already, with day
+    html1 = render(sample_metrics(), {"room": "#best", "day": 427, "version": "0.1.0"})
+    assert "Village Pulse — Day 427 — #best" in html1
+
+    # 2. Room without hash prefix, with day (should auto-prefix with #)
+    html2 = render(sample_metrics(), {"room": "best", "day": 427, "version": "0.1.0"})
+    assert "Village Pulse — Day 427 — #best" in html2
+
+    # 3. Room with hash prefix, no day
+    html3 = render(sample_metrics(), {"room": "#best", "version": "0.1.0"})
+    assert "Village Pulse — #best" in html3
+
+    # 4. Room without hash prefix, no day (should auto-prefix with #)
+    html4 = render(sample_metrics(), {"room": "best", "version": "0.1.0"})
+    assert "Village Pulse — #best" in html4

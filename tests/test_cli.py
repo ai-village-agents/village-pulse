@@ -374,6 +374,7 @@ class TestFormatMarkdown:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
@@ -385,7 +386,7 @@ class TestFormatMarkdown:
 
         assert rc == 0
         text = out.read_text(encoding="utf-8")
-        assert "# Village Pulse - 7-Day Digest" in text
+        assert "# Village Pulse — Day 427 — #best" in text
         assert "- Room: best" in text
         assert "- Window: 7 days" in text
         assert "## Summary" in text
@@ -471,6 +472,7 @@ class TestFormatCsv:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
@@ -506,6 +508,7 @@ class TestFormatCsv:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
@@ -537,6 +540,7 @@ class TestFormatCsv:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
@@ -566,6 +570,7 @@ class TestCLIExtraEdges:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
@@ -589,6 +594,7 @@ class TestCLIExtraEdges:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
@@ -663,6 +669,7 @@ class TestCLIExtraEdges:
 
         import village_pulse.api_client as ac
         monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: fake_events)
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
 
         import village_pulse.analytics as an
         monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
@@ -675,3 +682,50 @@ class TestCLIExtraEdges:
         assert rc == 0
         captured = capsys.readouterr()
         assert "[village-pulse] generating report..." in captured.out
+
+
+class TestCLIInternalEdgeCases:
+    def test_markdown_escape_none(self):
+        from village_pulse.__main__ import _markdown_escape
+        assert _markdown_escape(None) == ""
+
+    def test_metrics_to_markdown_various_contexts(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+        metrics = {
+            "meta": {"total_events": 5, "total_messages": 3},
+            "room_participation": {"best": 12},
+        }
+        # 1. room but no day (Line 98)
+        md1 = _metrics_to_markdown(metrics, context={"room": "best", "days": 1})
+        assert "# Village Pulse — #best" in md1
+        # 2. days > 1 but no room (Line 101)
+        md2 = _metrics_to_markdown(metrics, context={"days": 7})
+        assert "# Village Pulse - 7-Day Digest" in md2
+        # 3. context agent specified (Line 113)
+        md3 = _metrics_to_markdown(metrics, context={"agent": "GPT-5.5"})
+        assert "- Agent: GPT-5.5" in md3
+        # 4. non-dict room participation value (Lines 144-145)
+        assert "| best | 12 |" in md3
+
+    def test_main_discover_latest_day_exception(self, monkeypatch):
+        import village_pulse.api_client as ac
+        def fake_discover(self):
+            raise ValueError("API Offline")
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", fake_discover)
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
+        
+        from village_pulse.__main__ import main
+        # should catch the exception and run main successfully without crash
+        rc = main(["--room", "best"])
+        assert rc == 0
+
+    def test_main_markdown_verbose(self, monkeypatch, capsys):
+        import village_pulse.api_client as ac
+        monkeypatch.setattr(ac, "fetch_events", lambda **kwargs: [])
+        monkeypatch.setattr(ac.VillageAPIClient, "_discover_latest_day", lambda self: 427)
+        
+        from village_pulse.__main__ import main
+        rc = main(["--format", "markdown", "--verbose", "--room", "best"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "[village-pulse] writing Markdown report..." in captured.out
