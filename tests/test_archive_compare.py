@@ -872,6 +872,8 @@ class TestGenerateComparisonArchiveGenerator:
         )
         assert res_path.exists()
         assert (out_dir / "comparison.html").exists()
+        html = (out_dir / "comparison.html").read_text()
+        assert "Conversation Depth" in html
 
     def test_generate_comparison_archive_no_latest_day(self, tmp_path, monkeypatch):
         from village_pulse import archive_compare
