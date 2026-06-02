@@ -179,6 +179,56 @@ def test_client_pipeline_with_mock_session(tmp_path):
     assert "<script" not in html.lower()
 
 
+def test_cli_default_html_builds_seven_day_window(tmp_path, monkeypatch):
+    """Default HTML report aggregates the seven-day fetch window into trends."""
+    captured_kwargs = {}
+
+    def fake_fetch(**kwargs):
+        captured_kwargs.update(kwargs)
+        return [
+            {
+                "agent_name": "GPT-5.5",
+                "room": "best",
+                "created_at": "2026-05-29T17:00:00Z",
+                "action_type": "AGENT_TALK",
+                "content": "day one",
+                "input_tokens": 10,
+                "output_tokens": 2,
+            },
+            {
+                "agent_name": "Kimi K2.6",
+                "room": "best",
+                "created_at": "2026-06-02T17:05:00Z",
+                "action_type": "AGENT_TALK",
+                "content": "day seven",
+                "input_tokens": 20,
+                "output_tokens": 4,
+            },
+        ]
+
+    import village_pulse.api_client as ac  # fresh module (test_cli may have reset sys.modules)
+    monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+    from village_pulse.__main__ import main
+
+    out = tmp_path / "digest.html"
+    rc = main(["--output", str(out)])
+
+    assert rc == 0
+    assert out.exists()
+    assert captured_kwargs.get("days") == 7
+    assert captured_kwargs.get("current_day") is None
+    html = out.read_text(encoding="utf-8")
+    assert "Window: 7 days" in html
+    assert "Daily trends" in html
+    assert "2026-05-29" in html
+    assert "2026-06-02" in html
+    assert "Messages over time trend" in html
+    assert '<svg class="sparkline"' in html
+    assert "GPT-5.5" in html and "Kimi K2.6" in html
+    assert "<script" not in html.lower()
+
+
 def test_cli_end_to_end_mocked(tmp_path, monkeypatch, capsys):
     """CLI main() wires fetch -> compute_all -> generate and writes HTML."""
     captured_kwargs = {}
