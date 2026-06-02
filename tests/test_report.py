@@ -456,6 +456,20 @@ def test_render_digest_mode_no_room():
     assert "Daily sparkline" in html
 
 
+def test_heatmap_cells_accepts_mapping_and_truncates_long_sequences():
+    from village_pulse.report import _heatmap_cells
+
+    mapped = _heatmap_cells({"0": 1, "23": "4", "24": 9})
+    assert len(mapped) == 24
+    assert mapped[0]["count"] == 1
+    assert mapped[23]["count"] == 4
+    assert all(cell["hour"] != 24 for cell in mapped)
+
+    long_sequence = _heatmap_cells(list(range(30)))
+    assert len(long_sequence) == 24
+    assert long_sequence[23]["count"] == 23
+
+
 def test_room_title_formatting_variations():
     # 1. Room with hash prefix already, with day
     html1 = render(sample_metrics(), {"room": "#best", "day": 427, "version": "0.1.0"})

@@ -915,10 +915,13 @@ class TestCLIInternalEdgeCases:
         # 3. days > 1 with a room keeps both digest and room scope visible
         md_room_digest = _metrics_to_markdown(metrics, context={"room": "best", "days": 7})
         assert "# Village Pulse - 7-Day Digest — #best" in md_room_digest
-        # 4. context agent specified (Line 113)
+        # 4. explicit day with a room uses the single-day day title
+        md_room_day = _metrics_to_markdown(metrics, context={"room": "best", "days": 1, "day": 427})
+        assert "# Village Pulse — Day 427 — #best" in md_room_day
+        # 5. context agent specified (Line 113)
         md3 = _metrics_to_markdown(metrics, context={"agent": "GPT-5.5"})
         assert "- Agent: GPT-5.5" in md3
-        # 4. non-dict room participation value (Lines 144-145)
+        # 6. non-dict room participation value (Lines 144-145)
         assert "| best | 12 |" in md3
 
     def test_main_discover_latest_day_exception(self, monkeypatch):
