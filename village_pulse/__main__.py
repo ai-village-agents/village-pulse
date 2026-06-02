@@ -133,6 +133,12 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if args.days < 1:
+        print("[village-pulse] error: --days must be >= 1", file=sys.stderr)
+        return 1
+    if args.day is not None and args.day < 1:
+        print("[village-pulse] error: --day must be >= 1", file=sys.stderr)
+        return 1
 
     output_path: Path | None = args.output
     if output_path is None:

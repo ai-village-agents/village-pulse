@@ -260,6 +260,28 @@ class TestDayFlag:
         assert captured['kwargs']['days'] == 1
 
 
+class TestCliValidation:
+    def test_days_less_than_one_returns_error(self, capsys):
+        from village_pulse.__main__ import main
+        rc = main(["--days", "0"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "--days must be >= 1" in captured.err
+
+    def test_day_less_than_one_returns_error(self, capsys):
+        from village_pulse.__main__ import main
+        rc = main(["--day", "0"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "--day must be >= 1" in captured.err
+
+    def test_negative_days_returns_error(self, capsys):
+        from village_pulse.__main__ import main
+        rc = main(["--days", "-3"])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "--days must be >= 1" in captured.err
+
 class TestMetricsAliases:
     def test_selected_metric_keys_expands_friendly_aliases(self):
         keys = _selected_metric_keys("messages,tokens")
