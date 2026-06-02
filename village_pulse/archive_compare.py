@@ -224,6 +224,47 @@ def _build_comparison_table(day_metrics):
     )
 
 
+
+
+def _build_peak_hours_comparison(day_metrics):
+    """Build a table showing the busiest hour for each day side by side."""
+    if not day_metrics:
+        return '<p style="color:var(--muted)">No peak hour data available.</p>'
+
+    rows = []
+    for d in day_metrics:
+        hours = d.get("busiest_hours") or {}
+        if not hours or all(v == 0 for v in hours.values()):
+            peak_hour = "—"
+            peak_count = "—"
+            spark = _sparkline_svg([0] * 24)
+        else:
+            peak = max(hours.items(), key=lambda item: (item[1], -item[0]))
+            peak_hour = f"{peak[0]:02d}:00 UTC"
+            peak_count = _format_number(peak[1])
+            values = [hours.get(h, 0) for h in range(24)]
+            spark = _sparkline_svg(values)
+
+        date = _series_date(d) or f"Day {d['day']}"
+        rows.append(
+            f"<tr>"
+            f"<td>{html_lib.escape(str(date))}</td>"
+            f'<td class="num">{html_lib.escape(str(peak_hour))}</td>'
+            f'<td class="num">{html_lib.escape(str(peak_count))}</td>'
+            f'<td class="spark-cell">{spark}</td>'
+            f"</tr>"
+        )
+
+    thead = (
+        "<tr>"
+        "<th>Date</th>"
+        '<th class="num">Peak Hour</th>'
+        '<th class="num">Messages at Peak</th>'
+        '<th class="spark-cell">Hourly Distribution</th>'
+        "</tr>"
+    )
+    return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -413,6 +454,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
 
     summary = _build_summary_cards(day_metrics)
     comparison = _build_comparison_table(day_metrics)
+    peak_hours = _build_peak_hours_comparison(day_metrics)
     leaderboard = _build_agent_leaderboard(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
@@ -441,6 +483,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2>Day-by-Day Comparison</h2>
     {comparison}
+  </div>
+  <div class="section">
+    <h2>Peak Hours Comparison</h2>
+    {peak_hours}
   </div>
   <div class="section">
     <h2>Agent Leaderboard</h2>
@@ -549,6 +595,7 @@ def generate_comparison_archive(
                 "room_participation": room_part,
                 "top_agents": top,
                 "daily_trends": metrics.get("daily_trends", []),
+                "busiest_hours": metrics.get("busiest_hours", {}),
             }
         )
 

@@ -7,6 +7,7 @@ from village_pulse.archive_compare import (
     _build_agent_leaderboard,
     _build_comparison_table,
     _build_daily_trends_table,
+    _build_peak_hours_comparison,
     _build_room_activity_trends,
     _build_room_participation,
     _build_summary_cards,
@@ -117,6 +118,61 @@ class TestBuildComparisonTable:
         assert "</script>" not in html
         assert "&lt;script&gt;" in html
         assert "&quot;day&quot;" in html
+
+
+class TestBuildPeakHoursComparison:
+    def test_empty(self):
+        html = _build_peak_hours_comparison([])
+        assert "No peak hour data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_hours": {h: (h * 2) for h in range(24)},
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_peak_hours_comparison(metrics)
+        assert "2026-05-30" in html
+        assert "23:00 UTC" in html  # peak is hour 23 with count 46
+        assert "46" in html
+        assert "polyline" in html  # sparkline
+
+    def test_tie_breaks_to_earliest_hour(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_hours": {h: 10 for h in range(24)},
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_peak_hours_comparison(metrics)
+        assert "00:00 UTC" in html  # earliest hour wins on tie
+
+    def test_zero_hours_shows_dash(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_hours": {h: 0 for h in range(24)},
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_peak_hours_comparison(metrics)
+        assert "—" in html
+        assert "polyline" not in html or "no data" in html
+
+    def test_escapes_date_and_peak_hour(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_hours": {10: 5},
+                "daily_trends": [],
+            }
+        ]
+        html = _build_peak_hours_comparison(metrics)
+        assert "Day 420" in html
+        assert "10:00 UTC" in html
 
 
 class TestBuildAgentLeaderboard:
@@ -315,6 +371,7 @@ class TestGenerateComparison:
                 "daily_trends": [
                     {"date": "2026-05-30", "messages": 100, "events": 50, "active_agents": 5, "total_tokens": 1000, "efficiency": 85.5},
                 ],
+                "busiest_hours": {10: 25, 14: 30},
             }
         ]
         output = tmp_path / "comparison.html"
@@ -327,6 +384,7 @@ class TestGenerateComparison:
         assert "Day 420" in html
         assert "Alice" in html
         assert "Summary" in html
+        assert "Peak Hours" in html
         assert "Agent Leaderboard" in html
         assert "Room Participation" in html
         assert "Daily Trends" in html
