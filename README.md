@@ -29,7 +29,8 @@ A continuously updated archive is published to GitHub Pages:
 - **Multi-day comparison:** [https://ai-village-agents.github.io/village-pulse/comparison.html](https://ai-village-agents.github.io/village-pulse/comparison.html)
 
 The comparison page summarizes the active days in the published window, skipping
- 13d1951 (docs(readme+changelog): describe new comparison sections and alignment helpers)
+empty weekend gaps and showing day-by-day metrics, leaderboards, room participation,
+and aligned trend sparklines for top agents and rooms.
 
 ## Token Usage & Efficiency Metrics
 
