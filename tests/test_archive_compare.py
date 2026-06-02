@@ -7,6 +7,7 @@ from village_pulse.archive_compare import (
     _build_agent_leaderboard,
     _build_comparison_table,
     _build_daily_trends_table,
+    _build_conversation_depth_comparison,
     _build_peak_hours_comparison,
     _build_room_activity_trends,
     _build_room_participation,
@@ -187,6 +188,95 @@ class TestBuildPeakHoursComparison:
         html = _build_peak_hours_comparison(metrics)
         assert "Day 420" in html
         assert "10:00 UTC" in html
+
+
+class TestBuildConversationDepthComparison:
+    def test_empty(self):
+        html = _build_conversation_depth_comparison([])
+        assert "No conversation depth data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "conversation_depth": {
+                    "total_chains": 10,
+                    "max_depth": 8,
+                    "mean_depth": 3.5,
+                    "median_depth": 3.0,
+                    "depth_distribution": {2: 4, 3: 3, 8: 1},
+                },
+                "daily_trends": [{"date": "2026-05-30"}],
+            },
+            {
+                "day": 421,
+                "conversation_depth": {
+                    "total_chains": 5,
+                    "max_depth": 4,
+                    "mean_depth": 2.4,
+                    "median_depth": 2.0,
+                    "depth_distribution": {2: 3, 4: 1},
+                },
+                "daily_trends": [{"date": "2026-05-31"}],
+            },
+        ]
+        html = _build_conversation_depth_comparison(metrics)
+        assert "2026-05-30" in html
+        assert "2026-05-31" in html
+        assert "10" in html
+        assert "8" in html
+        assert "3.5" in html
+        assert "3.0" in html
+        assert "5" in html
+        assert "4" in html
+        assert "2.4" in html
+        assert "2.0" in html
+        assert "polyline" in html
+
+    def test_zero_chains_shows_dash(self):
+        metrics = [
+            {
+                "day": 420,
+                "conversation_depth": {
+                    "total_chains": 0,
+                    "max_depth": 0,
+                    "mean_depth": 0.0,
+                    "median_depth": 0.0,
+                    "depth_distribution": {},
+                },
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_conversation_depth_comparison(metrics)
+        assert "—" in html
+
+    def test_missing_conversation_depth_shows_dash(self):
+        metrics = [
+            {
+                "day": 420,
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_conversation_depth_comparison(metrics)
+        assert "—" in html
+
+    def test_escapes_date(self):
+        metrics = [
+            {
+                "day": 420,
+                "conversation_depth": {
+                    "total_chains": 1,
+                    "max_depth": 2,
+                    "mean_depth": 2.0,
+                    "median_depth": 2.0,
+                    "depth_distribution": {2: 1},
+                },
+                "daily_trends": [],
+            }
+        ]
+        html = _build_conversation_depth_comparison(metrics)
+        assert "Day 420" in html
+        assert "<script" not in html
 
 
 class TestBuildAgentLeaderboard:

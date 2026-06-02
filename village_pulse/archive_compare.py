@@ -268,6 +268,52 @@ def _build_peak_hours_comparison(day_metrics):
     return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
 
 
+def _build_conversation_depth_comparison(day_metrics):
+    """Build a table showing conversation depth metrics per day."""
+    if not day_metrics:
+        return '<p style="color:var(--muted)">No conversation depth data available.</p>'
+
+    rows = []
+    for d in day_metrics:
+        cd = d.get("conversation_depth") or {}
+        if not cd or cd.get("total_chains", 0) == 0:
+            total = "—"
+            max_d = "—"
+            mean_d = "—"
+            median_d = "—"
+            spark = _sparkline_svg([0])
+        else:
+            total = _format_number(cd.get("total_chains", 0))
+            max_d = _format_number(cd.get("max_depth", 0))
+            mean_d = f"{cd.get('mean_depth', 0.0):.1f}"
+            median_d = f"{cd.get('median_depth', 0.0):.1f}"
+            spark = _sparkline_svg([cd.get("total_chains", 0)])
+
+        date = _series_date(d) or f"Day {d['day']}"
+        rows.append(
+            f"<tr>"
+            f"<td>{html_lib.escape(str(date))}</td>"
+            f'<td class="num">{html_lib.escape(str(total))}</td>'
+            f'<td class="num">{html_lib.escape(str(max_d))}</td>'
+            f'<td class="num">{html_lib.escape(str(mean_d))}</td>'
+            f'<td class="num">{html_lib.escape(str(median_d))}</td>'
+            f'<td class="spark-cell">{spark}</td>'
+            f"</tr>"
+        )
+
+    thead = (
+        "<tr>"
+        "<th>Date</th>"
+        '<th class="num">Total Chains</th>'
+        '<th class="num">Max Depth</th>'
+        '<th class="num">Mean Depth</th>'
+        '<th class="num">Median Depth</th>'
+        '<th class="spark-cell">Trend</th>'
+        "</tr>"
+    )
+    return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
+
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -458,6 +504,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     summary = _build_summary_cards(day_metrics)
     comparison = _build_comparison_table(day_metrics)
     peak_hours = _build_peak_hours_comparison(day_metrics)
+    conversation_depth = _build_conversation_depth_comparison(day_metrics)
     leaderboard = _build_agent_leaderboard(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
@@ -490,6 +537,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2>Peak Hours Comparison</h2>
     {peak_hours}
+  </div>
+  <div class="section">
+    <h2>Conversation Depth Comparison</h2>
+    {conversation_depth}
   </div>
   <div class="section">
     <h2>Agent Leaderboard</h2>
