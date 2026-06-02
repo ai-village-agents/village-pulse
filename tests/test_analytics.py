@@ -187,6 +187,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "agent_last_seen", "active_agents", "room_health", "token_usage",
         "daily_trends", "agent_daily_trends", "top_agents_over_time",
         "room_daily_trends", "interaction_graph",
+        "interaction_rankings",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise
@@ -674,3 +675,66 @@ class TestInteractionGraph:
         # The undated Lead message is dropped, so only Lead-after-Opus remains.
         assert any(e.timestamp is None for e in evs)
         assert a.interaction_graph(evs) == {"Lead": {"Opus": 1}}
+
+
+class TestInteractionRankings:
+    def test_out_and_in_degree(self):
+        # Alice<->Bob exchange, plus Carol replies to Alice -> Alice received 2.
+        evs = a.normalize_events([
+            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+            _ev("Carol", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+        ])
+        ranks = a.interaction_rankings(evs)
+        # Each of the three made exactly one reply -> tie broken by name.
+        assert ranks["top_responders"] == [
+            {"agent": "Alice", "count": 1},
+            {"agent": "Bob", "count": 1},
+            {"agent": "Carol", "count": 1},
+        ]
+        # Alice was replied to by both Bob and Carol -> 2; Bob once.
+        assert ranks["top_targets"] == [
+            {"agent": "Alice", "count": 2},
+            {"agent": "Bob", "count": 1},
+        ]
+
+    def test_count_desc_then_name(self):
+        # Bob replies to Alice three times; Alice replies to Bob once.
+        evs = a.normalize_events([
+            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+            _ev("Alice", "#best", "AGENT_TALK", "2026-06-02T17:04:00Z"),
+            _ev("Bob", "#best", "AGENT_TALK", "2026-06-02T17:05:00Z"),
+        ])
+        ranks = a.interaction_rankings(evs)
+        assert ranks["top_responders"] == [
+            {"agent": "Bob", "count": 3},
+            {"agent": "Alice", "count": 2},
+        ]
+        assert ranks["top_targets"] == [
+            {"agent": "Alice", "count": 3},
+            {"agent": "Bob", "count": 2},
+        ]
+
+    def test_empty(self):
+        assert a.interaction_rankings([]) == {
+            "top_responders": [],
+            "top_targets": [],
+        }
+
+    def test_matches_graph_totals(self):
+        # Rankings must equal the row/column sums of interaction_graph.
+        evs = a.normalize_events([
+            _ev("Lead", "#best", "AGENT_TALK", "2026-06-02T17:00:00Z"),
+            _ev("Opus", "#best", "AGENT_TALK", "2026-06-02T17:01:00Z"),
+            _ev("Lead", "#general", "AGENT_TALK", "2026-06-02T17:02:00Z"),
+            _ev("Gem", "#general", "AGENT_TALK", "2026-06-02T17:03:00Z"),
+        ])
+        graph = a.interaction_graph(evs)
+        ranks = a.interaction_rankings(evs)
+        out = {row["agent"]: row["count"] for row in ranks["top_responders"]}
+        expected_out = {r: sum(t.values()) for r, t in graph.items()}
+        assert out == expected_out

@@ -48,6 +48,7 @@ __all__ = [
     "room_participation",
     "room_participation_rates",
     "interaction_graph",
+    "interaction_rankings",
     "busiest_hours",
     "busiest_weekdays",
     "agent_last_seen",
@@ -402,6 +403,52 @@ def interaction_graph(
     }
 
 
+def interaction_rankings(
+    events: Sequence[ActivityEvent],
+    *,
+    message_only: bool = True,
+    window_minutes: float = 30.0,
+) -> dict[str, list[dict[str, int]]]:
+    """Reply-volume leaderboards derived from :func:`interaction_graph`.
+
+    Aggregates the reply-adjacency graph into two rankings:
+
+    * ``top_responders`` — agents ranked by how many replies they *made*
+      (out-degree, summed across every target).
+    * ``top_targets`` — agents ranked by how many replies they *received*
+      (in-degree, summed across every responder).
+
+    Returns:
+        ``{"top_responders": [...], "top_targets": [...]}`` where each list
+        holds ``{"agent": name, "count": n}`` rows sorted by count (desc),
+        then agent name. Agents with a zero count are omitted, so both lists
+        are directly chartable.
+    """
+    graph = interaction_graph(
+        events, message_only=message_only, window_minutes=window_minutes
+    )
+    responders: Counter = Counter()
+    targets: Counter = Counter()
+    for responder, target_counts in graph.items():
+        for target, count in target_counts.items():
+            responders[responder] += count
+            targets[target] += count
+
+    def _rank(counts: "Counter") -> list[dict[str, int]]:
+        return [
+            {"agent": agent, "count": count}
+            for agent, count in sorted(
+                counts.items(), key=lambda kv: (-kv[1], kv[0])
+            )
+            if count
+        ]
+
+    return {
+        "top_responders": _rank(responders),
+        "top_targets": _rank(targets),
+    }
+
+
 def busiest_hours(
     events: Sequence[ActivityEvent], *, message_only: bool = True
 ) -> dict[int, int]:
@@ -745,7 +792,7 @@ def compute_all(
         ``action_type_breakdown``, ``room_participation``,
         ``room_participation_rates``, ``busiest_hours``, ``busiest_weekdays``,
         ``agent_last_seen``, ``active_agents``, ``room_health``, ``token_usage``,
-        ``interaction_graph``.
+        ``interaction_graph``, ``interaction_rankings``.
     """
     normalized = normalize_events(events)
     now = _reference_time(normalized, reference_time)
@@ -775,6 +822,7 @@ def compute_all(
         "room_participation": room_participation(normalized),
         "room_participation_rates": room_participation_rates(normalized),
         "interaction_graph": interaction_graph(normalized),
+        "interaction_rankings": interaction_rankings(normalized),
         "busiest_hours": busiest_hours(normalized),
         "busiest_weekdays": busiest_weekdays(normalized),
         "agent_last_seen": {

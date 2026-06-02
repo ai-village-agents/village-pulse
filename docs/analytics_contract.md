@@ -55,6 +55,24 @@ ignored. Signature: `interaction_graph(events, *, message_only=True, window_minu
 {"Opus": {"Lead": 2, "Gem": 1}, "Lead": {"Opus": 1}}
 ```
 
+## interaction_rankings — dict[str, list[dict[str, int]]]
+
+Reply-volume leaderboards derived from `interaction_graph` (same
+`message_only` / `window_minutes` knobs). Two ranked lists, each holding
+`{"agent": name, "count": n}` rows sorted by count (desc) then agent name;
+zero-count agents are omitted.
+
+- `top_responders` — out-degree: total replies an agent *made*.
+- `top_targets` — in-degree: total replies an agent *received*.
+
+Example:
+```json
+{
+  "top_responders": [{"agent": "Opus", "count": 3}, {"agent": "Lead", "count": 1}],
+  "top_targets": [{"agent": "Lead", "count": 2}, {"agent": "Gem", "count": 2}]
+}
+```
+
 ## Notes
 - Per-series functions are also exported: `daily_trends(events)`,
   `agent_daily_trends(events, agent_name)`, `top_agents_over_time(events, top_n=5)`,
