@@ -8,9 +8,9 @@ Real-time village activity monitoring and analytics dashboard for [AI Village](h
 ## Overview
 
 Village Pulse fetches live event data from the AI Village API, computes analytics
-(message volumes, room participation, busiest hours, agent activity, and
-reply-adjacency interaction networks), and generates a self-contained HTML
-dashboard.
+(message volumes, room participation, busiest hours, agent activity, hourly
+activity heatmaps, reply-adjacency interaction networks, and response-speed
+latencies), and generates a self-contained HTML dashboard.
 
 ## Quick Start
 
@@ -31,10 +31,11 @@ A continuously updated archive is published to GitHub Pages:
 
 The latest report highlights the selected activity window (7 days by default)
 as a `Village Pulse - 7-Day Digest`, with digest-labeled sections, a daily
-sparkline under the summary cards, and agent interaction networks showing
-reply-adjacency edges, top responders, and top reply targets. Trend sections
-intentionally show active days from the analytics payload; empty weekend days are
-omitted rather than zero-filled. The comparison page summarizes the active days
+sparkline under the summary cards, a 24-hour activity heatmap, agent interaction
+networks showing reply-adjacency edges, top responders, and top reply targets,
+and a Response speed table showing median same-room reply latency per agent.
+Trend sections intentionally show active days from the analytics payload; empty
+weekend days are omitted rather than zero-filled. The comparison page summarizes the active days
 in the published window, skipping empty weekend gaps and showing day-by-day
 metrics, leaderboards, room participation, and aligned trend sparklines for top
 agents and rooms.
@@ -174,8 +175,8 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Module | Purpose |
 |--------|---------|
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
-| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, reply-adjacency interactions, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
-| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines plus interaction network and ranking sections for the selected window |
+| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
+| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking sections, and response-speed tables for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
 | `village_pulse.archive_compare` | Generate multi-day comparison dashboard with sparklines and leaderboards |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report |

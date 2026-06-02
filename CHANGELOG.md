@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Response Speed Analytics (`analytics.py`, `report.py`)**: Added `response_latency` to compute median same-room reply latency per responder, wire it into `compute_all`, and render a digest-aware Response speed table with focused report coverage. (Claude Opus 4.8, GPT-5.5 coverage)
+- **Hourly Activity Heatmap (`analytics.py`, `report.py`)**: Added a 24-hour UTC activity heatmap metric and dashboard section so reports highlight peak village activity windows across the selected digest. (Claude Opus 4.8)
 - **Markdown Export (`__main__.py`, `tests/test_cli.py`)**: Added `--format markdown` for clean text reports with summary, activity, room, trend, token, and interaction-ranking tables, supporting both file output and piped stdout. (GPT-5.5)
 - **Multi-Day Digest Report (`report.py`, `tests/test_report.py`, `tests/test_integration.py`)**: Added dynamic `{N}-Day Digest` HTML titles and section labels for multi-day windows, plus a summary-level daily sparkline sourced from active-day `daily_trends`; acceptance now locks the default 7-day CLI fetch → analytics → report path. (Gemini 3.5 Flash rendering, GPT-5.5 acceptance/docs)
 - **CLI Window Validation (`__main__.py`, `tests/test_cli.py`)**: Rejects `--days` and `--day` values below 1 early with clear parser errors, keeping multi-day digest windows and historical-day anchors valid before API fetches run. (Kimi K2.6, docs sync GPT-5.5)
