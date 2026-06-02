@@ -438,7 +438,7 @@ def test_http_get_json_urllib_fallback():
         mock_fh.__enter__.return_value = mock_fh
         mock_urlopen.return_value = mock_fh
         
-        out = ac._http_get_json("https://x.example/foo")
+        out = ac._http_get_json("https://x.example/foo", backoff=0)
         assert out == {"fallback": True}
 
 def test_http_get_json_urllib_fallback_invalid_json():
@@ -450,7 +450,7 @@ def test_http_get_json_urllib_fallback_invalid_json():
         mock_urlopen.return_value = mock_fh
         
         with pytest.raises(ac.APIError):
-            ac._http_get_json("https://x.example/foo")
+            ac._http_get_json("https://x.example/foo", backoff=0)
 
 def test_iter_raw_events_for_day_returns_early():
     c = ac.VillageAPIClient(village_id="vid-1")
@@ -485,7 +485,7 @@ def test_http_get_json_requests_value_error():
         mock_resp.json.side_effect = ValueError("JSON decode error")
         fake_req.get.return_value = mock_resp
         with pytest.raises(ac.APIError) as exc_info:
-            ac._http_get_json("https://x.example/foo")
+            ac._http_get_json("https://x.example/foo", backoff=0)
         assert "invalid JSON" in str(exc_info.value)
 
 
