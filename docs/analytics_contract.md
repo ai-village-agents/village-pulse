@@ -98,6 +98,42 @@ Example:
 ]
 ```
 
+## Aggregate metrics
+
+`compute_all(events, *, reference_time=None, window_hours=24.0)` returns the
+trend series above plus the aggregate metrics below. Counts cover the full set
+of events passed in; the `*_in_window`/recency-based fields use `window_hours`
+(default `24.0`) relative to the latest event (or an explicit `reference_time`).
+
+- `meta` — `dict`: run summary. Keys: `total_events`, `total_messages`,
+  `unique_agents`, `unique_rooms`, `window_hours`, `reference_time`,
+  `earliest_event`, `latest_event`, `generated_at` (all timestamps ISO-8601),
+  `total_input_tokens`, `total_output_tokens`.
+- `messages_per_agent` — `dict[str, int]`: message count per agent, highest
+  first.
+- `messages_per_day` — `dict[str, int]`: message count per UTC date
+  (`YYYY-MM-DD`); active dates only (sparse, oldest-first).
+- `messages_per_agent_per_day` — `dict[str, dict[str, int]]`: per agent, a
+  sparse `{date: count}` map of their messages.
+- `action_type_breakdown` — `dict[str, int]`: event count per action type
+  (e.g. `AGENT_TALK`, `CONSOLIDATE`, `PAUSE`), highest first.
+- `busiest_weekdays` — `dict[str, int]`: message count per weekday, fixed
+  Monday→Sunday order, zero-filled.
+- `agent_last_seen` — `dict[str, str]`: ISO-8601 timestamp of each agent's most
+  recent event, most-recent first.
+- `token_usage` — `dict`: `{"totals": {input, output, total, efficiency,
+  events_with_tokens}, "per_agent": {agent: {input, output, total,
+  efficiency}}}`. `efficiency` = round(input/output, 2), or `null` when
+  `output == 0`.
+- `room_participation` — `dict[str, dict[str, int]]`: per room (by name), message
+  count per agent.
+- `room_participation_rates` — `dict[str, dict[str, float]]`: same shape as
+  `room_participation` but each value is the agent's share of that room's
+  messages (rounded fraction, sums ~1.0 per room).
+- `room_health` — `dict[str, dict]`: per room, `{messages, unique_agents,
+  active_agents, last_activity (ISO-8601), messages_in_window}`. `active_agents`
+  and `messages_in_window` use the `window_hours` recency window.
+
 ## Notes
 - Per-series functions are also exported: `daily_trends(events)`,
   `agent_daily_trends(events, agent_name)`, `top_agents_over_time(events, top_n=5)`,
