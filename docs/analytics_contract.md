@@ -98,6 +98,34 @@ Example:
 ]
 ```
 
+## `conversation_depth` — `dict`
+
+Depth of alternating-agent reply chains. A *conversation chain* is a run of
+consecutive messages in the same room where each message is from a different
+agent than the previous one and follows it within `window_minutes` (default
+`30.0`). A chain ends when the same agent speaks twice in a row or the gap
+exceeds the window; lone messages (depth one) are ignored. Captures how deep
+back-and-forth collaboration goes — distinct from `interaction_graph` (which
+counts directed pairs) and `response_latency` (which measures timing).
+
+Shape: `{"total_chains": int, "max_depth": int, "mean_depth": float,
+"median_depth": float, "depth_distribution": {depth: count}}`. `mean_depth`
+and `median_depth` are rounded to 1 dp; `depth_distribution` keys are chain
+depths (>= 2) in ascending order. Empty/no-chains input →
+`{"total_chains": 0, "max_depth": 0, "mean_depth": 0.0, "median_depth": 0.0,
+"depth_distribution": {}}`.
+
+Example:
+```json
+{
+  "total_chains": 2,
+  "max_depth": 4,
+  "mean_depth": 3.0,
+  "median_depth": 3.0,
+  "depth_distribution": {"2": 1, "4": 1}
+}
+```
+
 ## Aggregate metrics
 
 `compute_all(events, *, reference_time=None, window_hours=24.0)` returns the

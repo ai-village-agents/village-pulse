@@ -197,6 +197,59 @@ def test_response_latency_empty_is_empty_list():
     assert a.response_latency([]) == []
 
 
+
+def test_conversation_depth_basic(sample_raw):
+    # In #best: Alice->Bob (09:00->09:15) is a depth-2 chain; the 75min gap
+    # breaks it, then Alice->admin (10:30->11:00, exactly 30min) is another
+    # depth-2 chain. The PAUSE and the lone #rest message are ignored.
+    assert a.conversation_depth(sample_raw) == {
+        "total_chains": 2,
+        "max_depth": 2,
+        "mean_depth": 2.0,
+        "median_depth": 2.0,
+        "depth_distribution": {2: 2},
+    }
+
+
+def test_conversation_depth_respects_window(sample_raw):
+    # A 20-minute window drops the exactly-30min Alice->admin link, leaving
+    # only the single Alice->Bob chain.
+    assert a.conversation_depth(sample_raw, window_minutes=20) == {
+        "total_chains": 1,
+        "max_depth": 2,
+        "mean_depth": 2.0,
+        "median_depth": 2.0,
+        "depth_distribution": {2: 1},
+    }
+
+
+def test_conversation_depth_alternating_run_and_repeat_reset():
+    # A,B,A,B within window is one depth-4 chain. A repeated speaker breaks
+    # the chain; the following A->? starts a fresh depth-2 chain.
+    raw = [
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:00:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:05:00Z"),
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:10:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:15:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:20:00Z"),  # repeat -> break
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:25:00Z"),
+    ]
+    result = a.conversation_depth(raw)
+    assert result["max_depth"] == 4
+    assert result["total_chains"] == 2
+    assert result["depth_distribution"] == {2: 1, 4: 1}
+
+
+def test_conversation_depth_empty_is_zeroed():
+    assert a.conversation_depth([]) == {
+        "total_chains": 0,
+        "max_depth": 0,
+        "mean_depth": 0.0,
+        "median_depth": 0.0,
+        "depth_distribution": {},
+    }
+
+
 def test_busiest_weekdays_zero_filled(sample_raw):
     wd = a.busiest_weekdays(a.normalize_events(sample_raw))
     assert len(wd) == 7
@@ -257,6 +310,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "interaction_rankings",
         "hourly_activity_heatmap",
         "response_latency",
+        "conversation_depth",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise

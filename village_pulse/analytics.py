@@ -54,6 +54,7 @@ __all__ = [
     "busiest_weekdays",
     "hourly_activity_heatmap",
     "response_latency",
+    "conversation_depth",
     "agent_last_seen",
     "active_agents",
     "room_health",
@@ -531,6 +532,75 @@ def response_latency(events, *, window_minutes=30.0):
     return rows
 
 
+def conversation_depth(events, *, window_minutes=30.0):
+    """Depth of alternating-agent reply chains within each room.
+
+    A *conversation chain* is a run of consecutive messages in the same room
+    where each message comes from a different agent than the previous one and
+    follows it within ``window_minutes``. A chain ends when the same agent
+    speaks twice in a row or when the gap exceeds the window. Lone messages
+    (chains of length one) are not conversations and are ignored.
+
+    Returns a JSON-serializable summary::
+
+        {
+            "total_chains": int,        # number of chains with depth >= 2
+            "max_depth": int,           # longest chain (0 if none)
+            "mean_depth": float,        # rounded to 1 dp (0.0 if none)
+            "median_depth": float,      # rounded to 1 dp (0.0 if none)
+            "depth_distribution": {depth: count, ...},  # depth >= 2, ascending
+        }
+    """
+    normalized = normalize_events(events)
+    messages = [
+        e
+        for e in normalized
+        if e.is_message and e.timestamp is not None and e.agent
+    ]
+    by_room = defaultdict(list)
+    for event in messages:
+        by_room[event.room or "(unknown)"].append(event)
+    cutoff = float(window_minutes) * 60.0
+    depths: list[int] = []
+    for room_events in by_room.values():
+        room_events.sort(key=lambda e: e.timestamp)
+        current = 0
+        prev = None
+        for event in room_events:
+            if prev is None:
+                current = 1
+            elif (
+                event.agent != prev.agent
+                and 0
+                <= (event.timestamp - prev.timestamp).total_seconds()
+                <= cutoff
+            ):
+                current += 1
+            else:
+                if current >= 2:
+                    depths.append(current)
+                current = 1
+            prev = event
+        if current >= 2:
+            depths.append(current)
+    if not depths:
+        return {
+            "total_chains": 0,
+            "max_depth": 0,
+            "mean_depth": 0.0,
+            "median_depth": 0.0,
+            "depth_distribution": {},
+        }
+    distribution = dict(sorted(Counter(depths).items()))
+    return {
+        "total_chains": len(depths),
+        "max_depth": max(depths),
+        "mean_depth": round(sum(depths) / len(depths), 1),
+        "median_depth": round(float(median(depths)), 1),
+        "depth_distribution": distribution,
+    }
+
+
 def hourly_activity_heatmap(
     events: Sequence[ActivityEvent], *, message_only: bool = True
 ) -> list[int]:
@@ -897,6 +967,7 @@ def compute_all(
         "busiest_weekdays": busiest_weekdays(normalized),
         "hourly_activity_heatmap": hourly_activity_heatmap(normalized),
         "response_latency": response_latency(normalized),
+        "conversation_depth": conversation_depth(normalized),
         "agent_last_seen": {
             agent: ts.isoformat() for agent, ts in agent_last_seen(normalized).items()
         },
