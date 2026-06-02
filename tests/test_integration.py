@@ -219,8 +219,12 @@ def test_cli_default_html_builds_seven_day_window(tmp_path, monkeypatch):
     assert captured_kwargs.get("days") == 7
     assert captured_kwargs.get("current_day") is None
     html = out.read_text(encoding="utf-8")
+    assert "Village Pulse - 7-Day Digest" in html
     assert "Window: 7 days" in html
-    assert "Daily trends" in html
+    assert "Activity digest trend (7 days)" in html
+    assert "Messages over time (Daily sparkline)" in html
+    assert "Agent activity (7-Day Digest)" in html
+    assert "Daily trends (7-Day Digest)" in html
     assert "2026-05-29" in html
     assert "2026-06-02" in html
     assert "Messages over time trend" in html

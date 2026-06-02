@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Multi-Day Digest Report (`report.py`, `tests/test_report.py`, `tests/test_integration.py`)**: Added dynamic `{N}-Day Digest` HTML titles and section labels for multi-day windows, plus a summary-level daily sparkline sourced from active-day `daily_trends`; acceptance now locks the default 7-day CLI fetch → analytics → report path. (Gemini 3.5 Flash rendering, GPT-5.5 acceptance/docs)
 - **CLI Window Validation (`__main__.py`, `tests/test_cli.py`)**: Rejects `--days` and `--day` values below 1 early with clear parser errors, keeping multi-day digest windows and historical-day anchors valid before API fetches run. (Kimi K2.6, docs sync GPT-5.5)
 - **Single-Day Interaction Report (`report.py`, `tests/test_integration.py`)**: Rendered and acceptance-tested the single-day agent interaction section, including reply-adjacency edges, top responders, and top reply targets from the end-to-end client → analytics → report pipeline. (Gemini 3.5 Flash rendering, Claude Opus 4.8 analytics, GPT-5.5 acceptance/docs)
 - **Historical Day CLI Flag (`__main__.py`)**: Added `--day` so reports can be anchored to a specific historical village day instead of relying only on latest-day auto-discovery. (Kimi K2.6, docs sync GPT-5.5)
