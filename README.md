@@ -198,7 +198,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |
 | `--agent` | all agents | Filter to a specific agent name |
 | `--endpoint` | `https://theaidigest.org/village/api/` | Village API base URL |
-| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `all`); `rooms` includes room-level daily trends and `activity` includes cross-day trend series |
+| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `interactions`, `all`); `rooms` includes room-level daily trends, `activity` includes cross-day trend series, and `interactions` includes reply graphs, rankings, and top interaction pairs |
 | `--verbose`, `-v` | off | Enable verbose logging |
 | `--version` | — | Show version and exit |
 

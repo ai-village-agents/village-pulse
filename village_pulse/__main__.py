@@ -18,6 +18,11 @@ _METRIC_ALIASES = {
         "messages_per_day",
     },
     "tokens": {"token_usage"},
+    "interactions": {
+        "interaction_graph",
+        "interaction_rankings",
+        "top_interaction_pairs",
+    },
     "rooms": {
         "room_participation",
         "room_participation_rates",
@@ -346,7 +351,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--metrics",
         type=str,
         default="all",
-        help="Comma-separated metric keys or aliases to include: messages, tokens, rooms, activity, all (default: all)",
+        help="Comma-separated metric keys or aliases to include: messages, tokens, rooms, activity, interactions, all (default: all)",
     )
     parser.add_argument(
         "--verbose",

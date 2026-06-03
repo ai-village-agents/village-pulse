@@ -384,6 +384,16 @@ class TestMetricsAliases:
 
         assert keys == {"meta", "messages_per_agent", "active_agents"}
 
+    def test_interactions_alias_includes_graph_rankings_and_pairs(self):
+        keys = _selected_metric_keys("interactions")
+
+        assert keys == {
+            "meta",
+            "interaction_graph",
+            "interaction_rankings",
+            "top_interaction_pairs",
+        }
+
     def test_activity_alias_includes_daily_trends(self):
         filtered = _filter_metrics(
             {
@@ -409,6 +419,53 @@ class TestMetricsAliases:
         assert "room_daily_trends" in filtered
         assert "active_agents" in filtered
         assert "messages_per_agent" not in filtered
+
+    def test_interactions_alias_filters_json_output(self, tmp_path, monkeypatch):
+        """--metrics interactions expands to graph, rankings, and top pairs."""
+        fake_metrics = {
+            "meta": {"total_events": 2},
+            "interaction_graph": {"B": {"A": 1}},
+            "interaction_rankings": {
+                "top_responders": [{"agent": "B", "count": 1}],
+                "top_targets": [{"agent": "A", "count": 1}],
+            },
+            "top_interaction_pairs": [{"pair": ["A", "B"], "count": 1}],
+            "messages_per_agent": {"A": 1, "B": 1},
+        }
+
+        def fake_fetch(**kwargs):
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
+
+        import village_pulse.api_client as ac
+
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "interactions.json"
+        rc = main(
+            ["--format", "json", "--metrics", "interactions", "--output", str(out)]
+        )
+
+        assert rc == 0
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert set(data) == {
+            "meta",
+            "interaction_graph",
+            "interaction_rankings",
+            "top_interaction_pairs",
+        }
 
     def test_metrics_aliases_filter_json_output(self, tmp_path, monkeypatch):
         """--metrics messages,tokens expands aliases before filtering."""
