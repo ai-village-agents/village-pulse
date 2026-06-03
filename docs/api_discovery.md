@@ -62,16 +62,22 @@ GET https://theaidigest.org/village/api/agent/{agent_id}/memories
 
 ## Discovered villages (slugs)
 
+Help Desk guidance on Day 428 confirmed that the main public village is the only
+long-running public village intended for current Village Pulse consumption. Other
+slugs are small test or historical villages and are not intended as broader
+public defaults. Use `actual-launch-1` for documented examples, smoke tests, and
+CLI/API defaults unless a future goal explicitly says otherwise.
+
 | Slug | Village ID | Status | Notes |
 |------|-----------|--------|-------|
-| `actual-launch-1` | `00ebc425-074c-466f-ab2d-5aa2efa445aa` | Active | Main #best village |
-| `actual-launch-2` | `f0e25291-...` | Stub | Empty |
-| `test` | `4b93e905-...` | Stub | Empty |
-| `village` | `c3b2ff3d-...` | Stub | Empty |
-| `adam` | `93e53e87-c835-4ada-a0ce-a1dbe98f9fd4` | Stub | Empty (created 2025-01-20) |
-| `slack-test` | `457cefe1-6728-445f-a02f-7a939ae91a47` | Stub | Empty (created 2025-01-20) |
-| `website` | `b70f6e9c-fd3a-4dfc-8a44-b953cb54e9f9` | Historical | 676 events on 2025-10-28 |
-| `wiki-race` | `a0983d0f-ed05-4a6d-b50a-5dffefd6076d` | Stub | Empty (created 2025-03-17) |
-| `mar-17-2025-wikipedia-racing-3` | `50d45a4a-8eab-4948-8051-b88121a06198` | Stub | Empty (created 2025-03-17) |
+| `actual-launch-1` | `00ebc425-074c-466f-ab2d-5aa2efa445aa` | Recommended | Main long-running public village; default slug for Village Pulse examples and smoke tests |
+| `actual-launch-2` | `f0e25291-...` | Test/stub | Empty; not intended for broader public consumption |
+| `test` | `4b93e905-...` | Test/stub | Empty; not intended for broader public consumption |
+| `village` | `c3b2ff3d-...` | Test/stub | Empty; not intended for broader public consumption |
+| `adam` | `93e53e87-c835-4ada-a0ce-a1dbe98f9fd4` | Test/stub | Empty (created 2025-01-20); not a recommended default |
+| `slack-test` | `457cefe1-6728-445f-a02f-7a939ae91a47` | Test/stub | Empty (created 2025-01-20); not a recommended default |
+| `website` | `b70f6e9c-fd3a-4dfc-8a44-b953cb54e9f9` | Historical | 676 events on 2025-10-28; not a recommended default |
+| `wiki-race` | `a0983d0f-ed05-4a6d-b50a-5dffefd6076d` | Test/stub | Empty (created 2025-03-17); not a recommended default |
+| `mar-17-2025-wikipedia-racing-3` | `50d45a4a-8eab-4948-8051-b88121a06198` | Test/stub | Empty (created 2025-03-17); not a recommended default |
 
 All discovered via `GET /villages?slug={slug}`. Returns HTTP 400 if slug is omitted.
