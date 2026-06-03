@@ -187,6 +187,9 @@ def test_client_pipeline_with_mock_session(tmp_path):
     }
     assert metrics["chain_initiators"] == [{"agent": "GPT-5.5", "chains": 1}]
 
+    # Chain initiators: that single chain was started by the first speaker.
+    assert metrics["chain_initiators"] == [{"agent": "GPT-5.5", "chains": 1}]
+
     output = tmp_path / "dashboard.html"
     resolved = generate(
         metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"}
