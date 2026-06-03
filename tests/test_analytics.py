@@ -130,6 +130,24 @@ def test_action_type_breakdown(sample_raw):
     assert result["AGENT_TALK"] == 4
     assert result["PAUSE"] == 1
     assert result["USER_TALK"] == 1
+    # Ordering contract: count-descending (the Markdown export and HTML
+    # dashboard render both depend on this insertion order).
+    counts = list(result.values())
+    assert counts == sorted(counts, reverse=True)
+
+
+def test_action_type_breakdown_orders_ties_by_name_and_handles_empty():
+    # Ties on count must fall back to action-type name ascending.
+    norm = a.normalize_events(
+        [
+            _ev("Alice", "#best", "ZED_ACTION", "2026-01-01T00:00:00Z"),
+            _ev("Bob", "#best", "ALPHA_ACTION", "2026-01-01T00:01:00Z"),
+        ]
+    )
+    result = a.action_type_breakdown(norm)
+    assert list(result.keys()) == ["ALPHA_ACTION", "ZED_ACTION"]
+    # Empty input yields an empty mapping.
+    assert a.action_type_breakdown([]) == {}
 
 
 def test_room_participation(sample_raw):
