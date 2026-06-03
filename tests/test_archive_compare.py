@@ -7,6 +7,7 @@ from village_pulse.archive_compare import (
     _build_agent_leaderboard,
     _build_comparison_table,
     _build_daily_trends_table,
+    _build_busiest_weekdays_comparison,
     _build_chain_initiators_comparison,
     _build_conversation_depth_comparison,
     _build_peak_hours_comparison,
@@ -631,6 +632,104 @@ class TestBuildChainInitiatorsComparison:
         assert "Alice" in html
         assert "—" in html
 
+
+
+
+class TestBuildBusiestWeekdaysComparison:
+    def test_empty(self):
+        html = _build_busiest_weekdays_comparison([])
+        assert "No weekday activity data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_weekdays": {
+                    "Monday": 10,
+                    "Tuesday": 5,
+                    "Wednesday": 0,
+                    "Thursday": 8,
+                    "Friday": 12,
+                    "Saturday": 0,
+                    "Sunday": 0,
+                },
+                "daily_trends": [{"date": "2026-05-25"}],
+            },
+            {
+                "day": 421,
+                "busiest_weekdays": {
+                    "Monday": 20,
+                    "Tuesday": 15,
+                    "Wednesday": 3,
+                    "Thursday": 4,
+                    "Friday": 8,
+                    "Saturday": 0,
+                    "Sunday": 0,
+                },
+                "daily_trends": [{"date": "2026-05-26"}],
+            },
+        ]
+        html = _build_busiest_weekdays_comparison(metrics)
+        # Aggregate: Monday 30, Friday 20, Tuesday 20, Thursday 12, Wednesday 3
+        assert "Monday" in html
+        assert "Tuesday" in html
+        assert "Wednesday" in html
+        assert "Thursday" in html
+        assert "Friday" in html
+        assert "Saturday" in html
+        assert "Sunday" in html
+        assert "30" in html
+        assert "20" in html
+        assert "12" in html
+        assert "3" in html
+        # Share percentages
+        total = 30 + 20 + 20 + 12 + 3  # 85
+        assert f"{(30/total*100):.1f}%" in html
+        assert f"{(20/total*100):.1f}%" in html
+        assert "circle" in html or "polyline" in html
+
+    def test_missing_key(self):
+        metrics = [
+            {
+                "day": 420,
+                "daily_trends": [{"date": "2026-05-25"}],
+            }
+        ]
+        html = _build_busiest_weekdays_comparison(metrics)
+        assert "No weekday activity data available" in html
+
+    def test_zero_total(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_weekdays": {
+                    "Monday": 0,
+                    "Tuesday": 0,
+                    "Wednesday": 0,
+                    "Thursday": 0,
+                    "Friday": 0,
+                    "Saturday": 0,
+                    "Sunday": 0,
+                },
+                "daily_trends": [{"date": "2026-05-25"}],
+            }
+        ]
+        html = _build_busiest_weekdays_comparison(metrics)
+        assert "No weekday activity data available" in html
+
+    def test_escapes_day_names(self):
+        metrics = [
+            {
+                "day": 420,
+                "busiest_weekdays": {
+                    "<script>Monday": 5,
+                },
+                "daily_trends": [{"date": "2026-05-25"}],
+            }
+        ]
+        html = _build_busiest_weekdays_comparison(metrics)
+        assert "&lt;script&gt;Monday" in html
+        assert "<script>Monday" not in html
 
 class TestBuildAgentLeaderboard:
     def test_empty(self):
