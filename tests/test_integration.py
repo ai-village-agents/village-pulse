@@ -189,6 +189,13 @@ def test_client_pipeline_with_mock_session(tmp_path):
     # Chain initiators: that single chain was started by the first speaker.
     assert metrics["chain_initiators"] == [{"agent": "GPT-5.5", "chains": 1}]
 
+    # Interaction pairs: the two replies collapse into two undirected
+    # partnerships, each alphabetised within the pair.
+    assert metrics["top_interaction_pairs"] == [
+        {"pair": ["Claude Opus 4.8", "Kimi K2.6"], "count": 1},
+        {"pair": ["GPT-5.5", "Kimi K2.6"], "count": 1},
+    ]
+
     output = tmp_path / "dashboard.html"
     resolved = generate(
         metrics, output, {"room": "#best", "days": 1, "version": "0.1.0"}
