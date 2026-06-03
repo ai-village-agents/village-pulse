@@ -668,18 +668,25 @@ def test_top_interaction_pairs_view_edge_cases():
     assert _top_interaction_pairs_view([]) == []
 
     # 3. Invalid rows (not Mapping, missing count/pair, invalid pair format)
-    assert _top_interaction_pairs_view([
-        "not-a-mapping",
-        {"count": 5}, # missing pair
-        {"pair": ["Alice"]}, # pair too short
-        {"pair": "not-a-list", "count": 5}, # pair not list/tuple
-    ]) == []
+    assert (
+        _top_interaction_pairs_view(
+            [
+                "not-a-mapping",
+                {"count": 5},  # missing pair
+                {"pair": ["Alice"]},  # pair too short
+                {"pair": "not-a-list", "count": 5},  # pair not list/tuple
+            ]
+        )
+        == []
+    )
 
     # 4. Correct coercion, percentage computation, and stable input ordering
-    res = _top_interaction_pairs_view([
-        {"pair": ["Bob", "Alice"], "count": 10},
-        {"pair": ["<script>Eve</script>", "Dave"], "count": 5},
-    ])
+    res = _top_interaction_pairs_view(
+        [
+            {"pair": ["Bob", "Alice"], "count": 10},
+            {"pair": ["<script>Eve</script>", "Dave"], "count": 5},
+        ]
+    )
     assert len(res) == 2
     assert res[0]["pair"] == ["Bob", "Alice"]
     assert res[0]["pair_str"] == "Bob ↔ Alice"
@@ -698,6 +705,7 @@ def test_top_interaction_pairs_view_edge_cases():
 
 def test_render_includes_top_interaction_pairs():
     from village_pulse.report import render
+
     metrics = sample_metrics()
     metrics["top_interaction_pairs"] = [
         {"pair": ["Alice", "Bob"], "count": 12},

@@ -644,7 +644,9 @@ def _build_view_model(
     response_latency = _response_latency_rows(metrics.get("response_latency"))
     conversation_depth = _conversation_depth_view(metrics.get("conversation_depth"))
     chain_initiators = _chain_initiators_view(metrics.get("chain_initiators"))
-    top_interaction_pairs = _top_interaction_pairs_view(metrics.get("top_interaction_pairs"))
+    top_interaction_pairs = _top_interaction_pairs_view(
+        metrics.get("top_interaction_pairs")
+    )
 
     summary_cards = [
         {
@@ -1204,12 +1206,14 @@ def _top_interaction_pairs_view(value: Any, *, limit: int = 15) -> list[dict[str
                 name_b = str(pair[1])
                 cnt = _safe_int(row.get("count"))
                 percent = round((cnt / max_count) * 100, 1) if max_count > 0 else 0.0
-                rows.append({
-                    "pair": [name_a, name_b],
-                    "pair_str": f"{name_a} ↔ {name_b}",
-                    "count": cnt,
-                    "percent": percent,
-                })
+                rows.append(
+                    {
+                        "pair": [name_a, name_b],
+                        "pair_str": f"{name_a} ↔ {name_b}",
+                        "count": cnt,
+                        "percent": percent,
+                    }
+                )
     return rows[:limit]
 
 
