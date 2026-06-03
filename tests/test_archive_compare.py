@@ -610,6 +610,27 @@ class TestBuildChainInitiatorsComparison:
         assert "5" in html
         assert "0.0%" in html  # share when total_chains missing (0)
 
+    def test_empty_chain_initiators_for_one_day(self):
+        metrics = [
+            {
+                "day": 420,
+                "chain_initiators": [
+                    {"agent": "Alice", "chains": 5},
+                ],
+                "conversation_depth": {"total_chains": 5},
+                "daily_trends": [{"date": "2026-05-30"}],
+            },
+            {
+                "day": 421,
+                "chain_initiators": [],
+                "conversation_depth": {"total_chains": 10},
+                "daily_trends": [{"date": "2026-05-31"}],
+            }
+        ]
+        html = _build_chain_initiators_comparison(metrics)
+        assert "Alice" in html
+        assert "—" in html
+
 
 class TestBuildAgentLeaderboard:
     def test_empty(self):
