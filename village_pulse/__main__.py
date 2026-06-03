@@ -272,6 +272,26 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         lines.extend(_markdown_table(["Action type", "Events"], rows))
         lines.append("")
 
+    response_latency = metrics.get("response_latency")
+    if isinstance(response_latency, list) and response_latency:
+        rows = [
+            [
+                item.get("agent", ""),
+                item.get("median_seconds", 0),
+                item.get("responses", 0),
+            ]
+            for item in response_latency
+            if isinstance(item, dict)
+        ]
+        if rows:
+            lines.extend(["## Response speed", ""])
+            lines.extend(
+                _markdown_table(
+                    ["Agent", "Median reply seconds", "Responses"], rows
+                )
+            )
+            lines.append("")
+
     conversation = metrics.get("conversation_depth")
     if isinstance(conversation, dict) and conversation.get("total_chains"):
         lines.extend(["## Conversation depth", ""])

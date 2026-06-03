@@ -555,6 +555,10 @@ class TestFormatMarkdown:
             ],
             "busiest_weekdays": {"Wednesday": 2, "Monday": 5, "Sunday": 0},
             "action_type_breakdown": {"CONSOLIDATE": 1, "AGENT_TALK": 2},
+            "response_latency": [
+                {"agent": "GPT-5.5", "median_seconds": 12.5, "responses": 2},
+                {"agent": "Kimi K2.6", "median_seconds": 30.0, "responses": 1},
+            ],
             "conversation_depth": {
                 "total_chains": 3,
                 "max_depth": 5,
@@ -621,6 +625,9 @@ class TestFormatMarkdown:
         assert "| Sunday | 0 |" in text
         assert "## Action types" in text
         assert text.index("| AGENT_TALK | 2 |") < text.index("| CONSOLIDATE | 1 |")
+        assert "## Response speed" in text
+        assert "| GPT-5.5 | 12.5 | 2 |" in text
+        assert "| Kimi K2.6 | 30.0 | 1 |" in text
         assert "## Conversation depth" in text
         assert "| Total chains | 3 |" in text
         assert "| Max depth | 5 |" in text
@@ -1084,6 +1091,26 @@ class TestCLIInternalEdgeCases:
         assert rc == 0
         captured = capsys.readouterr()
         assert "[village-pulse] writing Markdown report..." in captured.out
+
+
+    def test_markdown_response_latency_escapes_and_skips_bad_rows(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {"total_events": 2, "total_messages": 2},
+            "response_latency": [
+                {"agent": "A|B", "median_seconds": 1.5, "responses": 2},
+                "not-a-row",
+                {"agent": "No replies", "median_seconds": 0, "responses": 0},
+            ],
+        }
+
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+
+        assert "## Response speed" in text
+        assert "| A\\|B | 1.5 | 2 |" in text
+        assert "| No replies | 0 | 0 |" in text
+        assert "not-a-row" not in text
 
     def test_markdown_action_type_breakdown_sorts_and_escapes(self):
         from village_pulse.__main__ import _metrics_to_markdown

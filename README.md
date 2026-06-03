@@ -196,7 +196,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--output`, `-o` | `report.html` for HTML; stdout for JSON/CSV | Output path; JSON and CSV are pipeable when no output file is provided |
-| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary with key tables such as room participation, busiest weekdays, action types, interaction rankings, top interaction pairs, token usage, conversation depth, and chain initiators |
+| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary with key tables such as room participation, busiest weekdays, action types, response speed, interaction rankings, top interaction pairs, token usage, conversation depth, and chain initiators |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |
@@ -215,7 +215,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, busiest-weekday cards, hourly heatmap cells, interaction network/ranking/top-pair sections, response-speed tables, and conversation-depth plus chain-initiator summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
 | `village_pulse.archive_compare` | Generate multi-day comparison dashboard with a linked table of contents, peak-hour, response-speed, conversation-depth, and chain-initiator comparisons, aggregated interaction rankings, top interaction pairs, sparklines, and leaderboards |
-| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown busiest-weekday, action-type, conversation-depth, chain-initiator, and top-interaction-pair summaries |
+| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown busiest-weekday, action-type, response-speed, conversation-depth, chain-initiator, and top-interaction-pair summaries |
 
 ### Module Attribution
 
