@@ -283,6 +283,56 @@ def test_generate_comparison_archive_passes_conversation_depth(tmp_path, monkeyp
     assert '<td class="num">2.0</td>' in html
 
 
+def test_generate_comparison_archive_passes_top_interaction_pairs(tmp_path, monkeypatch):
+    """Archive comparison should render live-computed top interaction pairs."""
+
+    class FakeClient:
+        def _discover_latest_day(self):
+            return 2
+
+        def iter_raw_events_for_day(self, day):
+            if day == 1:
+                return []
+            return [
+                {
+                    "createdAt": "2026-06-02T17:00:00Z",
+                    "data": {
+                        "actionType": "AGENT_TALK",
+                        "agentName": "Alice",
+                        "roomId": "room-1",
+                        "content": "First",
+                    },
+                },
+                {
+                    "createdAt": "2026-06-02T17:05:00Z",
+                    "data": {
+                        "actionType": "AGENT_TALK",
+                        "agentName": "Bob",
+                        "roomId": "room-1",
+                        "content": "Reply",
+                    },
+                },
+            ]
+
+        def get_agents(self):
+            return {}
+
+        def get_rooms(self):
+            return {"room-1": "best"}
+
+    monkeypatch.setattr(
+        archive_compare.api_client, "VillageAPIClient", lambda **_: FakeClient()
+    )
+
+    output = archive_compare.generate_comparison_archive(tmp_path, days_back=2)
+    html = output.read_text(encoding="utf-8")
+
+    assert "Top Interaction Pairs" in html
+    assert "Alice ↔ Bob" in html
+    assert '<td class="num">1</td>' in html
+    assert "No interaction pair data available" not in html
+
+
 class TestBuildConversationDepthComparison:
     def test_empty(self):
         html = _build_conversation_depth_comparison([])
@@ -802,6 +852,7 @@ class TestGenerateComparisonArchiveOrchestration:
         assert day_metrics[0]["room_participation"] == {"best": {"Alice": 1}}
         assert day_metrics[0]["top_agents"] == [{"agent": "Alice", "messages": 1}]
         assert day_metrics[0]["daily_trends"][0]["date"] == "2026-06-01"
+        assert day_metrics[0]["top_interaction_pairs"] == []
 
 
 class TestArchiveCompareCLI:

@@ -829,6 +829,7 @@ def generate_comparison_archive(
                 "conversation_depth": metrics.get("conversation_depth", {}),
                 "response_latency": metrics.get("response_latency", []),
                 "interaction_rankings": metrics.get("interaction_rankings", {}),
+                "top_interaction_pairs": metrics.get("top_interaction_pairs", []),
             }
         )
 
