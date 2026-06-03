@@ -1092,7 +1092,6 @@ class TestCLIInternalEdgeCases:
         captured = capsys.readouterr()
         assert "[village-pulse] writing Markdown report..." in captured.out
 
-
     def test_markdown_response_latency_escapes_and_skips_bad_rows(self):
         from village_pulse.__main__ import _metrics_to_markdown
 
@@ -1128,6 +1127,38 @@ class TestCLIInternalEdgeCases:
         assert text.index("| AGENT_TALK | 5 |") < text.index("| USER\\|TALK | 2 |")
         assert "| BAD_COUNT | 0 |" in text
         assert "| USER|TALK | 2 |" not in text
+
+    def test_markdown_busiest_hours_edge_cases(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {},
+            "busiest_hours": {
+                "23": "4",
+                0: None,
+                "bad": 9,
+                24: 2,
+                -1: 3,
+                "7": "oops",
+            },
+        }
+
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+        assert "## Busiest hours" in text
+        assert "| 00:00 | 0 |" in text
+        assert "| 07:00 | 0 |" in text
+        assert "| 23:00 | 4 |" in text
+        assert "bad" not in text
+        assert "24:00" not in text
+        assert (
+            text.index("| 00:00 | 0 |")
+            < text.index("| 07:00 | 0 |")
+            < text.index("| 23:00 | 4 |")
+        )
+
+        assert "## Busiest hours" not in _metrics_to_markdown(
+            {"busiest_hours": "bad"}, context={}
+        )
 
     def test_markdown_busiest_weekdays_edge_cases(self):
         from village_pulse.__main__ import _metrics_to_markdown

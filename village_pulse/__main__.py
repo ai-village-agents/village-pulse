@@ -150,6 +150,34 @@ def _weekday_markdown_rows(value: object) -> list[list[object]]:
     )
 
 
+def _hour_markdown_rows(value: object) -> list[list[object]]:
+    """Normalize busiest_hours metric shapes for Markdown output."""
+    rows: list[list[object]] = []
+    if isinstance(value, dict):
+        items = value.items()
+    elif isinstance(value, (list, tuple)):
+        items = []
+        for item in value:
+            if isinstance(item, dict):
+                hour = item.get("hour")
+                if hour is None:
+                    continue
+                items.append((hour, item.get("count", 0)))
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                items.append((item[0], item[1]))
+    else:
+        return []
+
+    for hour, count in items:
+        try:
+            hour_int = int(hour)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= hour_int <= 23:
+            rows.append([f"{hour_int:02d}:00", _safe_int(count)])
+    return sorted(rows, key=lambda row: row[0])
+
+
 def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
     """Render key dashboard metrics as a clean Markdown document."""
     days = context.get("days")
@@ -253,6 +281,12 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             )
             lines.append("")
 
+    hour_rows = _hour_markdown_rows(metrics.get("busiest_hours"))
+    if hour_rows:
+        lines.extend(["## Busiest hours", ""])
+        lines.extend(_markdown_table(["Hour (UTC)", "Events"], hour_rows))
+        lines.append("")
+
     weekday_rows = _weekday_markdown_rows(metrics.get("busiest_weekdays"))
     if weekday_rows:
         lines.extend(["## Busiest weekdays", ""])
@@ -286,9 +320,7 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         if rows:
             lines.extend(["## Response speed", ""])
             lines.extend(
-                _markdown_table(
-                    ["Agent", "Median reply seconds", "Responses"], rows
-                )
+                _markdown_table(["Agent", "Median reply seconds", "Responses"], rows)
             )
             lines.append("")
 
