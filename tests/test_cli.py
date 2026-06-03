@@ -1184,6 +1184,22 @@ class TestCLIInternalEdgeCases:
             < text.index("| 23:00 | 4 |")
         )
 
+        metrics_list = {
+            "busiest_hours": [
+                {"hour": "22", "count": 10},
+                {"hour": None, "count": 5},
+                {"hour": "21"},
+                ("20", 15),
+                ("19",),
+                "invalid_item",
+            ]
+        }
+        text_list = _metrics_to_markdown(metrics_list, context={"days": 1})
+        assert "## Busiest hours" in text_list
+        assert "| 22:00 | 10 |" in text_list
+        assert "| 21:00 | 0 |" in text_list
+        assert "| 20:00 | 15 |" in text_list
+
         assert "## Busiest hours" not in _metrics_to_markdown(
             {"busiest_hours": "bad"}, context={}
         )
