@@ -1077,3 +1077,19 @@ class TestCLIInternalEdgeCases:
         assert rc == 0
         captured = capsys.readouterr()
         assert "[village-pulse] writing Markdown report..." in captured.out
+
+    def test_markdown_top_interaction_pairs_edge_cases(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+        metrics = {
+            "meta": {"total_events": 0, "total_messages": 0},
+            "top_interaction_pairs": [
+                "not-a-dict",
+                {"pair": ["Alice"], "count": 5}, # pair too short (len < 2)
+                {"pair": ["Alice", "Bob"], "count": 10}, # valid
+            ],
+        }
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+        assert "## Top interaction pairs" in text
+        assert "Alice ↔ Bob" in text
+        assert "10" in text
+        assert "not-a-dict" not in text

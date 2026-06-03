@@ -321,7 +321,7 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
       <h2>Agent interactions{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
       <p class="muted">Reply-adjacency analysis showing who responds to whom (within a 30-minute window) and overall reply activity.</p>
       
-      {% if interaction_graph_rows or interaction_rankings.top_responders or interaction_rankings.top_targets %}
+      {% if interaction_graph_rows or interaction_rankings.top_responders or interaction_rankings.top_targets or top_interaction_pairs %}
       <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.5rem; margin-top: 1rem;">
         
         <article class="card" style="box-shadow: none; border: 1px solid var(--line); padding: 1rem;">
@@ -384,6 +384,39 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
             <p class="muted">No replies received.</p>
             {% endif %}
           </div>
+        </article>
+
+        <article class="card" style="box-shadow: none; border: 1px solid var(--line); padding: 1rem;">
+          <h3 style="margin-top: 0;">Strongest partnerships <span class="muted" style="font-size: 0.8rem; font-weight: normal;">(bidirectional interaction pairs)</span></h3>
+          {% if top_interaction_pairs %}
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--line);">
+                <th style="text-align: left; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Partnership</th>
+                <th style="text-align: right; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Count</th>
+                <th style="text-align: right; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); width: 40%;">Intensity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in top_interaction_pairs %}
+              <tr style="border-bottom: 1px solid var(--line);">
+                <td style="padding: 0.5rem 0; font-size: 0.9rem; font-weight: 500;">{{ row.pair_str }}</td>
+                <td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ row.count }}</td>
+                <td style="padding: 0.5rem 0; text-align: right; vertical-align: middle;">
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                    <span style="color: var(--muted); font-size: 0.8rem;">{{ row.percent }}%</span>
+                    <div style="width: 60px; height: 8px; background-color: var(--line); border-radius: 4px; overflow: hidden; display: inline-block;">
+                      <div style="width: {{ row.percent }}%; height: 100%; background-color: var(--accent); border-radius: 4px;"></div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="muted">No bidirectional pairs detected.</p>
+          {% endif %}
         </article>
 
       </div>
@@ -611,6 +644,7 @@ def _build_view_model(
     response_latency = _response_latency_rows(metrics.get("response_latency"))
     conversation_depth = _conversation_depth_view(metrics.get("conversation_depth"))
     chain_initiators = _chain_initiators_view(metrics.get("chain_initiators"))
+    top_interaction_pairs = _top_interaction_pairs_view(metrics.get("top_interaction_pairs"))
 
     summary_cards = [
         {
@@ -658,6 +692,7 @@ def _build_view_model(
         "response_latency": response_latency,
         "conversation_depth": conversation_depth,
         "chain_initiators": chain_initiators,
+        "top_interaction_pairs": top_interaction_pairs,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
@@ -1148,6 +1183,36 @@ def _interaction_rankings(rankings: Any) -> dict[str, list[dict[str, Any]]]:
             )
 
     return {"top_responders": top_responders, "top_targets": top_targets}
+
+
+def _top_interaction_pairs_view(value: Any, *, limit: int = 15) -> list[dict[str, Any]]:
+    """Coerce analytics.top_interaction_pairs output into safe rows for template rendering."""
+    rows: list[dict[str, Any]] = []
+    if not isinstance(value, (list, tuple)):
+        return rows
+
+    max_count = 1
+    for row in value:
+        if isinstance(row, Mapping) and "count" in row:
+            max_count = max(max_count, _safe_int(row.get("count")))
+
+    for row in value:
+        if isinstance(row, Mapping) and "pair" in row:
+            pair = row.get("pair")
+            if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                name_a = str(pair[0])
+                name_b = str(pair[1])
+                name_a_esc = html.escape(name_a)
+                name_b_esc = html.escape(name_b)
+                cnt = _safe_int(row.get("count"))
+                percent = round((cnt / max_count) * 100, 1) if max_count > 0 else 0.0
+                rows.append({
+                    "pair": [name_a_esc, name_b_esc],
+                    "pair_str": f"{name_a_esc} ↔ {name_b_esc}",
+                    "count": cnt,
+                    "percent": percent
+                })
+    return rows[:limit]
 
 
 def _conversation_depth_view(value: Any) -> dict[str, Any]:

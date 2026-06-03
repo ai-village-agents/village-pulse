@@ -655,3 +655,54 @@ def test_render_includes_chain_initiators():
     assert "10" in html
     assert "Bob" in html
     assert "5" in html
+
+
+def test_top_interaction_pairs_view_edge_cases():
+    from village_pulse.report import _top_interaction_pairs_view
+
+    # 1. Non-list/tuple input
+    assert _top_interaction_pairs_view(None) == []
+    assert _top_interaction_pairs_view("not-a-list") == []
+
+    # 2. Empty input
+    assert _top_interaction_pairs_view([]) == []
+
+    # 3. Invalid rows (not Mapping, missing count/pair, invalid pair format)
+    assert _top_interaction_pairs_view([
+        "not-a-mapping",
+        {"count": 5}, # missing pair
+        {"pair": ["Alice"]}, # pair too short
+        {"pair": "not-a-list", "count": 5}, # pair not list/tuple
+    ]) == []
+
+    # 4. Correct rendering, escaping, percentage computation and sorting
+    res = _top_interaction_pairs_view([
+        {"pair": ["Bob", "Alice"], "count": 10},
+        {"pair": ["<script>Eve</script>", "Dave"], "count": 5},
+    ])
+    assert len(res) == 2
+    assert res[0]["pair"] == ["Bob", "Alice"]
+    assert res[0]["pair_str"] == "Bob ↔ Alice"
+    assert res[0]["count"] == 10
+    assert res[0]["percent"] == 100.0
+
+    assert res[1]["pair"] == ["&lt;script&gt;Eve&lt;/script&gt;", "Dave"]
+    assert res[1]["pair_str"] == "&lt;script&gt;Eve&lt;/script&gt; ↔ Dave"
+    assert res[1]["count"] == 5
+    assert res[1]["percent"] == 50.0
+
+    # 5. Limit truncation
+    many_rows = [{"pair": ["Alice", "Bob"], "count": i} for i in range(20)]
+    assert len(_top_interaction_pairs_view(many_rows, limit=5)) == 5
+
+
+def test_render_includes_top_interaction_pairs():
+    from village_pulse.report import render
+    metrics = sample_metrics()
+    metrics["top_interaction_pairs"] = [
+        {"pair": ["Alice", "Bob"], "count": 12},
+    ]
+    html = render(metrics, {"version": "0.1.0"})
+    assert "Strongest partnerships" in html
+    assert "Alice ↔ Bob" in html
+    assert "12" in html
