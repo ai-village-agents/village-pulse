@@ -185,7 +185,6 @@ def test_client_pipeline_with_mock_session(tmp_path):
         "median_depth": 3.0,
         "depth_distribution": {3: 1},
     }
-    assert metrics["chain_initiators"] == [{"agent": "GPT-5.5", "chains": 1}]
 
     # Chain initiators: that single chain was started by the first speaker.
     assert metrics["chain_initiators"] == [{"agent": "GPT-5.5", "chains": 1}]
