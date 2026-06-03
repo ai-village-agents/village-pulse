@@ -485,6 +485,10 @@ class TestFormatMarkdown:
                 "mean_depth": 3.7,
                 "median_depth": 3.0,
             },
+            "chain_initiators": [
+                {"agent": "GPT-5.5", "chains": 2},
+                {"agent": "Kimi K2.6", "chains": 1},
+            ],
             "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
             "interaction_rankings": {
                 "top_responders": [{"agent": "GPT-5.5", "count": 2}],
@@ -537,6 +541,9 @@ class TestFormatMarkdown:
         assert "| Max depth | 5 |" in text
         assert "| Mean depth | 3.7 |" in text
         assert "| Median depth | 3.0 |" in text
+        assert "## Chain initiators" in text
+        assert "| GPT-5.5 | 2 |" in text
+        assert "| Kimi K2.6 | 1 |" in text
         assert "## Top responders" in text
         assert "| GPT-5.5 | 2 |" in text
         assert "<svg" not in text
@@ -554,11 +561,13 @@ class TestFormatMarkdown:
                     "mean_depth": 0.0,
                     "median_depth": 0.0,
                 },
+                "chain_initiators": [],
             },
             context={"days": 7},
         )
 
         assert "## Conversation depth" not in text
+        assert "## Chain initiators" not in text
 
     def test_markdown_stdout_when_no_output_flag(self, monkeypatch, capsys):
         """--format markdown without -o prints Markdown to stdout."""

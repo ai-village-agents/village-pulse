@@ -224,6 +224,18 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         )
         lines.append("")
 
+    chain_initiators = metrics.get("chain_initiators")
+    if isinstance(chain_initiators, list) and chain_initiators:
+        rows = [
+            [item.get("agent", ""), item.get("chains", 0)]
+            for item in chain_initiators
+            if isinstance(item, dict)
+        ]
+        if rows:
+            lines.extend(["## Chain initiators", ""])
+            lines.extend(_markdown_table(["Agent", "Chains started"], rows))
+            lines.append("")
+
     token_usage = metrics.get("token_usage")
     if isinstance(token_usage, dict):
         totals = token_usage.get("totals")
