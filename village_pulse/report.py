@@ -1460,10 +1460,10 @@ def _room_participation_rates_view(value: Any) -> list[dict[str, Any]]:
         for agent, rate in agents.items():
             f_rate = _safe_float(rate)
             rows.append({
-                "room": html.escape(str(room)),
-                "agent": html.escape(str(agent)),
+                "room": str(room),
+                "agent": str(agent),
                 "rate": f_rate,
-                "percent": round(f_rate * 100, 1)
+                "percent": round(f_rate * 100, 1),
             })
     rows.sort(
         key=lambda row: (

@@ -891,7 +891,7 @@ def test_room_participation_rates_view_edge_cases():
     # #rest room
     assert res[4]["room"] == "#rest" and res[4]["agent"] == "Eve" and res[4]["percent"] == 100.0
 
-    # 4. HTML escaping
+    # 4. Raw names are left for Jinja autoescaping at render time.
     unsafe_data = {
         "<unsafe_room>": {
             "<unsafe_agent>": 0.5
@@ -899,8 +899,8 @@ def test_room_participation_rates_view_edge_cases():
     }
     res_unsafe = _room_participation_rates_view(unsafe_data)
     assert len(res_unsafe) == 1
-    assert res_unsafe[0]["room"] == "&lt;unsafe_room&gt;"
-    assert res_unsafe[0]["agent"] == "&lt;unsafe_agent&gt;"
+    assert res_unsafe[0]["room"] == "<unsafe_room>"
+    assert res_unsafe[0]["agent"] == "<unsafe_agent>"
 
 
 def test_render_includes_room_participation_rates():
@@ -919,6 +919,18 @@ def test_render_includes_room_participation_rates():
     assert "75.0%" in html
     assert "Bob" in html
     assert "25.0%" in html
+
+    metrics_unsafe = sample_metrics()
+    metrics_unsafe["room_participation_rates"] = {
+        "<unsafe_room>": {
+            "A&B <unsafe_agent>": 1.0,
+        }
+    }
+    html_unsafe = render(metrics_unsafe, {"version": "0.1.0"})
+    assert "&lt;unsafe_room&gt;" in html_unsafe
+    assert "A&amp;B &lt;unsafe_agent&gt;" in html_unsafe
+    assert "&amp;lt;unsafe_room&amp;gt;" not in html_unsafe
+    assert "A&amp;amp;B &amp;lt;unsafe_agent&amp;gt;" not in html_unsafe
 
     # Fallback path when no rates are provided
     metrics_empty = sample_metrics()
