@@ -787,3 +787,64 @@ def test_render_includes_busiest_weekdays():
     html_empty = render(metrics_empty, {"version": "0.1.0"})
     assert "Busiest weekdays" in html_empty
     assert "No weekday activity metrics were provided." in html_empty
+
+
+
+def test_action_type_rows_edge_cases():
+    from village_pulse.report import _action_type_rows
+
+    # 1. Non-mapping, non-sequence inputs
+    assert _action_type_rows(None) == []
+    assert _action_type_rows(123) == []
+    assert _action_type_rows("string") == []
+
+    # 2. Mapping input (counts descending, alphabetical sorting for ties)
+    mapping_val = {"key": 5, "hold_key": 10, "type": 10}
+    res = _action_type_rows(mapping_val)
+    assert len(res) == 3
+    assert res[0] == {"type": "hold_key", "count": 10}
+    assert res[1] == {"type": "type", "count": 10}
+    assert res[2] == {"type": "key", "count": 5}
+
+    # 3. Sequence of Mapping inputs
+    seq_mapping = [
+        {"type": "screenshot", "count": 2},
+        {"action_type": "left_click", "events": 4},
+        {"action_type": None},
+    ]
+    res_seq = _action_type_rows(seq_mapping)
+    assert len(res_seq) == 3
+    assert res_seq[0] == {"type": "left_click", "count": 4}
+    assert res_seq[1] == {"type": "screenshot", "count": 2}
+    assert res_seq[2] == {"type": "—", "count": 0}
+
+    # 4. Sequence of Sequences
+    seq_seq = [["key", 8], ["type", 12]]
+    res_seq_seq = _action_type_rows(seq_seq)
+    assert len(res_seq_seq) == 2
+    assert res_seq_seq[0] == {"type": "type", "count": 12}
+    assert res_seq_seq[1] == {"type": "key", "count": 8}
+
+
+def test_render_includes_action_types():
+    from village_pulse.report import render
+
+    # Test when data is present
+    metrics = sample_metrics()
+    metrics["action_type_breakdown"] = {"AGENT_TALK": 10, "CONSOLIDATE": 5}
+    html = render(metrics, {"version": "0.1.0"})
+    assert "Action types" in html
+    assert "AGENT_TALK" in html
+    assert "10" in html
+    assert "CONSOLIDATE" in html
+    assert "5" in html
+
+    # Test fallback path when no action type metrics are provided
+    metrics_empty = sample_metrics()
+    if "action_type_breakdown" in metrics_empty:
+        del metrics_empty["action_type_breakdown"]
+    if "action_types" in metrics_empty:
+        del metrics_empty["action_types"]
+    html_empty = render(metrics_empty, {"version": "0.1.0"})
+    assert "Action types" in html_empty
+    assert "No action type metrics were provided." in html_empty

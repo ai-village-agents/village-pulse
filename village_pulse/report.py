@@ -206,6 +206,14 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
         {% else %}<p class="muted">No weekday activity metrics were provided.</p>{% endif %}
       </article>
       <article class="card">
+        <h2>Action types{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
+        {% if action_types %}
+        <table><thead><tr><th>Action type</th><th>Events</th></tr></thead><tbody>
+          {% for act in action_types %}<tr><td><code>{{ act.type }}</code></td><td>{{ act.count }}</td></tr>{% endfor %}
+        </tbody></table>
+        {% else %}<p class="muted">No action type metrics were provided.</p>{% endif %}
+      </article>
+      <article class="card">
         <h2>Agent status{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
         <p><span class="good">Active:</span> {{ active_agents|join(', ') if active_agents else 'none listed' }}</p>
         <p><span class="warn">Inactive:</span> {{ inactive_agents|join(', ') if inactive_agents else 'none listed' }}</p>
@@ -631,6 +639,9 @@ def _build_view_model(
     busiest_weekdays = _weekday_rows(
         metrics.get("busiest_weekdays") or metrics.get("messages_by_weekday")
     )
+    action_types = _action_type_rows(
+        metrics.get("action_type_breakdown") or metrics.get("action_types")
+    )
     heatmap_cells = _heatmap_cells(metrics.get("hourly_activity_heatmap"))
     trend = _mapping(metrics, "message_trend", "messages_per_day", "daily_messages")
 
@@ -694,6 +705,7 @@ def _build_view_model(
         "room_rows": _room_rows(room_metrics),
         "busiest_hours": busiest_hours,
         "busiest_weekdays": busiest_weekdays,
+        "action_types": action_types,
         "heatmap_cells": heatmap_cells,
         "token_summary": token_summary,
         "token_agent_rows": token_agent_rows,
@@ -1105,6 +1117,42 @@ def _weekday_rows(value: Any) -> list[dict[str, Any]]:
         [{"weekday": key, "count": _safe_int(count)} for key, count in items],
         key=lambda r: order.get(str(r["weekday"]), 9),
     )
+
+
+def _action_type_rows(value: Any) -> list[dict[str, Any]]:
+    """Format and sort action types for visual display.
+    
+    Returns:
+        list[dict[str, Any]]: [{"type": "...", "count": ...}]
+    """
+    if isinstance(value, Mapping):
+        items = value.items()
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        items = []
+        rows: list[dict[str, Any]] = []
+        for entry in value:
+            if isinstance(entry, Mapping):
+                act = entry.get("type") or entry.get("action_type") or "—"
+                rows.append(
+                    {
+                        "type": str(act),
+                        "count": _safe_int(entry.get("count") or entry.get("events")),
+                    }
+                )
+            elif (
+                isinstance(entry, Sequence)
+                and len(entry) >= 2
+                and not isinstance(entry, (str, bytes, bytearray))
+            ):
+                rows.append({"type": str(entry[0]), "count": _safe_int(entry[1])})
+        return sorted(rows, key=lambda r: (-r["count"], r["type"].lower()))
+    else:
+        return []
+
+    rows = []
+    for key, count in items:
+        rows.append({"type": str(key), "count": _safe_int(count)})
+    return sorted(rows, key=lambda r: (-r["count"], r["type"].lower()))
 
 
 def _heatmap_cells(value: Any) -> list[dict[str, Any]]:
