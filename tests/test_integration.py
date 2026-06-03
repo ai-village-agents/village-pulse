@@ -185,6 +185,7 @@ def test_client_pipeline_with_mock_session(tmp_path):
         "median_depth": 3.0,
         "depth_distribution": {3: 1},
     }
+    assert metrics["chain_initiators"] == [{"agent": "GPT-5.5", "chains": 1}]
 
     output = tmp_path / "dashboard.html"
     resolved = generate(
