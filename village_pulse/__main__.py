@@ -150,6 +150,13 @@ def _weekday_markdown_rows(value: object) -> list[list[object]]:
     )
 
 
+def _safe_float(value: object) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _hour_markdown_rows(value: object) -> list[list[object]]:
     """Normalize busiest_hours metric shapes for Markdown output."""
     rows: list[list[object]] = []
@@ -260,6 +267,26 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         lines.extend(["## Room participation", ""])
         lines.extend(_markdown_table(["Room", "Messages", "Top agents"], rows))
         lines.append("")
+
+    participation_rates = metrics.get("room_participation_rates")
+    if isinstance(participation_rates, dict) and participation_rates:
+        rate_rows = []
+        for room, agents in participation_rates.items():
+            if not isinstance(agents, dict):
+                continue
+            for agent, rate in agents.items():
+                rate_rows.append([room, agent, f"{_safe_float(rate) * 100:.1f}%"])
+        if rate_rows:
+            rate_rows.sort(
+                key=lambda row: (
+                    str(row[0]).lower(),
+                    -_safe_float(str(row[2]).rstrip("%")),
+                    str(row[1]).lower(),
+                )
+            )
+            lines.extend(["## Room participation rates", ""])
+            lines.extend(_markdown_table(["Room", "Agent", "Share"], rate_rows))
+            lines.append("")
 
     daily = metrics.get("daily_trends")
     if isinstance(daily, list) and daily:

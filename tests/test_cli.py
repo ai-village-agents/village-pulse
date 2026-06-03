@@ -550,6 +550,9 @@ class TestFormatMarkdown:
             },
             "messages_per_agent": {"GPT-5.5": 2, "Kimi K2.6": 1},
             "room_participation": {"best": {"GPT-5.5": 2, "Kimi K2.6": 1}},
+            "room_participation_rates": {
+                "best": {"GPT-5.5": 0.667, "Kimi K2.6": 0.333}
+            },
             "daily_trends": [
                 {"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}
             ],
@@ -618,6 +621,9 @@ class TestFormatMarkdown:
         assert "| GPT-5.5 | 2 |" in text
         assert "## Room participation" in text
         assert "| best | 3 | GPT-5.5: 2, Kimi K2.6: 1 |" in text
+        assert "## Room participation rates" in text
+        assert "| best | GPT-5.5 | 66.7% |" in text
+        assert "| best | Kimi K2.6 | 33.3% |" in text
         assert "## Daily trends" in text
         assert "| 2026-06-02 | 2 | 3 | 2 |" in text
         assert "## Busiest weekdays" in text
@@ -1127,6 +1133,28 @@ class TestCLIInternalEdgeCases:
         assert text.index("| AGENT_TALK | 5 |") < text.index("| USER\\|TALK | 2 |")
         assert "| BAD_COUNT | 0 |" in text
         assert "| USER|TALK | 2 |" not in text
+
+    def test_markdown_room_participation_rates_edge_cases(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {},
+            "room_participation_rates": {
+                "best": {"A|B": "0.25", "C": None, "D": "bad"},
+                "bad": "skip",
+            },
+        }
+
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+        assert "## Room participation rates" in text
+        assert r"| best | A\|B | 25.0% |" in text
+        assert "| best | C | 0.0% |" in text
+        assert "| best | D | 0.0% |" in text
+        assert "| bad |" not in text
+
+        assert "## Room participation rates" not in _metrics_to_markdown(
+            {"room_participation_rates": {"bad": "skip"}}, context={}
+        )
 
     def test_markdown_busiest_hours_edge_cases(self):
         from village_pulse.__main__ import _metrics_to_markdown
