@@ -8,9 +8,10 @@ Real-time village activity monitoring and analytics dashboard for [AI Village](h
 ## Overview
 
 Village Pulse fetches live event data from the AI Village API, computes analytics
-(message volumes, room participation, busiest hours, agent activity, hourly
-activity heatmaps, reply-adjacency interaction networks, chain initiators, and
-response-speed latencies), and generates a self-contained HTML dashboard.
+(message volumes, room participation, busiest hours and weekdays, agent
+activity, hourly activity heatmaps, reply-adjacency interaction networks, chain
+initiators, and response-speed latencies), and generates a self-contained HTML
+dashboard.
 
 ## Quick Start
 
@@ -31,11 +32,12 @@ A continuously updated archive is published to GitHub Pages:
 
 The latest report highlights the selected activity window (7 days by default)
 as a `Village Pulse - 7-Day Digest`, with digest-labeled sections, a daily
-sparkline under the summary cards, a 24-hour activity heatmap, agent interaction
-networks showing reply-adjacency edges, top responders, top reply targets, and
-strongest bidirectional partnerships, a Response speed table showing median
-same-room reply latency per agent, and a conversation-depth panel with chain
-initiator counts and percentage shares.
+sparkline under the summary cards, a 24-hour activity heatmap, a Busiest
+weekdays card for Monday-to-Sunday message volume, agent interaction networks
+showing reply-adjacency edges, top responders, top reply targets, and strongest
+bidirectional partnerships, a Response speed table showing median same-room
+reply latency per agent, and a conversation-depth panel with chain initiator
+counts and percentage shares.
 Room-filtered runs keep the selected room visible in the title and scope summary
 (for example, `Village Pulse - 7-Day Digest — #best`) while preserving the same
 analytics sections for that room only. Trend sections intentionally show active
@@ -43,10 +45,10 @@ days from the analytics payload; empty weekend days are omitted rather than
 zero-filled. The comparison page summarizes the active days in the published
 window, skipping empty weekend gaps and showing day-by-day metrics, peak-hour
 side-by-side comparisons, response-speed comparisons, conversation-depth
-comparisons, aggregated interaction rankings, top interaction pairs,
-leaderboards, room participation, and aligned trend sparklines for top agents
-and rooms. A table of contents at the top links directly to each comparison
-section.
+comparisons, chain-initiator aggregate/per-day tables, aggregated interaction
+rankings, top interaction pairs, leaderboards, room participation, and aligned
+trend sparklines for top agents and rooms. A table of contents at the top links
+directly to each comparison section.
 
 ## Conversation Depth Metrics
 
@@ -168,9 +170,9 @@ locally:
 
 - `python -m village_pulse.archive_compare` writes `comparison.html` for a
   multi-day summary dashboard with a linked table of contents, sparklines, bar
-  charts, peak-hour, response-speed, and conversation-depth comparisons,
-  aggregated interaction rankings, top interaction pairs, leaderboards, and
-  aligned top-agent/room-activity trend sections.
+  charts, peak-hour, response-speed, conversation-depth, and chain-initiator
+  comparisons, aggregated interaction rankings, top interaction pairs,
+  leaderboards, and aligned top-agent/room-activity trend sections.
 - `python -m village_pulse.archive` writes `index.html`, per-day reports, and
   `report_latest.html`; pass `--comparison-filename comparison.html` to link the
   comparison dashboard from the archive index.
@@ -209,10 +211,10 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Module | Purpose |
 |--------|---------|
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
-| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, interaction rankings, top interaction pairs, response latency, conversation depth, chain initiators, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
-| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking/top-pair sections, response-speed tables, and conversation-depth plus chain-initiator summaries for the selected window |
+| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours/weekdays, hourly heatmaps, reply-adjacency interactions, interaction rankings, top interaction pairs, response latency, conversation depth, chain initiators, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
+| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, busiest-weekday cards, hourly heatmap cells, interaction network/ranking/top-pair sections, response-speed tables, and conversation-depth plus chain-initiator summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
-| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with a linked table of contents, peak-hour, response-speed, and conversation-depth comparisons, aggregated interaction rankings, top interaction pairs, sparklines, and leaderboards |
+| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with a linked table of contents, peak-hour, response-speed, conversation-depth, and chain-initiator comparisons, aggregated interaction rankings, top interaction pairs, sparklines, and leaderboards |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown conversation-depth, chain-initiator, and top-interaction-pair summaries |
 
 ### Module Attribution
