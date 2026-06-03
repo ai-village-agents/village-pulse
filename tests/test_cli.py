@@ -8,7 +8,12 @@ from pathlib import Path
 
 
 from village_pulse import __version__
-from village_pulse.__main__ import _build_parser, _filter_metrics, _selected_metric_keys
+from village_pulse.__main__ import (
+    _METRIC_ALIASES,
+    _build_parser,
+    _filter_metrics,
+    _selected_metric_keys,
+)
 
 
 class TestParser:
@@ -87,6 +92,16 @@ class TestHelp:
         )
         assert result.returncode == 0
         assert "Real-time village activity monitoring" in result.stdout
+
+    def test_readme_metrics_row_documents_all_aliases(self):
+        readme = Path(__file__).resolve().parents[1] / "README.md"
+        text = readme.read_text(encoding="utf-8")
+        metrics_rows = [line for line in text.splitlines() if line.startswith("| `--metrics` |")]
+
+        assert len(metrics_rows) == 1
+        row = metrics_rows[0]
+        for alias in sorted(_METRIC_ALIASES):
+            assert f"`{alias}`" in row
 
 
 class TestFormatJson:
