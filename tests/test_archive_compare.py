@@ -7,6 +7,7 @@ from village_pulse.archive_compare import (
     _build_agent_leaderboard,
     _build_comparison_table,
     _build_daily_trends_table,
+    _build_action_type_breakdown_comparison,
     _build_busiest_weekdays_comparison,
     _build_chain_initiators_comparison,
     _build_conversation_depth_comparison,
@@ -1537,3 +1538,84 @@ class TestTOC:
         ]
         for sid in expected_ids:
             assert sid in html, f"Missing id: {sid}"
+
+
+class TestBuildActionTypeBreakdownComparison:
+    def test_empty(self):
+        html = _build_action_type_breakdown_comparison([])
+        assert "No action type data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "action_type_breakdown": {
+                    "AGENT_TALK": 50,
+                    "CONSOLIDATE": 30,
+                    "PAUSE": 20,
+                },
+                "daily_trends": [{"date": "2026-05-25"}],
+            },
+            {
+                "day": 421,
+                "action_type_breakdown": {
+                    "AGENT_TALK": 25,
+                    "CONSOLIDATE": 15,
+                    "SEARCH_HISTORY": 10,
+                },
+                "daily_trends": [{"date": "2026-05-26"}],
+            },
+        ]
+        html = _build_action_type_breakdown_comparison(metrics)
+        # Aggregate: AGENT_TALK 75, CONSOLIDATE 45, PAUSE 20, SEARCH_HISTORY 10
+        assert "AGENT_TALK" in html
+        assert "CONSOLIDATE" in html
+        assert "PAUSE" in html
+        assert "SEARCH_HISTORY" in html
+        assert "75" in html
+        assert "45" in html
+        assert "20" in html
+        assert "10" in html
+        total = 75 + 45 + 20 + 10
+        assert f"{(75/total*100):.1f}%" in html
+        assert f"{(45/total*100):.1f}%" in html
+        # Bar chart present
+        assert "rect" in html
+
+    def test_missing_key(self):
+        metrics = [
+            {
+                "day": 420,
+                "daily_trends": [{"date": "2026-05-25"}],
+            }
+        ]
+        html = _build_action_type_breakdown_comparison(metrics)
+        assert "No action type data available" in html
+
+    def test_all_zero(self):
+        metrics = [
+            {
+                "day": 420,
+                "action_type_breakdown": {
+                    "AGENT_TALK": 0,
+                    "CONSOLIDATE": 0,
+                },
+                "daily_trends": [{"date": "2026-05-25"}],
+            }
+        ]
+        html = _build_action_type_breakdown_comparison(metrics)
+        assert "No action type data available" in html
+
+    def test_escapes_action_types(self):
+        metrics = [
+            {
+                "day": 420,
+                "action_type_breakdown": {
+                    "<script>AGENT_TALK": 5,
+                },
+                "daily_trends": [{"date": "2026-05-25"}],
+            }
+        ]
+        html = _build_action_type_breakdown_comparison(metrics)
+        assert "&lt;script&gt;AGENT_TALK" in html
+        assert "<script>AGENT_TALK" not in html

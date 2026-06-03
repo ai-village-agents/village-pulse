@@ -593,6 +593,50 @@ def _build_busiest_weekdays_comparison(day_metrics):
         f'<div class="spark-cell" style="margin-top:12px">{spark}</div>'
     )
 
+def _build_action_type_breakdown_comparison(day_metrics):
+    """Build action type breakdown comparison: aggregate table + bar chart."""
+    if not day_metrics:
+        return '<p style="color:var(--muted)">No action type data available.</p>'
+
+    aggregate = {}
+    grand_total = 0
+    for d in day_metrics:
+        atb = d.get("action_type_breakdown") or {}
+        for action_type, count in atb.items():
+            aggregate[action_type] = aggregate.get(action_type, 0) + count
+            grand_total += count
+
+    if not aggregate or all(v == 0 for v in aggregate.values()):
+        return '<p style="color:var(--muted)">No action type data available.</p>'
+
+    # Sort count DESC, name ASC
+    sorted_agg = sorted(aggregate.items(), key=lambda x: (-x[1], x[0]))[:10]
+
+    agg_rows = []
+    for i, (action_type, count) in enumerate(sorted_agg):
+        rank_cls = f"rank-{i + 1}" if i < 3 else "rank-other"
+        share = (count / grand_total * 100) if grand_total > 0 else 0.0
+        agg_rows.append(
+            f'<tr>'
+            f'<td><span class="rank {rank_cls}">{i + 1}</span>{html_lib.escape(str(action_type))}</td>'
+            f'<td class="num">{_format_number(count)}</td>'
+            f'<td class="num">{share:.1f}%</td>'
+            f'</tr>'
+        )
+    agg_table = (
+        '<table><thead><tr><th>Action Type</th><th class="num">Count</th><th class="num">Share</th></tr></thead><tbody>'
+        + "".join(agg_rows)
+        + "</tbody></table>"
+    )
+
+    # Bar chart for top action types
+    chart = _bar_svg([v for _, v in sorted_agg], [a for a, _ in sorted_agg])
+
+    return (
+        f'<div style="margin-bottom:24px"><h3 style="font-size:0.95rem;margin:0 0 12px 0">Aggregate</h3>{agg_table}</div>'
+        f'<div style="margin-top:12px">{chart}</div>'
+    )
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -790,6 +834,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     top_pairs = _build_top_interaction_pairs(day_metrics)
     chain_initiators_html = _build_chain_initiators_comparison(day_metrics)
     busiest_weekdays_html = _build_busiest_weekdays_comparison(day_metrics)
+    action_type_breakdown_html = _build_action_type_breakdown_comparison(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
     agent_trends = _build_top_agent_trends(day_metrics)
@@ -823,6 +868,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
       <li><a href="#top-interaction-pairs">Top Interaction Pairs</a></li>
       <li><a href="#chain-initiators">Chain Initiators</a></li>
       <li><a href="#busiest-weekdays">Busiest Weekdays</a></li>
+      <li><a href="#action-types">Action Types</a></li>
       <li><a href="#room-participation">Room Participation</a></li>
       <li><a href="#daily-trends">Daily Trends</a></li>
       <li><a href="#top-agents">Top Agents Over Time</a></li>
@@ -868,6 +914,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2 id="busiest-weekdays">Busiest Weekdays</h2>
     {busiest_weekdays_html}
+  </div>
+  <div class="section">
+    <h2 id="action-types">Action Types</h2>
+    {action_type_breakdown_html}
   </div>
   <div class="section">
     <h2 id="room-participation">Room Participation (Latest Day)</h2>
@@ -985,6 +1035,7 @@ def generate_comparison_archive(
                 "top_interaction_pairs": metrics.get("top_interaction_pairs", []),
                 "chain_initiators": metrics.get("chain_initiators", []),
                 "busiest_weekdays": metrics.get("busiest_weekdays", {}),
+                "action_type_breakdown": metrics.get("action_type_breakdown", {}),
             }
         )
 
