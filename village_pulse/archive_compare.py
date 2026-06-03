@@ -481,11 +481,11 @@ def _build_chain_initiators_comparison(day_metrics):
         rank_cls = f"rank-{i + 1}" if i < 3 else "rank-other"
         share = (chains / grand_total * 100) if grand_total > 0 else 0.0
         agg_rows.append(
-            f'<tr>'
+            f"<tr>"
             f'<td><span class="rank {rank_cls}">{i + 1}</span>{html_lib.escape(str(agent))}</td>'
             f'<td class="num">{_format_number(chains)}</td>'
             f'<td class="num">{share:.1f}%</td>'
-            f'</tr>'
+            f"</tr>"
         )
     agg_table = (
         '<table><thead><tr><th>Agent</th><th class="num">Chains</th><th class="num">Share</th></tr></thead><tbody>'
@@ -515,7 +515,7 @@ def _build_chain_initiators_comparison(day_metrics):
             f"<tr>"
             f"<td>{html_lib.escape(str(date))}</td>"
             f'<td class="num">{_format_number(day_total)}</td>'
-            f'<td>{html_lib.escape(str(top_agent))}</td>'
+            f"<td>{html_lib.escape(str(top_agent))}</td>"
             f'<td class="num">{_format_number(top_chains)}</td>'
             f'<td class="num">{share:.1f}%</td>'
             f"</tr>"
@@ -525,12 +525,14 @@ def _build_chain_initiators_comparison(day_metrics):
         "<tr>"
         "<th>Date</th>"
         '<th class="num">Total Chains</th>'
-        '<th>Top Initiator</th>'
+        "<th>Top Initiator</th>"
         '<th class="num">Chains</th>'
         '<th class="num">Share</th>'
         "</tr>"
     )
-    day_table = f"<table><thead>{day_thead}</thead><tbody>{''.join(day_rows)}</tbody></table>"
+    day_table = (
+        f"<table><thead>{day_thead}</thead><tbody>{''.join(day_rows)}</tbody></table>"
+    )
 
     spark = _sparkline_svg(total_chains_series)
 
