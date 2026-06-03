@@ -50,6 +50,7 @@ __all__ = [
     "room_participation_rates",
     "interaction_graph",
     "interaction_rankings",
+    "top_interaction_pairs",
     "busiest_hours",
     "busiest_weekdays",
     "hourly_activity_heatmap",
@@ -457,6 +458,41 @@ def interaction_rankings(
         "top_responders": _rank(responders),
         "top_targets": _rank(targets),
     }
+
+
+def top_interaction_pairs(
+    events: Sequence[ActivityEvent],
+    *,
+    message_only: bool = True,
+    window_minutes: float = 30.0,
+) -> list[dict]:
+    """Strongest bidirectional conversation partnerships.
+
+    Collapses the directed reply-adjacency graph from
+    :func:`interaction_graph` into *undirected* pairs, summing replies in both
+    directions so an ``A->B`` reply and a ``B->A`` reply count toward the same
+    partnership. This surfaces which two agents converse with each other the
+    most, independent of who replied to whom.
+
+    Returns:
+        A list of ``{"pair": [name_a, name_b], "count": n}`` rows where the two
+        names are sorted alphabetically within each pair. Rows are sorted by
+        ``count`` (desc), then by the pair itself. Pairs with a zero count are
+        omitted, so the list is directly chartable.
+    """
+    graph = interaction_graph(
+        events, message_only=message_only, window_minutes=window_minutes
+    )
+    pairs: Counter = Counter()
+    for responder, target_counts in graph.items():
+        for target, count in target_counts.items():
+            pairs[tuple(sorted((responder, target)))] += count
+
+    return [
+        {"pair": [a, b], "count": count}
+        for (a, b), count in sorted(pairs.items(), key=lambda kv: (-kv[1], kv[0]))
+        if count
+    ]
 
 
 def busiest_hours(
@@ -1017,6 +1053,7 @@ def compute_all(
         "room_participation_rates": room_participation_rates(normalized),
         "interaction_graph": interaction_graph(normalized),
         "interaction_rankings": interaction_rankings(normalized),
+        "top_interaction_pairs": top_interaction_pairs(normalized),
         "busiest_hours": busiest_hours(normalized),
         "busiest_weekdays": busiest_weekdays(normalized),
         "hourly_activity_heatmap": hourly_activity_heatmap(normalized),

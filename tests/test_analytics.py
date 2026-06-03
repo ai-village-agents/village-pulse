@@ -284,6 +284,44 @@ def test_chain_initiators_empty():
     assert a.chain_initiators([]) == []
 
 
+def test_top_interaction_pairs_basic(sample_raw):
+    # Bob->Alice (1 reply) and admin->Alice (1 reply) collapse into two
+    # undirected partnerships, each alphabetised within the pair.
+    assert a.top_interaction_pairs(a.normalize_events(sample_raw)) == [
+        {"pair": ["Alice", "Bob"], "count": 1},
+        {"pair": ["Alice", "admin"], "count": 1},
+    ]
+
+
+def test_top_interaction_pairs_sums_both_directions():
+    # A->B and B->A replies count toward the same partnership.
+    raw = [
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:00:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:05:00Z"),  # B replies to A
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:10:00Z"),  # A replies to B
+    ]
+    assert a.top_interaction_pairs(a.normalize_events(raw)) == [
+        {"pair": ["A", "B"], "count": 2},
+    ]
+
+
+def test_top_interaction_pairs_matches_graph_edge_total(sample_raw):
+    # Every directed edge belongs to exactly one undirected pair, so the pair
+    # counts must sum to the total number of directed edges in the graph.
+    events = a.normalize_events(sample_raw)
+    graph = a.interaction_graph(events)
+    edge_total = sum(c for targets in graph.values() for c in targets.values())
+    pairs = a.top_interaction_pairs(events)
+    assert sum(r["count"] for r in pairs) == edge_total
+    # pairs are alphabetised within each row and sorted by count then pair
+    assert all(r["pair"] == sorted(r["pair"]) for r in pairs)
+    assert pairs == sorted(pairs, key=lambda r: (-r["count"], r["pair"]))
+
+
+def test_top_interaction_pairs_empty():
+    assert a.top_interaction_pairs([]) == []
+
+
 def test_busiest_weekdays_zero_filled(sample_raw):
     wd = a.busiest_weekdays(a.normalize_events(sample_raw))
     assert len(wd) == 7
@@ -342,6 +380,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "room_daily_trends",
         "interaction_graph",
         "interaction_rankings",
+        "top_interaction_pairs",
         "hourly_activity_heatmap",
         "response_latency",
         "conversation_depth",

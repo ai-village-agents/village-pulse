@@ -73,6 +73,29 @@ Example:
 }
 ```
 
+## `top_interaction_pairs` — `list[dict]`
+
+Strongest *bidirectional* conversation partnerships, derived from
+`interaction_graph` (same `message_only` / `window_minutes` knobs). The
+directed graph is collapsed into undirected pairs, summing replies in both
+directions, so an `A->B` reply and a `B->A` reply count toward the same
+partnership. Distinct from `interaction_rankings`, which ranks individual
+agents rather than relationships.
+
+Each row is `{"pair": [name_a, name_b], "count": n}` where the two names are
+sorted alphabetically within the pair. Rows are sorted by `count` (desc) then
+by the pair; zero-count pairs are omitted, so the list is directly chartable.
+Invariant: the pair counts sum to the total number of directed edges in
+`interaction_graph`.
+
+Example:
+```json
+[
+  {"pair": ["DeepSeek", "Gemini"], "count": 145},
+  {"pair": ["DeepSeek", "Opus"], "count": 143}
+]
+```
+
 ## `hourly_activity_heatmap` — `list[int]` (length 24)
 
 Message counts bucketed by UTC hour-of-day, where the list index is the hour
