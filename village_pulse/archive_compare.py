@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 DEFAULT_DAYS_BACK = 30
 
 
-def _sparkline_svg(values, width=200, height=40):
+def _sparkline_svg(values, width=200, height=40, highlight_index=None):
     """Render a simple SVG sparkline from a list of numeric values."""
     if not values or all(v == 0 for v in values):
         return (
@@ -50,7 +50,9 @@ def _sparkline_svg(values, width=200, height=40):
         points.append(f"{x:.1f},{y:.1f}")
 
     points_str = " ".join(points)
-    last_y = pad + plot_h - ((values[-1] - vmin) / (vmax - vmin)) * plot_h
+    idx = highlight_index if highlight_index is not None else len(values) - 1
+    idx = max(0, min(idx, len(values) - 1))
+    highlight_y = pad + plot_h - ((values[idx] - vmin) / (vmax - vmin)) * plot_h
 
     # Single value: center the marker for a cleaner look
     if len(values) == 1:
@@ -58,17 +60,17 @@ def _sparkline_svg(values, width=200, height=40):
         return (
             f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
             f'xmlns="http://www.w3.org/2000/svg">'
-            f'<circle cx="{cx:.1f}" cy="{last_y:.1f}" r="4" fill="#2f6fed"/>'
+            f'<circle cx="{cx:.1f}" cy="{highlight_y:.1f}" r="4" fill="#2f6fed"/>'
             f"</svg>"
         )
 
-    last_x = pad + plot_w
+    highlight_x = pad + (idx / max(1, len(values) - 1)) * plot_w
     return (
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
         f'xmlns="http://www.w3.org/2000/svg">'
         f'<polyline points="{points_str}" fill="none" stroke="#2f6fed" '
         f'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-        f'<circle cx="{last_x:.1f}" cy="{last_y:.1f}" r="3" fill="#2f6fed"/>'
+        f'<circle cx="{highlight_x:.1f}" cy="{highlight_y:.1f}" r="3" fill="#2f6fed"/>'
         f"</svg>"
     )
 
@@ -221,8 +223,9 @@ def _build_summary_cards(day_metrics):
 
 def _build_comparison_table(day_metrics):
     """Build side-by-side day comparison table."""
+    all_messages = [d.get("messages", 0) for d in day_metrics]
     rows = []
-    for d in day_metrics:
+    for i, d in enumerate(day_metrics):
         day = d.get("day", "?")
         rows.append(
             f"<tr>"
@@ -232,7 +235,7 @@ def _build_comparison_table(day_metrics):
             f'<td class="num">{_format_number(d.get("agents", 0))}</td>'
             f'<td class="num">{_format_number(d.get("tokens", 0))}</td>'
             f'<td class="num">{(d.get("efficiency") or 0):.1f}%</td>'
-            f'<td class="spark-cell">{_sparkline_svg([d.get("messages", 0)])}</td>'
+            f'<td class="spark-cell">{_sparkline_svg(all_messages, highlight_index=i)}</td>'
             f"</tr>"
         )
 

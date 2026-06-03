@@ -39,6 +39,12 @@ class TestSparklineSVG:
         assert "circle" in svg
         assert "2f6fed" in svg  # brand color
 
+    def test_highlight_index(self):
+        svg = _sparkline_svg([10, 20, 30, 40], highlight_index=0)
+        assert "polyline" in svg
+        assert "circle" in svg
+        assert 'cx="4.0"' in svg or 'cx="4"' in svg
+
     def test_all_zeros(self):
         svg = _sparkline_svg([0, 0, 0])
         assert "no data" in svg
@@ -115,6 +121,7 @@ class TestBuildComparisonTable:
             },
         ]
         html = _build_comparison_table(metrics)
+        assert html
         assert "Day 420" in html
         assert "Day 421" in html
         assert "100" in html
@@ -132,10 +139,41 @@ class TestBuildComparisonTable:
             }
         ]
         html = _build_comparison_table(metrics)
+        assert html
         assert "<script" not in html
         assert "</script>" not in html
         assert "&lt;script&gt;" in html
         assert "&quot;day&quot;" in html
+
+    def test_trend_sparkline_receives_full_series(self, monkeypatch):
+        captured = []
+
+        def fake_sparkline(values, highlight_index=None):
+            captured.append((list(values), highlight_index))
+            return "<svg></svg>"
+
+        monkeypatch.setattr(archive_compare, "_sparkline_svg", fake_sparkline)
+        metrics = [
+            {
+                "day": 420,
+                "messages": 100,
+                "events": 50,
+                "agents": 5,
+                "tokens": 1000,
+                "efficiency": 85.5,
+            },
+            {
+                "day": 421,
+                "messages": 200,
+                "events": 80,
+                "agents": 7,
+                "tokens": 2000,
+                "efficiency": 90.0,
+            },
+        ]
+        html = _build_comparison_table(metrics)
+        assert html
+        assert captured == [([100, 200], 0), ([100, 200], 1)]
 
 
 class TestBuildPeakHoursComparison:
