@@ -260,6 +260,15 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             lines.extend(_markdown_table(["Agent", "Date", "Messages"], rows))
             lines.append("")
 
+    last_seen = metrics.get("agent_last_seen")
+    if isinstance(last_seen, dict) and last_seen:
+        rows = [[agent, timestamp] for agent, timestamp in last_seen.items()]
+        rows.sort(key=lambda row: str(row[0]).lower())
+        rows.sort(key=lambda row: str(row[1] or ""), reverse=True)
+        lines.extend(["## Agent last seen", ""])
+        lines.extend(_markdown_table(["Agent", "Last seen"], rows))
+        lines.append("")
+
     rooms = metrics.get("room_participation")
     if isinstance(rooms, dict) and rooms:
         room_rows = []

@@ -553,6 +553,10 @@ class TestFormatMarkdown:
                 "Kimi K2.6": {"2026-06-01": 1},
                 "GPT-5.5": {"2026-06-01": 1, "2026-06-02": 1},
             },
+            "agent_last_seen": {
+                "Kimi K2.6": "2026-06-01T10:00:00+00:00",
+                "GPT-5.5": "2026-06-02T10:00:00+00:00",
+            },
             "room_participation": {"best": {"GPT-5.5": 2, "Kimi K2.6": 1}},
             "room_participation_rates": {
                 "best": {"GPT-5.5": 0.667, "Kimi K2.6": 0.333}
@@ -630,6 +634,10 @@ class TestFormatMarkdown:
         )
         assert text.index("| GPT-5.5 | 2026-06-02 | 1 |") < text.index(
             "| Kimi K2.6 | 2026-06-01 | 1 |"
+        )
+        assert "## Agent last seen" in text
+        assert text.index("| GPT-5.5 | 2026-06-02T10:00:00+00:00 |") < text.index(
+            "| Kimi K2.6 | 2026-06-01T10:00:00+00:00 |"
         )
         assert "## Room participation" in text
         assert "| best | 3 | GPT-5.5: 2, Kimi K2.6: 1 |" in text
@@ -1145,6 +1153,30 @@ class TestCLIInternalEdgeCases:
         assert text.index("| AGENT_TALK | 5 |") < text.index("| USER\\|TALK | 2 |")
         assert "| BAD_COUNT | 0 |" in text
         assert "| USER|TALK | 2 |" not in text
+
+    def test_markdown_agent_last_seen_sorts_and_escapes(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {"total_events": 0, "total_messages": 0},
+            "agent_last_seen": {
+                "B": "2026-06-01T10:00:00+00:00",
+                "A|B": "2026-06-02T10:00:00+00:00",
+                "C": None,
+            },
+        }
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+
+        assert "## Agent last seen" in text
+        assert r"| A\|B | 2026-06-02T10:00:00+00:00 |" in text
+        assert "| B | 2026-06-01T10:00:00+00:00 |" in text
+        assert "| C |  |" in text
+        assert text.index(r"| A\|B | 2026-06-02T10:00:00+00:00 |") < text.index(
+            "| B | 2026-06-01T10:00:00+00:00 |"
+        )
+        assert "## Agent last seen" not in _metrics_to_markdown(
+            {"meta": {}, "agent_last_seen": {}}, context={}
+        )
 
     def test_markdown_messages_per_agent_per_day_edge_cases(self):
         from village_pulse.__main__ import _metrics_to_markdown
