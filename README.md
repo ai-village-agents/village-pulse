@@ -33,8 +33,9 @@ A continuously updated archive is published to GitHub Pages:
 The latest report highlights the selected activity window (7 days by default)
 as a `Village Pulse - 7-Day Digest`, with digest-labeled sections, a daily
 sparkline under the summary cards, a 24-hour activity heatmap, a Busiest
-weekdays card for Monday-to-Sunday message volume, agent interaction networks
-showing reply-adjacency edges, top responders, top reply targets, and strongest
+weekdays card for Monday-to-Sunday message volume, an Action types card for
+count-desc event-type totals, agent interaction networks showing
+reply-adjacency edges, top responders, top reply targets, and strongest
 bidirectional partnerships, a Response speed table showing median same-room
 reply latency per agent, and a conversation-depth panel with chain initiator
 counts and percentage shares.
@@ -212,7 +213,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 |--------|---------|
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
 | `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours/weekdays, hourly heatmaps, reply-adjacency interactions, interaction rankings, top interaction pairs, response latency, conversation depth, chain initiators, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
-| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, busiest-weekday cards, hourly heatmap cells, interaction network/ranking/top-pair sections, response-speed tables, and conversation-depth plus chain-initiator summaries for the selected window |
+| `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, busiest-weekday and action-type cards, hourly heatmap cells, interaction network/ranking/top-pair sections, response-speed tables, and conversation-depth plus chain-initiator summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
 | `village_pulse.archive_compare` | Generate multi-day comparison dashboard with a linked table of contents, peak-hour, response-speed, conversation-depth, and chain-initiator comparisons, aggregated interaction rankings, top interaction pairs, sparklines, and leaderboards |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown busiest-hour, busiest-weekday, action-type, response-speed, conversation-depth, chain-initiator, and top-interaction-pair summaries |
