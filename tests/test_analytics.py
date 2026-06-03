@@ -197,7 +197,6 @@ def test_response_latency_empty_is_empty_list():
     assert a.response_latency([]) == []
 
 
-
 def test_conversation_depth_basic(sample_raw):
     # In #best: Alice->Bob (09:00->09:15) is a depth-2 chain; the 75min gap
     # breaks it, then Alice->admin (10:30->11:00, exactly 30min) is another

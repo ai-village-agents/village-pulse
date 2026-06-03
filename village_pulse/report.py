@@ -1191,12 +1191,18 @@ def _conversation_depth_view(value: Any) -> dict[str, Any]:
                 valid_items.append((depth_val, count_val))
 
         for depth_val, count_val in valid_items:
-            percent = (count_val / total_dist_chains * 100.0) if total_dist_chains > 0 else 0.0
-            distribution_rows.append({
-                "depth": depth_val,
-                "count": count_val,
-                "percent": percent,
-            })
+            percent = (
+                (count_val / total_dist_chains * 100.0)
+                if total_dist_chains > 0
+                else 0.0
+            )
+            distribution_rows.append(
+                {
+                    "depth": depth_val,
+                    "count": count_val,
+                    "percent": percent,
+                }
+            )
         distribution_rows.sort(key=lambda x: x["depth"])
 
     return {
@@ -1206,7 +1212,6 @@ def _conversation_depth_view(value: Any) -> dict[str, Any]:
         "median_depth": round(median_depth, 1),
         "distribution_rows": distribution_rows,
     }
-
 
 
 def _chain_initiators_view(value: Any) -> list[dict[str, Any]]:
@@ -1237,11 +1242,13 @@ def _chain_initiators_view(value: Any) -> list[dict[str, Any]]:
 
     for item in valid_items:
         percent = (item["chains"] / total_chains * 100.0) if total_chains > 0 else 0.0
-        rows.append({
-            "agent": item["agent"],
-            "chains": item["chains"],
-            "percent": percent,
-        })
+        rows.append(
+            {
+                "agent": item["agent"],
+                "chains": item["chains"],
+                "percent": percent,
+            }
+        )
     # Keep the original sort: chains desc, then agent asc
     rows.sort(key=lambda x: (-x["chains"], x["agent"]))
     return rows

@@ -96,7 +96,9 @@ class TestHelp:
     def test_readme_metrics_row_documents_all_aliases(self):
         readme = Path(__file__).resolve().parents[1] / "README.md"
         text = readme.read_text(encoding="utf-8")
-        metrics_rows = [line for line in text.splitlines() if line.startswith("| `--metrics` |")]
+        metrics_rows = [
+            line for line in text.splitlines() if line.startswith("| `--metrics` |")
+        ]
 
         assert len(metrics_rows) == 1
         row = metrics_rows[0]
@@ -1031,10 +1033,14 @@ class TestCLIInternalEdgeCases:
         md2 = _metrics_to_markdown(metrics, context={"days": 7})
         assert "# Village Pulse - 7-Day Digest" in md2
         # 3. days > 1 with a room keeps both digest and room scope visible
-        md_room_digest = _metrics_to_markdown(metrics, context={"room": "best", "days": 7})
+        md_room_digest = _metrics_to_markdown(
+            metrics, context={"room": "best", "days": 7}
+        )
         assert "# Village Pulse - 7-Day Digest — #best" in md_room_digest
         # 4. explicit day with a room uses the single-day day title
-        md_room_day = _metrics_to_markdown(metrics, context={"room": "best", "days": 1, "day": 427})
+        md_room_day = _metrics_to_markdown(
+            metrics, context={"room": "best", "days": 1, "day": 427}
+        )
         assert "# Village Pulse — Day 427 — #best" in md_room_day
         # 5. context agent specified (Line 113)
         md3 = _metrics_to_markdown(metrics, context={"agent": "GPT-5.5"})

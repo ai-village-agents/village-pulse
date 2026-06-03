@@ -333,8 +333,6 @@ def _build_conversation_depth_comparison(day_metrics):
     return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
 
 
-
-
 def _build_response_speed_comparison(day_metrics):
     """Build a table showing response speed metrics per day."""
     if not day_metrics:
@@ -351,10 +349,13 @@ def _build_response_speed_comparison(day_metrics):
         else:
             total_replies_val = sum(r.get("responses", 0) for r in latency_rows)
             if total_replies_val > 0:
-                weighted = sum(
-                    r.get("median_seconds", 0) * r.get("responses", 0)
-                    for r in latency_rows
-                ) / total_replies_val
+                weighted = (
+                    sum(
+                        r.get("median_seconds", 0) * r.get("responses", 0)
+                        for r in latency_rows
+                    )
+                    / total_replies_val
+                )
             else:
                 weighted = 0.0
             median_str = f"{weighted:.1f}s"
@@ -385,7 +386,6 @@ def _build_response_speed_comparison(day_metrics):
     return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
 
 
-
 def _build_interaction_rankings(day_metrics):
     """Build top responders and targets tables aggregated across days."""
     responder_totals = {}
@@ -394,7 +394,9 @@ def _build_interaction_rankings(day_metrics):
         rankings = d.get("interaction_rankings") or {}
         for row in rankings.get("top_responders", []):
             agent = row.get("agent", "Unknown")
-            responder_totals[agent] = responder_totals.get(agent, 0) + row.get("count", 0)
+            responder_totals[agent] = responder_totals.get(agent, 0) + row.get(
+                "count", 0
+            )
         for row in rankings.get("top_targets", []):
             agent = row.get("agent", "Unknown")
             target_totals[agent] = target_totals.get(agent, 0) + row.get("count", 0)
@@ -423,6 +425,7 @@ def _build_interaction_rankings(day_metrics):
     responders = _build_table("Top Responders", responder_totals)
     targets = _build_table("Top Targets", target_totals)
     return f'<div class="leaderboard-grid">{responders}{targets}</div>'
+
 
 def _build_top_interaction_pairs(day_metrics):
     """Build strongest bidirectional conversation partnerships table."""

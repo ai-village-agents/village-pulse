@@ -518,32 +518,34 @@ def test_conversation_depth_view_edge_cases():
     assert res1["distribution_rows"] == []
 
     # 2. Non-numeric or missing numeric inputs
-    res2 = _conversation_depth_view({
-        "total_chains": "invalid",
-        "max_depth": None,
-        "mean_depth": "abc",
-        "median_depth": "def",
-    })
+    res2 = _conversation_depth_view(
+        {
+            "total_chains": "invalid",
+            "max_depth": None,
+            "mean_depth": "abc",
+            "median_depth": "def",
+        }
+    )
     assert res2["total_chains"] == 0
     assert res2["max_depth"] == 0
     assert res2["mean_depth"] == 0.0
     assert res2["median_depth"] == 0.0
 
     # 3. Invalid or malformed depth_distribution
-    res3 = _conversation_depth_view({
-        "depth_distribution": "not_a_mapping"
-    })
+    res3 = _conversation_depth_view({"depth_distribution": "not_a_mapping"})
     assert res3["distribution_rows"] == []
 
     # 4. depth_distribution with invalid/non-numeric keys or values
-    res4 = _conversation_depth_view({
-        "depth_distribution": {
-            "invalid_key": 5,
-            "2": "invalid_val",
-            "3": 10,
-            "4": -5,
+    res4 = _conversation_depth_view(
+        {
+            "depth_distribution": {
+                "invalid_key": 5,
+                "2": "invalid_val",
+                "3": 10,
+                "4": -5,
+            }
         }
-    })
+    )
     assert len(res4["distribution_rows"]) == 1
     assert res4["distribution_rows"][0]["depth"] == 3
     assert res4["distribution_rows"][0]["count"] == 10
@@ -552,6 +554,7 @@ def test_conversation_depth_view_edge_cases():
 
 def test_render_includes_conversation_depth():
     from village_pulse.report import render
+
     metrics = sample_metrics()
     metrics["conversation_depth"] = {
         "total_chains": 12,
@@ -562,7 +565,7 @@ def test_render_includes_conversation_depth():
             "2": 8,
             "3": 3,
             "5": 1,
-        }
+        },
     }
     html = render(metrics, {"version": "0.1.0"})
     assert "Conversation depth" in html
@@ -579,7 +582,6 @@ def test_render_includes_conversation_depth():
     assert "Depth 5" in html
 
 
-
 def test_chain_initiators_view_edge_cases():
     from village_pulse.report import _chain_initiators_view
 
@@ -592,31 +594,41 @@ def test_chain_initiators_view_edge_cases():
     assert _chain_initiators_view([123, "string"]) == []
 
     # 3. Mappings with missing or invalid keys
-    res = _chain_initiators_view([
-        {"agent": 123, "chains": 5}, # agent is not str
-        {"agent": "Alice", "chains": "invalid"}, # chains is not int
-        {"agent": "Bob", "chains": -1}, # chains <= 0
-        {"agent": "Charlie"}, # chains missing
-    ])
+    res = _chain_initiators_view(
+        [
+            {"agent": 123, "chains": 5},  # agent is not str
+            {"agent": "Alice", "chains": "invalid"},  # chains is not int
+            {"agent": "Bob", "chains": -1},  # chains <= 0
+            {"agent": "Charlie"},  # chains missing
+        ]
+    )
     assert res == []
 
     # 4. Valid sorting and percentage computation, and HTML-escaping
-    res2 = _chain_initiators_view([
-        {"agent": "Bob", "chains": 5},
-        {"agent": "Alice", "chains": 10},
-        {"agent": "<script>Eve</script>", "chains": 5},
-    ])
+    res2 = _chain_initiators_view(
+        [
+            {"agent": "Bob", "chains": 5},
+            {"agent": "Alice", "chains": 10},
+            {"agent": "<script>Eve</script>", "chains": 5},
+        ]
+    )
     assert len(res2) == 3
     assert res2[0] == {"agent": "Alice", "chains": 10, "percent": 50.0}
-    assert res2[1] == {"agent": "&lt;script&gt;Eve&lt;/script&gt;", "chains": 5, "percent": 25.0}
+    assert res2[1] == {
+        "agent": "&lt;script&gt;Eve&lt;/script&gt;",
+        "chains": 5,
+        "percent": 25.0,
+    }
     assert res2[2] == {"agent": "Bob", "chains": 5, "percent": 25.0}
 
     # 5. Tuple inputs of length 2
-    res3 = _chain_initiators_view([
-        (123, 5), # agent is not str (uncovered line)
-        ("Alice", 10),
-        ("Bob", 5),
-    ])
+    res3 = _chain_initiators_view(
+        [
+            (123, 5),  # agent is not str (uncovered line)
+            ("Alice", 10),
+            ("Bob", 5),
+        ]
+    )
     assert len(res3) == 2
     assert res3[0] == {"agent": "Alice", "chains": 10, "percent": 2 / 3 * 100}
     assert res3[1] == {"agent": "Bob", "chains": 5, "percent": 1 / 3 * 100}
@@ -624,13 +636,14 @@ def test_chain_initiators_view_edge_cases():
 
 def test_render_includes_chain_initiators():
     from village_pulse.report import render
+
     metrics = sample_metrics()
     metrics["conversation_depth"] = {
         "total_chains": 15,
         "max_depth": 5,
         "mean_depth": 3.4,
         "median_depth": 3.0,
-        "depth_distribution": {"2": 15}
+        "depth_distribution": {"2": 15},
     }
     metrics["chain_initiators"] = [
         {"agent": "Alice", "chains": 10},

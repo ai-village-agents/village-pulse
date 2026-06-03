@@ -590,9 +590,7 @@ def conversation_depth(events, *, window_minutes=30.0):
     """
     normalized = normalize_events(events)
     messages = [
-        e
-        for e in normalized
-        if e.is_message and e.timestamp is not None and e.agent
+        e for e in normalized if e.is_message and e.timestamp is not None and e.agent
     ]
     by_room = defaultdict(list)
     for event in messages:
@@ -608,9 +606,7 @@ def conversation_depth(events, *, window_minutes=30.0):
                 current = 1
             elif (
                 event.agent != prev.agent
-                and 0
-                <= (event.timestamp - prev.timestamp).total_seconds()
-                <= cutoff
+                and 0 <= (event.timestamp - prev.timestamp).total_seconds() <= cutoff
             ):
                 current += 1
             else:
@@ -652,9 +648,7 @@ def chain_initiators(events, *, window_minutes=30.0):
     """
     normalized = normalize_events(events)
     messages = [
-        e
-        for e in normalized
-        if e.is_message and e.timestamp is not None and e.agent
+        e for e in normalized if e.is_message and e.timestamp is not None and e.agent
     ]
     by_room = defaultdict(list)
     for event in messages:
@@ -672,9 +666,7 @@ def chain_initiators(events, *, window_minutes=30.0):
                 start = event
             elif (
                 event.agent != prev.agent
-                and 0
-                <= (event.timestamp - prev.timestamp).total_seconds()
-                <= cutoff
+                and 0 <= (event.timestamp - prev.timestamp).total_seconds() <= cutoff
             ):
                 current += 1
             else:

@@ -283,7 +283,9 @@ def test_generate_comparison_archive_passes_conversation_depth(tmp_path, monkeyp
     assert '<td class="num">2.0</td>' in html
 
 
-def test_generate_comparison_archive_passes_top_interaction_pairs(tmp_path, monkeypatch):
+def test_generate_comparison_archive_passes_top_interaction_pairs(
+    tmp_path, monkeypatch
+):
     """Archive comparison should render live-computed top interaction pairs."""
 
     class FakeClient:
@@ -422,8 +424,6 @@ class TestBuildConversationDepthComparison:
         assert "<script" not in html
 
 
-
-
 class TestBuildResponseSpeedComparison:
     def test_empty(self):
         html = _build_response_speed_comparison([])
@@ -453,7 +453,7 @@ class TestBuildResponseSpeedComparison:
         # weighted median day 420: (10*5 + 20*15) / 20 = 17.5
         assert "17.5s" in html
         assert "20" in html  # total replies day 420
-        assert "2" in html   # num agents day 420
+        assert "2" in html  # num agents day 420
         # day 421: 8.0s, 10 replies, 1 agent
         assert "8.0s" in html
         assert "10" in html
@@ -499,6 +499,7 @@ class TestBuildResponseSpeedComparison:
         html = _build_response_speed_comparison(metrics)
         assert "Day 420" in html
         assert "<script" not in html
+
 
 class TestBuildAgentLeaderboard:
     def test_empty(self):
@@ -1246,18 +1247,18 @@ class TestTOC:
         )
         html = (out_dir / "comparison.html").read_text()
         expected_anchors = [
-            '#summary',
-            '#day-by-day',
-            '#peak-hours',
-            '#conversation-depth',
-            '#response-speed',
-            '#agent-leaderboard',
-            '#interaction-rankings',
-            '#top-interaction-pairs',
-            '#room-participation',
-            '#daily-trends',
-            '#top-agents',
-            '#room-activity',
+            "#summary",
+            "#day-by-day",
+            "#peak-hours",
+            "#conversation-depth",
+            "#response-speed",
+            "#agent-leaderboard",
+            "#interaction-rankings",
+            "#top-interaction-pairs",
+            "#room-participation",
+            "#daily-trends",
+            "#top-agents",
+            "#room-activity",
         ]
         for anchor in expected_anchors:
             assert anchor in html, f"Missing anchor: {anchor}"

@@ -209,7 +209,10 @@ class TestGenerateArchive:
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
         mock_client.fetch_events.return_value = []
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=1)
 
         assert [r["day"] for r in reports] == [426]
@@ -225,9 +228,14 @@ class TestGenerateArchive:
         mock_client.get_agents.return_value = {"room-1": "Alice"}
         mock_client.get_rooms.return_value = {"room-1": "best"}
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
-        mock_client.fetch_events.side_effect = APIError("digest unavailable", status=503)
+        mock_client.fetch_events.side_effect = APIError(
+            "digest unavailable", status=503
+        )
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=1)
 
         assert [r["day"] for r in reports] == [426]
@@ -236,8 +244,9 @@ class TestGenerateArchive:
         index_html = (tmp_path / "index.html").read_text(encoding="utf-8")
         assert "report_day426.html" in index_html
 
-
-    def test_latest_digest_api_error_does_not_crash_archive(self, tmp_path: Path) -> None:
+    def test_latest_digest_api_error_does_not_crash_archive(
+        self, tmp_path: Path
+    ) -> None:
         """An APIError during 7-day digest generation should not crash the archive."""
         from village_pulse.api_client import APIError
 
@@ -246,15 +255,19 @@ class TestGenerateArchive:
         mock_client.get_agents.return_value = {"room-1": "Alice"}
         mock_client.get_rooms.return_value = {"room-1": "best"}
         mock_client.iter_raw_events_for_day.return_value = [_make_raw_event(1)]
-        mock_client.fetch_events.side_effect = APIError("digest fetch failed", status=500)
+        mock_client.fetch_events.side_effect = APIError(
+            "digest fetch failed", status=500
+        )
 
-        with patch("village_pulse.archive.api_client.VillageAPIClient", return_value=mock_client):
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
             reports = archive.generate_archive(tmp_path, days_back=1)
 
         assert len(reports) == 1
         assert (tmp_path / "report_day426.html").exists()
         assert not (tmp_path / "report_latest.html").exists()
-
 
     def test_generate_archive_links_comparison_filename(self, tmp_path: Path) -> None:
         """Archive generation can link the comparison dashboard from index.html."""
