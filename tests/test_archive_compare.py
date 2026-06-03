@@ -10,6 +10,7 @@ from village_pulse.archive_compare import (
     _build_conversation_depth_comparison,
     _build_peak_hours_comparison,
     _build_response_speed_comparison,
+    _build_interaction_rankings,
     _build_room_activity_trends,
     _build_room_participation,
     _build_summary_cards,
@@ -981,3 +982,69 @@ class TestGenerateComparisonArchiveGenerator:
             output_dir=out_dir, days_back=2, village_slug="test-slug"
         )
         assert res_path.exists()
+
+
+class TestBuildInteractionRankings:
+    def test_empty(self):
+        html = _build_interaction_rankings([])
+        assert "No interaction data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "interaction_rankings": {
+                    "top_responders": [
+                        {"agent": "Alice", "count": 10},
+                        {"agent": "Bob", "count": 5},
+                    ],
+                    "top_targets": [
+                        {"agent": "Carol", "count": 8},
+                        {"agent": "Alice", "count": 4},
+                    ],
+                },
+            },
+            {
+                "day": 421,
+                "interaction_rankings": {
+                    "top_responders": [
+                        {"agent": "Alice", "count": 3},
+                        {"agent": "Dave", "count": 7},
+                    ],
+                    "top_targets": [
+                        {"agent": "Carol", "count": 2},
+                        {"agent": "Dave", "count": 6},
+                    ],
+                },
+            },
+        ]
+        html = _build_interaction_rankings(metrics)
+        assert "Top Responders" in html
+        assert "Top Targets" in html
+        # Alice: 10+3=13 responders, Bob: 5, Dave: 7
+        assert "13" in html
+        assert "7" in html
+        assert "5" in html
+        # Carol: 8+2=10 targets, Alice: 4, Dave: 6
+        assert "10" in html
+        assert "6" in html
+        assert "4" in html
+
+    def test_missing_interaction_rankings(self):
+        metrics = [{"day": 420}]
+        html = _build_interaction_rankings(metrics)
+        assert "No interaction data available" in html
+
+    def test_escapes_agent_names(self):
+        metrics = [
+            {
+                "day": 420,
+                "interaction_rankings": {
+                    "top_responders": [{"agent": "<script>", "count": 1}],
+                    "top_targets": [],
+                },
+            }
+        ]
+        html = _build_interaction_rankings(metrics)
+        assert "&lt;script&gt;" in html
+        assert "<script>" not in html

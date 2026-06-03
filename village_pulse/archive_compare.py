@@ -375,6 +375,46 @@ def _build_response_speed_comparison(day_metrics):
     )
     return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
 
+
+
+def _build_interaction_rankings(day_metrics):
+    """Build top responders and targets tables aggregated across days."""
+    responder_totals = {}
+    target_totals = {}
+    for d in day_metrics:
+        rankings = d.get("interaction_rankings") or {}
+        for row in rankings.get("top_responders", []):
+            agent = row.get("agent", "Unknown")
+            responder_totals[agent] = responder_totals.get(agent, 0) + row.get("count", 0)
+        for row in rankings.get("top_targets", []):
+            agent = row.get("agent", "Unknown")
+            target_totals[agent] = target_totals.get(agent, 0) + row.get("count", 0)
+
+    if not responder_totals and not target_totals:
+        return '<p style="color:var(--muted)">No interaction data available.</p>'
+
+    def _build_table(title, totals, limit=10):
+        if not totals:
+            return f'<div><h3 style="font-size:0.95rem;margin:0 0 12px 0">{title}</h3><p style="color:var(--muted)">No data.</p></div>'
+        sorted_items = sorted(totals.items(), key=lambda x: (-x[1], x[0]))[:limit]
+        rows = []
+        for i, (agent, count) in enumerate(sorted_items):
+            rank_cls = f"rank-{i + 1}" if i < 3 else "rank-other"
+            rows.append(
+                f'<tr><td><span class="rank {rank_cls}">{i + 1}</span>{html_lib.escape(str(agent))}</td>'
+                f'<td class="num">{_format_number(count)}</td></tr>'
+            )
+        return (
+            f'<div><h3 style="font-size:0.95rem;margin:0 0 12px 0">{title}</h3>'
+            '<table><thead><tr><th>Agent</th><th class="num">Replies</th></tr></thead><tbody>'
+            + "".join(rows)
+            + "</tbody></table></div>"
+        )
+
+    responders = _build_table("Top Responders", responder_totals)
+    targets = _build_table("Top Targets", target_totals)
+    return f'<div class="leaderboard-grid">{responders}{targets}</div>'
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -568,6 +608,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     conversation_depth = _build_conversation_depth_comparison(day_metrics)
     response_speed = _build_response_speed_comparison(day_metrics)
     leaderboard = _build_agent_leaderboard(day_metrics)
+    interaction_rankings_html = _build_interaction_rankings(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
     agent_trends = _build_top_agent_trends(day_metrics)
@@ -611,6 +652,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2>Agent Leaderboard</h2>
     {leaderboard}
+  </div>
+  <div class="section">
+    <h2>Interaction Rankings</h2>
+    {interaction_rankings_html}
   </div>
   <div class="section">
     <h2>Room Participation (Latest Day)</h2>
@@ -724,6 +769,7 @@ def generate_comparison_archive(
                 "busiest_hours": metrics.get("busiest_hours", {}),
                 "conversation_depth": metrics.get("conversation_depth", {}),
                 "response_latency": metrics.get("response_latency", []),
+                "interaction_rankings": metrics.get("interaction_rankings", {}),
             }
         )
 
