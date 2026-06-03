@@ -246,6 +246,20 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         lines.extend(_markdown_table(["Agent", "Messages"], rows))
         lines.append("")
 
+    messages_by_agent_day = metrics.get("messages_per_agent_per_day")
+    if isinstance(messages_by_agent_day, dict) and messages_by_agent_day:
+        rows = []
+        for agent, days_for_agent in messages_by_agent_day.items():
+            if not isinstance(days_for_agent, dict):
+                continue
+            for date, count in days_for_agent.items():
+                rows.append([agent, date, _safe_int(count)])
+        if rows:
+            rows.sort(key=lambda row: (str(row[0]).lower(), str(row[1])))
+            lines.extend(["## Agent activity by day", ""])
+            lines.extend(_markdown_table(["Agent", "Date", "Messages"], rows))
+            lines.append("")
+
     rooms = metrics.get("room_participation")
     if isinstance(rooms, dict) and rooms:
         room_rows = []

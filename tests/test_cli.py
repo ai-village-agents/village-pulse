@@ -549,6 +549,10 @@ class TestFormatMarkdown:
                 "unique_rooms": 1,
             },
             "messages_per_agent": {"GPT-5.5": 2, "Kimi K2.6": 1},
+            "messages_per_agent_per_day": {
+                "Kimi K2.6": {"2026-06-01": 1},
+                "GPT-5.5": {"2026-06-01": 1, "2026-06-02": 1},
+            },
             "room_participation": {"best": {"GPT-5.5": 2, "Kimi K2.6": 1}},
             "room_participation_rates": {
                 "best": {"GPT-5.5": 0.667, "Kimi K2.6": 0.333}
@@ -619,6 +623,14 @@ class TestFormatMarkdown:
         assert "| Total messages | 2 |" in text
         assert "## Agent activity" in text
         assert "| GPT-5.5 | 2 |" in text
+        assert "## Agent activity by day" in text
+        assert "| Agent | Date | Messages |" in text
+        assert text.index("| GPT-5.5 | 2026-06-01 | 1 |") < text.index(
+            "| GPT-5.5 | 2026-06-02 | 1 |"
+        )
+        assert text.index("| GPT-5.5 | 2026-06-02 | 1 |") < text.index(
+            "| Kimi K2.6 | 2026-06-01 | 1 |"
+        )
         assert "## Room participation" in text
         assert "| best | 3 | GPT-5.5: 2, Kimi K2.6: 1 |" in text
         assert "## Room participation rates" in text
@@ -1133,6 +1145,32 @@ class TestCLIInternalEdgeCases:
         assert text.index("| AGENT_TALK | 5 |") < text.index("| USER\\|TALK | 2 |")
         assert "| BAD_COUNT | 0 |" in text
         assert "| USER|TALK | 2 |" not in text
+
+    def test_markdown_messages_per_agent_per_day_edge_cases(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {"total_events": 0, "total_messages": 0},
+            "messages_per_agent_per_day": {
+                "B": {"2026-06-02": "2", "2026-06-01": None},
+                "A|B": {"2026-06-01": "bad"},
+                "skip": "not-a-dict",
+            },
+        }
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+
+        assert "## Agent activity by day" in text
+        assert r"| A\|B | 2026-06-01 | 0 |" in text
+        assert "| B | 2026-06-01 | 0 |" in text
+        assert "| B | 2026-06-02 | 2 |" in text
+        assert "| skip |" not in text
+        assert text.index(r"| A\|B | 2026-06-01 | 0 |") < text.index(
+            "| B | 2026-06-01 | 0 |"
+        )
+        assert "## Agent activity by day" not in _metrics_to_markdown(
+            {"meta": {}, "messages_per_agent_per_day": {"skip": "not-a-dict"}},
+            context={},
+        )
 
     def test_markdown_room_participation_rates_edge_cases(self):
         from village_pulse.__main__ import _metrics_to_markdown
