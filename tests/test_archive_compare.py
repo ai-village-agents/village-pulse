@@ -664,9 +664,9 @@ class TestGenerateComparison:
         generate_comparison([], output, village_day=426)
 
         html = output.read_text()
-        daily = html.find("<h2>Daily Trends (Last 7 Days)</h2>")
-        agents = html.find("<h2>Top Agents Over Time</h2>")
-        rooms = html.find("<h2>Room Activity Over Time</h2>")
+        daily = html.find('<h2 id="daily-trends">Daily Trends (Last 7 Days)</h2>')
+        agents = html.find('<h2 id="top-agents">Top Agents Over Time</h2>')
+        rooms = html.find('<h2 id="room-activity">Room Activity Over Time</h2>')
         assert -1 not in {daily, agents, rooms}
         assert daily < agents < rooms
 
@@ -1048,3 +1048,118 @@ class TestBuildInteractionRankings:
         html = _build_interaction_rankings(metrics)
         assert "&lt;script&gt;" in html
         assert "<script>" not in html
+
+
+class TestTOC:
+    def test_toc_section_present(self, tmp_path, monkeypatch):
+        from village_pulse import archive_compare
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def _discover_latest_day(self):
+                return 5
+
+            def iter_raw_events_for_day(self, day):
+                return []
+
+            def get_agents(self):
+                return {}
+
+            def get_rooms(self):
+                return {}
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+
+        out_dir = tmp_path / "output"
+        archive_compare.generate_comparison_archive(
+            output_dir=out_dir, days_back=1, village_slug="test-slug"
+        )
+        html = (out_dir / "comparison.html").read_text()
+        assert "Table of Contents" in html
+        assert '<div class="section toc">' in html
+
+    def test_toc_links_to_all_sections(self, tmp_path, monkeypatch):
+        from village_pulse import archive_compare
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def _discover_latest_day(self):
+                return 5
+
+            def iter_raw_events_for_day(self, day):
+                return []
+
+            def get_agents(self):
+                return {}
+
+            def get_rooms(self):
+                return {}
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+
+        out_dir = tmp_path / "output"
+        archive_compare.generate_comparison_archive(
+            output_dir=out_dir, days_back=1, village_slug="test-slug"
+        )
+        html = (out_dir / "comparison.html").read_text()
+        expected_anchors = [
+            '#summary',
+            '#day-by-day',
+            '#peak-hours',
+            '#conversation-depth',
+            '#response-speed',
+            '#agent-leaderboard',
+            '#interaction-rankings',
+            '#room-participation',
+            '#daily-trends',
+            '#top-agents',
+            '#room-activity',
+        ]
+        for anchor in expected_anchors:
+            assert anchor in html, f"Missing anchor: {anchor}"
+
+    def test_section_ids_present(self, tmp_path, monkeypatch):
+        from village_pulse import archive_compare
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def _discover_latest_day(self):
+                return 5
+
+            def iter_raw_events_for_day(self, day):
+                return []
+
+            def get_agents(self):
+                return {}
+
+            def get_rooms(self):
+                return {}
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+
+        out_dir = tmp_path / "output"
+        archive_compare.generate_comparison_archive(
+            output_dir=out_dir, days_back=1, village_slug="test-slug"
+        )
+        html = (out_dir / "comparison.html").read_text()
+        expected_ids = [
+            'id="summary"',
+            'id="day-by-day"',
+            'id="peak-hours"',
+            'id="conversation-depth"',
+            'id="response-speed"',
+            'id="agent-leaderboard"',
+            'id="interaction-rankings"',
+            'id="room-participation"',
+            'id="daily-trends"',
+            'id="top-agents"',
+            'id="room-activity"',
+        ]
+        for sid in expected_ids:
+            assert sid in html, f"Missing id: {sid}"

@@ -493,7 +493,8 @@ def test_archive_compare_escapes_malicious_agent_and_room(tmp_path):
 
 def _section(html_text, title):
     """Return the HTML of a named <h2> section up to its closing </table>."""
-    i = html_text.find(f"<h2>{title}</h2>")
+    needle = f">{title}</h2>"
+    i = html_text.find(needle)
     assert i != -1, f"missing section: {title}"
     j = html_text.find("</table>", i)
     return html_text[i:j]
@@ -526,8 +527,8 @@ def test_archive_compare_renders_trend_sections_aligned_and_escaped(tmp_path):
     html = out.read_text(encoding="utf-8")
 
     # Both new sections render after the existing trends section.
-    assert "<h2>Top Agents Over Time</h2>" in html
-    assert "<h2>Room Activity Over Time</h2>" in html
+    assert '<h2 id="top-agents">Top Agents Over Time</h2>' in html
+    assert '<h2 id="room-activity">Room Activity Over Time</h2>' in html
 
     agents = _section(html, "Top Agents Over Time")
     rooms = _section(html, "Room Activity Over Time")

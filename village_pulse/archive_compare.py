@@ -185,6 +185,12 @@ tr:last-child td { border-bottom: none; }
 .rank-2 { background: #e2e8f0; color: #334155; }
 .rank-3 { background: #fed7aa; color: #9a3412; }
 .rank-other { background: #f1f5f9; color: #64748b; }
+  .toc { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
+  .toc h2 { font-size: 1.05rem; margin: 0 0 12px 0; }
+  .toc ul { margin: 0; padding: 0 0 0 18px; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--primary); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
 """
 
 
@@ -629,48 +635,64 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <p>Village Day {html_lib.escape(str(village_day))} &nbsp;|&nbsp; Generated {generated_at}</p>
 </header>
 <div class="container">
+  <div class="section toc">
+    <h2>Table of Contents</h2>
+    <ul>
+      <li><a href="#summary">Summary</a></li>
+      <li><a href="#day-by-day">Day-by-Day Comparison</a></li>
+      <li><a href="#peak-hours">Peak Hours Comparison</a></li>
+      <li><a href="#conversation-depth">Conversation Depth Comparison</a></li>
+      <li><a href="#response-speed">Response Speed Comparison</a></li>
+      <li><a href="#agent-leaderboard">Agent Leaderboard</a></li>
+      <li><a href="#interaction-rankings">Interaction Rankings</a></li>
+      <li><a href="#room-participation">Room Participation</a></li>
+      <li><a href="#daily-trends">Daily Trends</a></li>
+      <li><a href="#top-agents">Top Agents Over Time</a></li>
+      <li><a href="#room-activity">Room Activity Over Time</a></li>
+    </ul>
+  </div>
   <div class="section">
-    <h2>Summary</h2>
+    <h2 id="summary">Summary</h2>
     {summary}
   </div>
   <div class="section">
-    <h2>Day-by-Day Comparison</h2>
+    <h2 id="day-by-day">Day-by-Day Comparison</h2>
     {comparison}
   </div>
   <div class="section">
-    <h2>Peak Hours Comparison</h2>
+    <h2 id="peak-hours">Peak Hours Comparison</h2>
     {peak_hours}
   </div>
   <div class="section">
-    <h2>Conversation Depth Comparison</h2>
+    <h2 id="conversation-depth">Conversation Depth Comparison</h2>
     {conversation_depth}
   </div>
   <div class="section">
-    <h2>Response Speed Comparison</h2>
+    <h2 id="response-speed">Response Speed Comparison</h2>
     {response_speed}
   </div>
   <div class="section">
-    <h2>Agent Leaderboard</h2>
+    <h2 id="agent-leaderboard">Agent Leaderboard</h2>
     {leaderboard}
   </div>
   <div class="section">
-    <h2>Interaction Rankings</h2>
+    <h2 id="interaction-rankings">Interaction Rankings</h2>
     {interaction_rankings_html}
   </div>
   <div class="section">
-    <h2>Room Participation (Latest Day)</h2>
+    <h2 id="room-participation">Room Participation (Latest Day)</h2>
     {rooms}
   </div>
   <div class="section">
-    <h2>Daily Trends (Last 7 Days)</h2>
+    <h2 id="daily-trends">Daily Trends (Last 7 Days)</h2>
     {trends}
   </div>
   <div class="section">
-    <h2>Top Agents Over Time</h2>
+    <h2 id="top-agents">Top Agents Over Time</h2>
     {agent_trends}
   </div>
   <div class="section">
-    <h2>Room Activity Over Time</h2>
+    <h2 id="room-activity">Room Activity Over Time</h2>
     {room_trends}
   </div>
 </div>
