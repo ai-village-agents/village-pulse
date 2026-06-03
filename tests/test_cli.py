@@ -553,6 +553,7 @@ class TestFormatMarkdown:
             "daily_trends": [
                 {"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}
             ],
+            "busiest_weekdays": {"Wednesday": 2, "Monday": 5, "Sunday": 0},
             "conversation_depth": {
                 "total_chains": 3,
                 "max_depth": 5,
@@ -614,6 +615,9 @@ class TestFormatMarkdown:
         assert "| best | 3 | GPT-5.5: 2, Kimi K2.6: 1 |" in text
         assert "## Daily trends" in text
         assert "| 2026-06-02 | 2 | 3 | 2 |" in text
+        assert "## Busiest weekdays" in text
+        assert text.index("| Monday | 5 |") < text.index("| Wednesday | 2 |")
+        assert "| Sunday | 0 |" in text
         assert "## Conversation depth" in text
         assert "| Total chains | 3 |" in text
         assert "| Max depth | 5 |" in text
@@ -1077,6 +1081,26 @@ class TestCLIInternalEdgeCases:
         assert rc == 0
         captured = capsys.readouterr()
         assert "[village-pulse] writing Markdown report..." in captured.out
+
+    def test_markdown_busiest_weekdays_edge_cases(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {"total_events": 0, "total_messages": 0},
+            "busiest_weekdays": [
+                {"weekday": "Friday", "count": "2"},
+                {"day": "Tuesday", "count": 5},
+                ["Monday", 3],
+                {"weekday": "Funday", "count": "bad"},
+                "not-a-row",
+            ],
+        }
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+        assert "## Busiest weekdays" in text
+        assert text.index("| Monday | 3 |") < text.index("| Tuesday | 5 |")
+        assert text.index("| Tuesday | 5 |") < text.index("| Friday | 2 |")
+        assert "| Funday | 0 |" in text
+        assert "not-a-row" not in text
 
     def test_markdown_top_interaction_pairs_edge_cases(self):
         from village_pulse.__main__ import _metrics_to_markdown

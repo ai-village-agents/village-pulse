@@ -110,6 +110,46 @@ def _markdown_table(headers: list[str], rows: list[list[object]]) -> list[str]:
     return lines
 
 
+_WEEKDAY_ORDER = {
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6,
+}
+
+
+def _safe_int(value: object) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _weekday_markdown_rows(value: object) -> list[list[object]]:
+    """Normalize busiest_weekdays metric shapes for Markdown output."""
+    rows: list[list[object]] = []
+    if isinstance(value, dict):
+        for weekday, count in value.items():
+            rows.append([str(weekday), _safe_int(count)])
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            if isinstance(item, dict):
+                weekday = item.get("weekday") or item.get("day")
+                if weekday is None:
+                    continue
+                rows.append([str(weekday), _safe_int(item.get("count", 0))])
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                rows.append([str(item[0]), _safe_int(item[1])])
+    else:
+        return []
+    return sorted(
+        rows, key=lambda row: (_WEEKDAY_ORDER.get(str(row[0]), 99), str(row[0]))
+    )
+
+
 def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
     """Render key dashboard metrics as a clean Markdown document."""
     days = context.get("days")
@@ -212,6 +252,12 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
                 _markdown_table(["Date", "Messages", "Events", "Active agents"], rows)
             )
             lines.append("")
+
+    weekday_rows = _weekday_markdown_rows(metrics.get("busiest_weekdays"))
+    if weekday_rows:
+        lines.extend(["## Busiest weekdays", ""])
+        lines.extend(_markdown_table(["Weekday", "Messages"], weekday_rows))
+        lines.append("")
 
     conversation = metrics.get("conversation_depth")
     if isinstance(conversation, dict) and conversation.get("total_chains"):
