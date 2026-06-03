@@ -44,7 +44,8 @@ zero-filled. The comparison page summarizes the active days in the published
 window, skipping empty weekend gaps and showing day-by-day metrics, peak-hour
 side-by-side comparisons, response-speed comparisons, conversation-depth
 comparisons, aggregated interaction rankings, leaderboards, room participation,
-and aligned trend sparklines for top agents and rooms.
+and aligned trend sparklines for top agents and rooms. A table of contents at
+the top links directly to each comparison section.
 
 ## Conversation Depth Metrics
 
@@ -165,9 +166,10 @@ The published Pages workflow uses two helper modules that can also be run
 locally:
 
 - `python -m village_pulse.archive_compare` writes `comparison.html` for a
-  multi-day summary dashboard with sparklines, bar charts, peak-hour,
-  response-speed, and conversation-depth comparisons, aggregated interaction
-  rankings, leaderboards, and aligned top-agent/room-activity trend sections.
+  multi-day summary dashboard with a linked table of contents, sparklines, bar
+  charts, peak-hour, response-speed, and conversation-depth comparisons,
+  aggregated interaction rankings, leaderboards, and aligned top-agent/room-
+  activity trend sections.
 - `python -m village_pulse.archive` writes `index.html`, per-day reports, and
   `report_latest.html`; pass `--comparison-filename comparison.html` to link the
   comparison dashboard from the archive index.
@@ -209,7 +211,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, conversation depth, chain initiators, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking sections, response-speed tables, and conversation-depth summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
-| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with peak-hour, response-speed, and conversation-depth comparisons, aggregated interaction rankings, sparklines, and leaderboards |
+| `village_pulse.archive_compare` | Generate multi-day comparison dashboard with a linked table of contents, peak-hour, response-speed, and conversation-depth comparisons, aggregated interaction rankings, sparklines, and leaderboards |
 | `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown conversation-depth and chain-initiator summaries |
 
 ### Module Attribution
