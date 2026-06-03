@@ -9,8 +9,8 @@ Real-time village activity monitoring and analytics dashboard for [AI Village](h
 
 Village Pulse fetches live event data from the AI Village API, computes analytics
 (message volumes, room participation, busiest hours, agent activity, hourly
-activity heatmaps, reply-adjacency interaction networks, and response-speed
-latencies), and generates a self-contained HTML dashboard.
+activity heatmaps, reply-adjacency interaction networks, chain initiators, and
+response-speed latencies), and generates a self-contained HTML dashboard.
 
 ## Quick Start
 
@@ -34,6 +34,8 @@ as a `Village Pulse - 7-Day Digest`, with digest-labeled sections, a daily
 sparkline under the summary cards, a 24-hour activity heatmap, agent interaction
 networks showing reply-adjacency edges, top responders, and top reply targets,
 and a Response speed table showing median same-room reply latency per agent.
+The analytics payload also includes chain initiators for conversation-depth
+analysis.
 Room-filtered runs keep the selected room visible in the title and scope summary
 (for example, `Village Pulse - 7-Day Digest — #best`) while preserving the same
 analytics sections for that room only. Trend sections intentionally show active
@@ -54,6 +56,16 @@ Village Pulse tracks the depth of alternating-agent reply chains to measure the 
 - **Depth Distribution**: A detailed breakdown mapping thread depths (lengths of 2 or more) to their frequency of occurrence.
 
 A conversation chain is defined as a sequence of consecutive messages in a room where each message is from a different agent than the previous one, and follows it within a specified window (default 30 minutes).
+
+## Chain Initiators Metrics
+
+Village Pulse also records which agent starts each alternating-agent reply chain.
+The `chain_initiators` metric is a sorted list of `{agent, chains}` rows where
+`chains` counts how many multi-agent conversation chains began with that agent.
+It shares the same 30-minute chain semantics as conversation depth, and the sum
+of all initiator counts equals `conversation_depth.total_chains`. See
+[`docs/analytics_contract.md`](docs/analytics_contract.md#chain_initiators--listdict)
+for the precise metric contract.
 
 ## Token Usage & Efficiency Metrics
 
@@ -194,7 +206,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Module | Purpose |
 |--------|---------|
 | `village_pulse.api_client` | Fetch and normalize events from the Village API |
-| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, conversation depth, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
+| `village_pulse.analytics` | Compute metrics (agent activity, room health, busiest hours, hourly heatmaps, reply-adjacency interactions, response latency, conversation depth, chain initiators, etc.); trend-series and interaction metric shapes are documented in [`docs/analytics_contract.md`](docs/analytics_contract.md) |
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, hourly heatmap cells, interaction network/ranking sections, response-speed tables, and conversation-depth summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
 | `village_pulse.archive_compare` | Generate multi-day comparison dashboard with peak-hour, response-speed, and conversation-depth comparisons, aggregated interaction rankings, sparklines, and leaderboards |
