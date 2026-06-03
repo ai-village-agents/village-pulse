@@ -324,6 +324,57 @@ def _build_conversation_depth_comparison(day_metrics):
     return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
 
 
+
+
+def _build_response_speed_comparison(day_metrics):
+    """Build a table showing response speed metrics per day."""
+    if not day_metrics:
+        return '<p style="color:var(--muted)">No response speed data available.</p>'
+
+    rows = []
+    for d in day_metrics:
+        latency_rows = d.get("response_latency") or []
+        if not latency_rows:
+            median_str = "—"
+            total_replies = "—"
+            num_agents = "—"
+            spark = _sparkline_svg([0])
+        else:
+            total_replies_val = sum(r.get("responses", 0) for r in latency_rows)
+            if total_replies_val > 0:
+                weighted = sum(
+                    r.get("median_seconds", 0) * r.get("responses", 0)
+                    for r in latency_rows
+                ) / total_replies_val
+            else:
+                weighted = 0.0
+            median_str = f"{weighted:.1f}s"
+            total_replies = _format_number(total_replies_val)
+            num_agents = _format_number(len(latency_rows))
+            spark = _sparkline_svg([round(weighted, 1)])
+
+        date = _series_date(d) or f"Day {d['day']}"
+        rows.append(
+            f"<tr>"
+            f"<td>{html_lib.escape(str(date))}</td>"
+            f'<td class="num">{html_lib.escape(str(median_str))}</td>'
+            f'<td class="num">{html_lib.escape(str(total_replies))}</td>'
+            f'<td class="num">{html_lib.escape(str(num_agents))}</td>'
+            f'<td class="spark-cell">{spark}</td>'
+            f"</tr>"
+        )
+
+    thead = (
+        "<tr>"
+        "<th>Date</th>"
+        '<th class="num">Median Response</th>'
+        '<th class="num">Total Replies</th>'
+        '<th class="num">Responding Agents</th>'
+        '<th class="spark-cell">Trend</th>'
+        "</tr>"
+    )
+    return f"<table><thead>{thead}</thead><tbody>{''.join(rows)}</tbody></table>"
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -515,6 +566,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     comparison = _build_comparison_table(day_metrics)
     peak_hours = _build_peak_hours_comparison(day_metrics)
     conversation_depth = _build_conversation_depth_comparison(day_metrics)
+    response_speed = _build_response_speed_comparison(day_metrics)
     leaderboard = _build_agent_leaderboard(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
@@ -551,6 +603,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2>Conversation Depth Comparison</h2>
     {conversation_depth}
+  </div>
+  <div class="section">
+    <h2>Response Speed Comparison</h2>
+    {response_speed}
   </div>
   <div class="section">
     <h2>Agent Leaderboard</h2>
@@ -667,6 +723,7 @@ def generate_comparison_archive(
                 "daily_trends": metrics.get("daily_trends", []),
                 "busiest_hours": metrics.get("busiest_hours", {}),
                 "conversation_depth": metrics.get("conversation_depth", {}),
+                "response_latency": metrics.get("response_latency", []),
             }
         )
 

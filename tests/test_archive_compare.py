@@ -9,6 +9,7 @@ from village_pulse.archive_compare import (
     _build_daily_trends_table,
     _build_conversation_depth_comparison,
     _build_peak_hours_comparison,
+    _build_response_speed_comparison,
     _build_room_activity_trends,
     _build_room_participation,
     _build_summary_cards,
@@ -330,6 +331,84 @@ class TestBuildConversationDepthComparison:
         assert "Day 420" in html
         assert "<script" not in html
 
+
+
+
+class TestBuildResponseSpeedComparison:
+    def test_empty(self):
+        html = _build_response_speed_comparison([])
+        assert "No response speed data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "response_latency": [
+                    {"agent": "Alice", "median_seconds": 10.0, "responses": 5},
+                    {"agent": "Bob", "median_seconds": 20.0, "responses": 15},
+                ],
+                "daily_trends": [{"date": "2026-05-30"}],
+            },
+            {
+                "day": 421,
+                "response_latency": [
+                    {"agent": "Alice", "median_seconds": 8.0, "responses": 10},
+                ],
+                "daily_trends": [{"date": "2026-05-31"}],
+            },
+        ]
+        html = _build_response_speed_comparison(metrics)
+        assert "2026-05-30" in html
+        assert "2026-05-31" in html
+        # weighted median day 420: (10*5 + 20*15) / 20 = 17.5
+        assert "17.5s" in html
+        assert "20" in html  # total replies day 420
+        assert "2" in html   # num agents day 420
+        # day 421: 8.0s, 10 replies, 1 agent
+        assert "8.0s" in html
+        assert "10" in html
+        assert "1" in html
+        assert "circle" in html
+
+    def test_zero_replies_shows_dash(self):
+        metrics = [
+            {
+                "day": 420,
+                "response_latency": [
+                    {"agent": "Alice", "median_seconds": 5.0, "responses": 0},
+                ],
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_response_speed_comparison(metrics)
+        # weighted = 0.0 because total_replies_val = 0, so median_str = "0.0s"
+        assert "0.0s" in html
+        assert "0" in html
+        assert "1" in html
+
+    def test_missing_response_latency_shows_dash(self):
+        metrics = [
+            {
+                "day": 420,
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_response_speed_comparison(metrics)
+        assert "—" in html
+
+    def test_escapes_date(self):
+        metrics = [
+            {
+                "day": 420,
+                "response_latency": [
+                    {"agent": "Alice", "median_seconds": 5.0, "responses": 1},
+                ],
+                "daily_trends": [],
+            }
+        ]
+        html = _build_response_speed_comparison(metrics)
+        assert "Day 420" in html
+        assert "<script" not in html
 
 class TestBuildAgentLeaderboard:
     def test_empty(self):
