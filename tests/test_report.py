@@ -675,7 +675,7 @@ def test_top_interaction_pairs_view_edge_cases():
         {"pair": "not-a-list", "count": 5}, # pair not list/tuple
     ]) == []
 
-    # 4. Correct rendering, escaping, percentage computation and sorting
+    # 4. Correct coercion, percentage computation, and stable input ordering
     res = _top_interaction_pairs_view([
         {"pair": ["Bob", "Alice"], "count": 10},
         {"pair": ["<script>Eve</script>", "Dave"], "count": 5},
@@ -686,8 +686,8 @@ def test_top_interaction_pairs_view_edge_cases():
     assert res[0]["count"] == 10
     assert res[0]["percent"] == 100.0
 
-    assert res[1]["pair"] == ["&lt;script&gt;Eve&lt;/script&gt;", "Dave"]
-    assert res[1]["pair_str"] == "&lt;script&gt;Eve&lt;/script&gt; ↔ Dave"
+    assert res[1]["pair"] == ["<script>Eve</script>", "Dave"]
+    assert res[1]["pair_str"] == "<script>Eve</script> ↔ Dave"
     assert res[1]["count"] == 5
     assert res[1]["percent"] == 50.0
 
@@ -706,3 +706,18 @@ def test_render_includes_top_interaction_pairs():
     assert "Strongest partnerships" in html
     assert "Alice ↔ Bob" in html
     assert "12" in html
+
+
+def test_render_top_interaction_pairs_escapes_once():
+    from village_pulse.report import render
+
+    metrics = sample_metrics()
+    metrics["top_interaction_pairs"] = [
+        {"pair": ["<script>Eve</script>", "Bob & Co"], "count": 7},
+    ]
+
+    rendered = render(metrics, {"version": "0.1.0"})
+    assert "<script>Eve</script>" not in rendered
+    assert "&lt;script&gt;Eve&lt;/script&gt; ↔ Bob &amp; Co" in rendered
+    assert "&amp;lt;script" not in rendered
+    assert "Bob &amp;amp; Co" not in rendered

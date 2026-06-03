@@ -1202,15 +1202,13 @@ def _top_interaction_pairs_view(value: Any, *, limit: int = 15) -> list[dict[str
             if isinstance(pair, (list, tuple)) and len(pair) >= 2:
                 name_a = str(pair[0])
                 name_b = str(pair[1])
-                name_a_esc = html.escape(name_a)
-                name_b_esc = html.escape(name_b)
                 cnt = _safe_int(row.get("count"))
                 percent = round((cnt / max_count) * 100, 1) if max_count > 0 else 0.0
                 rows.append({
-                    "pair": [name_a_esc, name_b_esc],
-                    "pair_str": f"{name_a_esc} ↔ {name_b_esc}",
+                    "pair": [name_a, name_b],
+                    "pair_str": f"{name_a} ↔ {name_b}",
                     "count": cnt,
-                    "percent": percent
+                    "percent": percent,
                 })
     return rows[:limit]
 
