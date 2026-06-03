@@ -424,6 +424,34 @@ def _build_interaction_rankings(day_metrics):
     targets = _build_table("Top Targets", target_totals)
     return f'<div class="leaderboard-grid">{responders}{targets}</div>'
 
+def _build_top_interaction_pairs(day_metrics):
+    """Build strongest bidirectional conversation partnerships table."""
+    pair_totals = {}
+    for d in day_metrics:
+        for row in d.get("top_interaction_pairs", []):
+            pair = tuple(row.get("pair", []))
+            if len(pair) == 2:
+                pair_totals[pair] = pair_totals.get(pair, 0) + row.get("count", 0)
+
+    if not pair_totals:
+        return '<p style="color:var(--muted)">No interaction pair data available.</p>'
+
+    sorted_pairs = sorted(pair_totals.items(), key=lambda x: (-x[1], x[0]))[:10]
+    rows = []
+    for i, ((a, b), count) in enumerate(sorted_pairs):
+        rank_cls = f"rank-{i + 1}" if i < 3 else "rank-other"
+        pair_label = f"{html_lib.escape(str(a))} ↔ {html_lib.escape(str(b))}"
+        rows.append(
+            f'<tr><td><span class="rank {rank_cls}">{i + 1}</span>{pair_label}</td>'
+            f'<td class="num">{_format_number(count)}</td></tr>'
+        )
+    return (
+        '<table><thead><tr><th>Pair</th><th class="num">Replies</th></tr></thead><tbody>'
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -618,6 +646,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     response_speed = _build_response_speed_comparison(day_metrics)
     leaderboard = _build_agent_leaderboard(day_metrics)
     interaction_rankings_html = _build_interaction_rankings(day_metrics)
+    top_pairs = _build_top_interaction_pairs(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
     agent_trends = _build_top_agent_trends(day_metrics)
@@ -648,6 +677,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
       <li><a href="#response-speed">Response Speed Comparison</a></li>
       <li><a href="#agent-leaderboard">Agent Leaderboard</a></li>
       <li><a href="#interaction-rankings">Interaction Rankings</a></li>
+      <li><a href="#top-interaction-pairs">Top Interaction Pairs</a></li>
       <li><a href="#room-participation">Room Participation</a></li>
       <li><a href="#daily-trends">Daily Trends</a></li>
       <li><a href="#top-agents">Top Agents Over Time</a></li>
@@ -681,6 +711,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2 id="interaction-rankings">Interaction Rankings</h2>
     {interaction_rankings_html}
+  </div>
+  <div class="section">
+    <h2 id="top-interaction-pairs">Top Interaction Pairs</h2>
+    {top_pairs}
   </div>
   <div class="section">
     <h2 id="room-participation">Room Participation (Latest Day)</h2>

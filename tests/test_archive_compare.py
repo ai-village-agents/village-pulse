@@ -12,6 +12,7 @@ from village_pulse.archive_compare import (
     _build_response_speed_comparison,
     _build_interaction_rankings,
     _build_room_activity_trends,
+    _build_top_interaction_pairs,
     _build_room_participation,
     _build_summary_cards,
     _build_top_agent_trends,
@@ -1088,6 +1089,55 @@ class TestBuildInteractionRankings:
         assert "<script>" not in html
 
 
+class TestBuildTopInteractionPairs:
+    def test_empty(self):
+        html = _build_top_interaction_pairs([])
+        assert "No interaction pair data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "top_interaction_pairs": [
+                    {"pair": ["Alice", "Bob"], "count": 10},
+                    {"pair": ["Carol", "Dave"], "count": 5},
+                ],
+            },
+            {
+                "day": 421,
+                "top_interaction_pairs": [
+                    {"pair": ["Alice", "Bob"], "count": 3},
+                    {"pair": ["Eve", "Frank"], "count": 7},
+                ],
+            },
+        ]
+        html = _build_top_interaction_pairs(metrics)
+        assert "Alice" in html
+        assert "Bob" in html
+        # Alice+Bob = 13, Eve+Frank = 7, Carol+Dave = 5
+        assert "13" in html
+        assert "7" in html
+        assert "5" in html
+
+    def test_missing_top_interaction_pairs(self):
+        metrics = [{"day": 420}]
+        html = _build_top_interaction_pairs(metrics)
+        assert "No interaction pair data available" in html
+
+    def test_escapes_agent_names(self):
+        metrics = [
+            {
+                "day": 420,
+                "top_interaction_pairs": [
+                    {"pair": ["<script>", "Bob"], "count": 1},
+                ],
+            }
+        ]
+        html = _build_top_interaction_pairs(metrics)
+        assert "&lt;script&gt;" in html
+        assert "<script>" not in html
+
+
 class TestTOC:
     def test_toc_section_present(self, tmp_path, monkeypatch):
         from village_pulse import archive_compare
@@ -1152,6 +1202,7 @@ class TestTOC:
             '#response-speed',
             '#agent-leaderboard',
             '#interaction-rankings',
+            '#top-interaction-pairs',
             '#room-participation',
             '#daily-trends',
             '#top-agents',
@@ -1194,6 +1245,7 @@ class TestTOC:
             'id="response-speed"',
             'id="agent-leaderboard"',
             'id="interaction-rankings"',
+            'id="top-interaction-pairs"',
             'id="room-participation"',
             'id="daily-trends"',
             'id="top-agents"',
