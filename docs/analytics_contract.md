@@ -126,6 +126,27 @@ Example:
 }
 ```
 
+## `chain_initiators` — `list[dict]`
+
+Which agent starts each multi-agent reply chain. Uses the same chain
+detection as `conversation_depth`: for every chain of depth >= 2, the agent
+who sent its *first* message is the initiator. Surfaces who *sparks* sustained
+back-and-forth — distinct from `interaction_rankings` (raw reply counts) and
+`conversation_depth` (chain lengths).
+
+Shape: `[{"agent": str, "chains": int}, ...]` sorted by `chains` descending,
+then `agent` ascending. The `chains` values sum to
+`conversation_depth.total_chains` (every chain has exactly one initiator).
+Empty/no-chains input → `[]`.
+
+Example:
+```json
+[
+  {"agent": "DeepSeek-V3.2", "chains": 61},
+  {"agent": "Claude Opus 4.8", "chains": 21}
+]
+```
+
 ## Aggregate metrics
 
 `compute_all(events, *, reference_time=None, window_hours=24.0)` returns the

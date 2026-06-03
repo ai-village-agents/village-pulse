@@ -250,6 +250,40 @@ def test_conversation_depth_empty_is_zeroed():
     }
 
 
+def test_chain_initiators_basic(sample_raw):
+    # Both #best chains (Alice->Bob, then Alice->admin) are started by Alice.
+    assert a.chain_initiators(sample_raw) == [{"agent": "Alice", "chains": 2}]
+
+
+def test_chain_initiators_tie_ordering():
+    # A,B,A,B is one chain started by A; the repeated B breaks it and the
+    # trailing B->A is a second chain started by B. Ties on count sort by name.
+    raw = [
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:00:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:05:00Z"),
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:10:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:15:00Z"),
+        _ev("B", "r", "AGENT_TALK", "2026-06-01T09:20:00Z"),  # repeat -> break
+        _ev("A", "r", "AGENT_TALK", "2026-06-01T09:25:00Z"),
+    ]
+    assert a.chain_initiators(raw) == [
+        {"agent": "A", "chains": 1},
+        {"agent": "B", "chains": 1},
+    ]
+
+
+def test_chain_initiators_total_matches_chain_count(sample_raw):
+    # Every chain has exactly one initiator, so the counts must sum to the
+    # conversation_depth total_chains.
+    ci = a.chain_initiators(sample_raw)
+    total = a.conversation_depth(sample_raw)["total_chains"]
+    assert sum(r["chains"] for r in ci) == total
+
+
+def test_chain_initiators_empty():
+    assert a.chain_initiators([]) == []
+
+
 def test_busiest_weekdays_zero_filled(sample_raw):
     wd = a.busiest_weekdays(a.normalize_events(sample_raw))
     assert len(wd) == 7
@@ -311,6 +345,7 @@ def test_compute_all_keys_and_serializable(sample_raw):
         "hourly_activity_heatmap",
         "response_latency",
         "conversation_depth",
+        "chain_initiators",
     }
     assert set(summary.keys()) == expected
     json.dumps(summary)  # must not raise

@@ -55,6 +55,7 @@ __all__ = [
     "hourly_activity_heatmap",
     "response_latency",
     "conversation_depth",
+    "chain_initiators",
     "agent_last_seen",
     "active_agents",
     "room_health",
@@ -601,6 +602,59 @@ def conversation_depth(events, *, window_minutes=30.0):
     }
 
 
+def chain_initiators(events, *, window_minutes=30.0):
+    """Which agent starts each multi-agent reply chain.
+
+    Uses the same chain detection as :func:`conversation_depth`: a chain is a
+    run of consecutive same-room messages where each comes from a different
+    agent than the previous one within ``window_minutes``. For every chain of
+    depth >= 2, the agent who sent its *first* message is the initiator. Lone
+    messages are ignored.
+
+    Returns a list of ``{"agent": str, "chains": int}`` sorted by chain count
+    descending, then agent name ascending. Empty input yields ``[]``.
+    """
+    normalized = normalize_events(events)
+    messages = [
+        e
+        for e in normalized
+        if e.is_message and e.timestamp is not None and e.agent
+    ]
+    by_room = defaultdict(list)
+    for event in messages:
+        by_room[event.room or "(unknown)"].append(event)
+    cutoff = float(window_minutes) * 60.0
+    counts: Counter[str] = Counter()
+    for room_events in by_room.values():
+        room_events.sort(key=lambda e: e.timestamp)
+        current = 0
+        prev = None
+        start = None
+        for event in room_events:
+            if prev is None:
+                current = 1
+                start = event
+            elif (
+                event.agent != prev.agent
+                and 0
+                <= (event.timestamp - prev.timestamp).total_seconds()
+                <= cutoff
+            ):
+                current += 1
+            else:
+                if current >= 2 and start is not None:
+                    counts[start.agent] += 1
+                current = 1
+                start = event
+            prev = event
+        if current >= 2 and start is not None:
+            counts[start.agent] += 1
+    return [
+        {"agent": agent, "chains": count}
+        for agent, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+
+
 def hourly_activity_heatmap(
     events: Sequence[ActivityEvent], *, message_only: bool = True
 ) -> list[int]:
@@ -968,6 +1022,7 @@ def compute_all(
         "hourly_activity_heatmap": hourly_activity_heatmap(normalized),
         "response_latency": response_latency(normalized),
         "conversation_depth": conversation_depth(normalized),
+        "chain_initiators": chain_initiators(normalized),
         "agent_last_seen": {
             agent: ts.isoformat() for agent, ts in agent_last_seen(normalized).items()
         },
