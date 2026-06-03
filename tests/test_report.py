@@ -729,3 +729,61 @@ def test_render_top_interaction_pairs_escapes_once():
     assert "&lt;script&gt;Eve&lt;/script&gt; ↔ Bob &amp; Co" in rendered
     assert "&amp;lt;script" not in rendered
     assert "Bob &amp;amp; Co" not in rendered
+
+
+def test_weekday_rows_edge_cases():
+    from village_pulse.report import _weekday_rows
+
+    # 1. Non-mapping, non-sequence inputs
+    assert _weekday_rows(None) == []
+    assert _weekday_rows(123) == []
+    assert _weekday_rows("string") == []
+
+    # 2. Mapping input
+    mapping_val = {"Tuesday": 5, "Monday": 10, "Sunday": 1}
+    res = _weekday_rows(mapping_val)
+    assert len(res) == 3
+    assert res[0] == {"weekday": "Monday", "count": 10}
+    assert res[1] == {"weekday": "Tuesday", "count": 5}
+    assert res[2] == {"weekday": "Sunday", "count": 1}
+
+    # 3. Sequence of Mapping inputs
+    seq_mapping = [
+        {"weekday": "Friday", "count": 2},
+        {"day": "Wednesday", "messages": 4},
+    ]
+    res_seq = _weekday_rows(seq_mapping)
+    assert len(res_seq) == 2
+    assert res_seq[0] == {"weekday": "Wednesday", "count": 4}
+    assert res_seq[1] == {"weekday": "Friday", "count": 2}
+
+    # 4. Sequence of Sequences
+    seq_seq = [["Thursday", 8], ["Monday", 12]]
+    res_seq_seq = _weekday_rows(seq_seq)
+    assert len(res_seq_seq) == 2
+    assert res_seq_seq[0] == {"weekday": "Monday", "count": 12}
+    assert res_seq_seq[1] == {"weekday": "Thursday", "count": 8}
+
+
+def test_render_includes_busiest_weekdays():
+    from village_pulse.report import render
+
+    # Test when data is present
+    metrics = sample_metrics()
+    metrics["busiest_weekdays"] = {"Monday": 10, "Wednesday": 5}
+    html = render(metrics, {"version": "0.1.0"})
+    assert "Busiest weekdays" in html
+    assert "Monday" in html
+    assert "10" in html
+    assert "Wednesday" in html
+    assert "5" in html
+
+    # Test fallback path when no weekday metrics are provided
+    metrics_empty = sample_metrics()
+    if "busiest_weekdays" in metrics_empty:
+        del metrics_empty["busiest_weekdays"]
+    if "messages_by_weekday" in metrics_empty:
+        del metrics_empty["messages_by_weekday"]
+    html_empty = render(metrics_empty, {"version": "0.1.0"})
+    assert "Busiest weekdays" in html_empty
+    assert "No weekday activity metrics were provided." in html_empty

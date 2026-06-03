@@ -198,6 +198,14 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
         {% else %}<p class="muted">No hourly activity metrics were provided.</p>{% endif %}
       </article>
       <article class="card">
+        <h2>Busiest weekdays{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
+        {% if busiest_weekdays %}
+        <table><thead><tr><th>Weekday</th><th>Messages</th></tr></thead><tbody>
+          {% for day in busiest_weekdays %}<tr><td>{{ day.weekday }}</td><td>{{ day.count }}</td></tr>{% endfor %}
+        </tbody></table>
+        {% else %}<p class="muted">No weekday activity metrics were provided.</p>{% endif %}
+      </article>
+      <article class="card">
         <h2>Agent status{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
         <p><span class="good">Active:</span> {{ active_agents|join(', ') if active_agents else 'none listed' }}</p>
         <p><span class="warn">Inactive:</span> {{ inactive_agents|join(', ') if inactive_agents else 'none listed' }}</p>
@@ -620,6 +628,9 @@ def _build_view_model(
     busiest_hours = _hour_rows(
         metrics.get("busiest_hours") or metrics.get("messages_by_hour")
     )
+    busiest_weekdays = _weekday_rows(
+        metrics.get("busiest_weekdays") or metrics.get("messages_by_weekday")
+    )
     heatmap_cells = _heatmap_cells(metrics.get("hourly_activity_heatmap"))
     trend = _mapping(metrics, "message_trend", "messages_per_day", "daily_messages")
 
@@ -682,6 +693,7 @@ def _build_view_model(
         "agent_rows": _agent_rows(agent_counts),
         "room_rows": _room_rows(room_metrics),
         "busiest_hours": busiest_hours,
+        "busiest_weekdays": busiest_weekdays,
         "heatmap_cells": heatmap_cells,
         "token_summary": token_summary,
         "token_agent_rows": token_agent_rows,
@@ -1053,6 +1065,46 @@ def _hour_rows(value: Any) -> list[dict[str, Any]]:
         {"hour": key, "count": _safe_int(count)}
         for key, count in sorted(items, key=lambda item: str(item[0]))
     ]
+
+
+def _weekday_rows(value: Any) -> list[dict[str, Any]]:
+    order = {
+        "Monday": 0,
+        "Tuesday": 1,
+        "Wednesday": 2,
+        "Thursday": 3,
+        "Friday": 4,
+        "Saturday": 5,
+        "Sunday": 6,
+    }
+    if isinstance(value, Mapping):
+        items = value.items()
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        items = []
+        rows: list[dict[str, Any]] = []
+        for entry in value:
+            if isinstance(entry, Mapping):
+                day = entry.get("weekday") or entry.get("day") or "—"
+                rows.append(
+                    {
+                        "weekday": day,
+                        "count": _safe_int(entry.get("count") or entry.get("messages")),
+                    }
+                )
+            elif (
+                isinstance(entry, Sequence)
+                and len(entry) >= 2
+                and not isinstance(entry, (str, bytes, bytearray))
+            ):
+                rows.append({"weekday": entry[0], "count": _safe_int(entry[1])})
+        return sorted(rows, key=lambda r: order.get(str(r["weekday"]), 9))
+    else:
+        return []
+
+    return sorted(
+        [{"weekday": key, "count": _safe_int(count)} for key, count in items],
+        key=lambda r: order.get(str(r["weekday"]), 9),
+    )
 
 
 def _heatmap_cells(value: Any) -> list[dict[str, Any]]:
