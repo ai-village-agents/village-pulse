@@ -455,6 +455,92 @@ def _build_top_interaction_pairs(day_metrics):
     )
 
 
+def _build_chain_initiators_comparison(day_metrics):
+    """Build chain initiators comparison: aggregate share + per-day top initiator."""
+    if not day_metrics:
+        return '<p style="color:var(--muted)">No chain initiator data available.</p>'
+
+    # Aggregate across all days
+    aggregate = {}
+    grand_total = 0
+    for d in day_metrics:
+        ci = d.get("chain_initiators") or []
+        for row in ci:
+            agent = row.get("agent", "Unknown")
+            chains = row.get("chains", 0)
+            aggregate[agent] = aggregate.get(agent, 0) + chains
+            grand_total += chains
+
+    if not aggregate:
+        return '<p style="color:var(--muted)">No chain initiator data available.</p>'
+
+    # Aggregate table with rank badges
+    sorted_agg = sorted(aggregate.items(), key=lambda x: (-x[1], x[0]))[:10]
+    agg_rows = []
+    for i, (agent, chains) in enumerate(sorted_agg):
+        rank_cls = f"rank-{i + 1}" if i < 3 else "rank-other"
+        share = (chains / grand_total * 100) if grand_total > 0 else 0.0
+        agg_rows.append(
+            f'<tr>'
+            f'<td><span class="rank {rank_cls}">{i + 1}</span>{html_lib.escape(str(agent))}</td>'
+            f'<td class="num">{_format_number(chains)}</td>'
+            f'<td class="num">{share:.1f}%</td>'
+            f'</tr>'
+        )
+    agg_table = (
+        '<table><thead><tr><th>Agent</th><th class="num">Chains</th><th class="num">Share</th></tr></thead><tbody>'
+        + "".join(agg_rows)
+        + "</tbody></table>"
+    )
+
+    # Per-day table
+    day_rows = []
+    total_chains_series = []
+    for d in day_metrics:
+        ci = d.get("chain_initiators") or []
+        cd = d.get("conversation_depth") or {}
+        day_total = cd.get("total_chains", 0)
+        total_chains_series.append(day_total)
+        top = ci[0] if ci else None
+        if top:
+            top_agent = top.get("agent", "Unknown")
+            top_chains = top.get("chains", 0)
+            share = (top_chains / day_total * 100) if day_total > 0 else 0.0
+        else:
+            top_agent = "—"
+            top_chains = 0
+            share = 0.0
+        date = _series_date(d) or f"Day {d['day']}"
+        day_rows.append(
+            f"<tr>"
+            f"<td>{html_lib.escape(str(date))}</td>"
+            f'<td class="num">{_format_number(day_total)}</td>'
+            f'<td>{html_lib.escape(str(top_agent))}</td>'
+            f'<td class="num">{_format_number(top_chains)}</td>'
+            f'<td class="num">{share:.1f}%</td>'
+            f"</tr>"
+        )
+
+    day_thead = (
+        "<tr>"
+        "<th>Date</th>"
+        '<th class="num">Total Chains</th>'
+        '<th>Top Initiator</th>'
+        '<th class="num">Chains</th>'
+        '<th class="num">Share</th>'
+        "</tr>"
+    )
+    day_table = f"<table><thead>{day_thead}</thead><tbody>{''.join(day_rows)}</tbody></table>"
+
+    spark = _sparkline_svg(total_chains_series)
+
+    return (
+        f'<div style="margin-bottom:24px"><h3 style="font-size:0.95rem;margin:0 0 12px 0">Aggregate Share</h3>{agg_table}</div>'
+        f'<div style="margin-bottom:12px"><h3 style="font-size:0.95rem;margin:0 0 12px 0">Per Day</h3>{day_table}</div>'
+        f'<div class="spark-cell" style="margin-top:12px">{spark}</div>'
+    )
+
+
 def _build_agent_leaderboard(day_metrics):
     """Build top agents leaderboard with bar chart."""
     agent_totals = {}
@@ -650,6 +736,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
     leaderboard = _build_agent_leaderboard(day_metrics)
     interaction_rankings_html = _build_interaction_rankings(day_metrics)
     top_pairs = _build_top_interaction_pairs(day_metrics)
+    chain_initiators_html = _build_chain_initiators_comparison(day_metrics)
     rooms = _build_room_participation(day_metrics)
     trends = _build_daily_trends_table(day_metrics)
     agent_trends = _build_top_agent_trends(day_metrics)
@@ -681,6 +768,7 @@ def generate_comparison(day_metrics, output_path, village_day=0):
       <li><a href="#agent-leaderboard">Agent Leaderboard</a></li>
       <li><a href="#interaction-rankings">Interaction Rankings</a></li>
       <li><a href="#top-interaction-pairs">Top Interaction Pairs</a></li>
+      <li><a href="#chain-initiators">Chain Initiators</a></li>
       <li><a href="#room-participation">Room Participation</a></li>
       <li><a href="#daily-trends">Daily Trends</a></li>
       <li><a href="#top-agents">Top Agents Over Time</a></li>
@@ -718,6 +806,10 @@ def generate_comparison(day_metrics, output_path, village_day=0):
   <div class="section">
     <h2 id="top-interaction-pairs">Top Interaction Pairs</h2>
     {top_pairs}
+  </div>
+  <div class="section">
+    <h2 id="chain-initiators">Chain Initiators</h2>
+    {chain_initiators_html}
   </div>
   <div class="section">
     <h2 id="room-participation">Room Participation (Latest Day)</h2>
@@ -833,6 +925,7 @@ def generate_comparison_archive(
                 "response_latency": metrics.get("response_latency", []),
                 "interaction_rankings": metrics.get("interaction_rankings", {}),
                 "top_interaction_pairs": metrics.get("top_interaction_pairs", []),
+                "chain_initiators": metrics.get("chain_initiators", []),
             }
         )
 

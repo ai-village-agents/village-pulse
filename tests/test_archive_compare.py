@@ -7,6 +7,7 @@ from village_pulse.archive_compare import (
     _build_agent_leaderboard,
     _build_comparison_table,
     _build_daily_trends_table,
+    _build_chain_initiators_comparison,
     _build_conversation_depth_comparison,
     _build_peak_hours_comparison,
     _build_response_speed_comparison,
@@ -499,6 +500,115 @@ class TestBuildResponseSpeedComparison:
         html = _build_response_speed_comparison(metrics)
         assert "Day 420" in html
         assert "<script" not in html
+
+
+class TestBuildChainInitiatorsComparison:
+    def test_empty(self):
+        html = _build_chain_initiators_comparison([])
+        assert "No chain initiator data available" in html
+
+    def test_with_data(self):
+        metrics = [
+            {
+                "day": 420,
+                "chain_initiators": [
+                    {"agent": "Alice", "chains": 10},
+                    {"agent": "Bob", "chains": 5},
+                ],
+                "conversation_depth": {
+                    "total_chains": 15,
+                    "max_depth": 3,
+                    "mean_depth": 2.0,
+                    "median_depth": 2.0,
+                    "depth_distribution": {2: 15},
+                },
+                "daily_trends": [{"date": "2026-05-30"}],
+            },
+            {
+                "day": 421,
+                "chain_initiators": [
+                    {"agent": "Bob", "chains": 8},
+                    {"agent": "Alice", "chains": 2},
+                ],
+                "conversation_depth": {
+                    "total_chains": 10,
+                    "max_depth": 4,
+                    "mean_depth": 2.5,
+                    "median_depth": 2.0,
+                    "depth_distribution": {2: 10},
+                },
+                "daily_trends": [{"date": "2026-05-31"}],
+            },
+        ]
+        html = _build_chain_initiators_comparison(metrics)
+        # Aggregate: Alice 12, Bob 13
+        assert "Alice" in html
+        assert "Bob" in html
+        assert "12" in html
+        assert "13" in html
+        # Shares: Alice 12/25=48.0%, Bob 13/25=52.0%
+        assert "48.0%" in html
+        assert "52.0%" in html
+        # Per-day
+        assert "2026-05-30" in html
+        assert "2026-05-31" in html
+        assert "15" in html  # total chains day 420
+        assert "10" in html  # total chains day 421
+        assert "circle" in html or "polyline" in html
+
+    def test_missing_chain_initiators(self):
+        metrics = [
+            {
+                "day": 420,
+                "conversation_depth": {"total_chains": 0},
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_chain_initiators_comparison(metrics)
+        assert "No chain initiator data available" in html
+
+    def test_zero_total_chains(self):
+        metrics = [
+            {
+                "day": 420,
+                "chain_initiators": [],
+                "conversation_depth": {"total_chains": 0},
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_chain_initiators_comparison(metrics)
+        assert "No chain initiator data available" in html
+
+    def test_escapes_agent_names(self):
+        metrics = [
+            {
+                "day": 420,
+                "chain_initiators": [
+                    {"agent": "<script>", "chains": 1},
+                ],
+                "conversation_depth": {"total_chains": 1},
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_chain_initiators_comparison(metrics)
+        assert "&lt;script&gt;" in html
+        assert "<script>" not in html
+
+    def test_missing_conversation_depth(self):
+        metrics = [
+            {
+                "day": 420,
+                "chain_initiators": [
+                    {"agent": "Alice", "chains": 5},
+                ],
+                "daily_trends": [{"date": "2026-05-30"}],
+            }
+        ]
+        html = _build_chain_initiators_comparison(metrics)
+        # Should still render aggregate and per-day with 0 total chains
+        assert "Alice" in html
+        assert "5" in html
+        assert "0.0%" in html  # share when total_chains missing (0)
 
 
 class TestBuildAgentLeaderboard:
@@ -1255,6 +1365,7 @@ class TestTOC:
             "#agent-leaderboard",
             "#interaction-rankings",
             "#top-interaction-pairs",
+            "#chain-initiators",
             "#room-participation",
             "#daily-trends",
             "#top-agents",
@@ -1298,6 +1409,7 @@ class TestTOC:
             'id="agent-leaderboard"',
             'id="interaction-rankings"',
             'id="top-interaction-pairs"',
+            'id="chain-initiators"',
             'id="room-participation"',
             'id="daily-trends"',
             'id="top-agents"',
