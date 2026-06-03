@@ -848,3 +848,84 @@ def test_render_includes_action_types():
     html_empty = render(metrics_empty, {"version": "0.1.0"})
     assert "Action types" in html_empty
     assert "No action type metrics were provided." in html_empty
+
+
+def test_room_participation_rates_view_edge_cases():
+    from village_pulse.report import _room_participation_rates_view
+
+    # 1. Non-mapping input
+    assert _room_participation_rates_view(None) == []
+    assert _room_participation_rates_view([]) == []
+    assert _room_participation_rates_view("not_a_map") == []
+
+    # 2. Room with non-mapping agents
+    bad_agents = {"#best": "not_a_mapping"}
+    assert _room_participation_rates_view(bad_agents) == []
+
+    # 3. Coercion and sorting checks
+    mixed_data = {
+        "#best": {
+            "Alice": 0.25,
+            "Bob": "0.15",
+            "Charlie": None,
+            "Dave": "invalid",
+        },
+        "#rest": {
+            "Eve": 1.0,
+        }
+    }
+    res = _room_participation_rates_view(mixed_data)
+    # Expected rows:
+    # 1. room: #best, agent: Alice, rate: 0.25, percent: 25.0
+    # 2. room: #best, agent: Bob, rate: 0.15, percent: 15.0
+    # 3. room: #best, agent: Charlie, rate: 0.0, percent: 0.0
+    # 4. room: #best, agent: Dave, rate: 0.0, percent: 0.0
+    # 5. room: #rest, agent: Eve, rate: 1.0, percent: 100.0
+    # Sorting order: room asc, rate desc, agent asc
+    assert len(res) == 5
+    # #best room
+    assert res[0]["room"] == "#best" and res[0]["agent"] == "Alice" and res[0]["percent"] == 25.0
+    assert res[1]["room"] == "#best" and res[1]["agent"] == "Bob" and res[1]["percent"] == 15.0
+    assert res[2]["room"] == "#best" and res[2]["agent"] == "Charlie" and res[2]["percent"] == 0.0
+    assert res[3]["room"] == "#best" and res[3]["agent"] == "Dave" and res[3]["percent"] == 0.0
+    # #rest room
+    assert res[4]["room"] == "#rest" and res[4]["agent"] == "Eve" and res[4]["percent"] == 100.0
+
+    # 4. HTML escaping
+    unsafe_data = {
+        "<unsafe_room>": {
+            "<unsafe_agent>": 0.5
+        }
+    }
+    res_unsafe = _room_participation_rates_view(unsafe_data)
+    assert len(res_unsafe) == 1
+    assert res_unsafe[0]["room"] == "&lt;unsafe_room&gt;"
+    assert res_unsafe[0]["agent"] == "&lt;unsafe_agent&gt;"
+
+
+def test_render_includes_room_participation_rates():
+    from village_pulse.report import render
+
+    metrics = sample_metrics()
+    metrics["room_participation_rates"] = {
+        "#best": {
+            "Alice": 0.75,
+            "Bob": 0.25
+        }
+    }
+    html = render(metrics, {"version": "0.1.0"})
+    assert "Room participation rates" in html
+    assert "Alice" in html
+    assert "75.0%" in html
+    assert "Bob" in html
+    assert "25.0%" in html
+
+    # Fallback path when no rates are provided
+    metrics_empty = sample_metrics()
+    if "room_participation_rates" in metrics_empty:
+        del metrics_empty["room_participation_rates"]
+    if "room_participation_rate" in metrics_empty:
+        del metrics_empty["room_participation_rate"]
+    html_empty = render(metrics_empty, {"version": "0.1.0"})
+    assert "Room participation rates" in html_empty
+    assert "No room participation rate metrics were provided." in html_empty

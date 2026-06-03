@@ -188,6 +188,24 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
       {% else %}<p class="muted">No room participation metrics were provided.</p>{% endif %}
     </section>
 
+    <section class="section card">
+      <h2>Room participation rates{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
+      {% if room_participation_rates %}
+      <table>
+        <thead><tr><th>Room</th><th>Agent</th><th class="bar-cell">Share</th></tr></thead>
+        <tbody>
+          {% for row in room_participation_rates %}
+          <tr>
+            <td>{{ row.room }}</td>
+            <td>{{ row.agent }}</td>
+            <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width: {{ row.percent }}%"></div></div><span class="muted">{{ row.percent }}%</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p class="muted">No room participation rate metrics were provided.</p>{% endif %}
+    </section>
+
     <section class="grid section" aria-label="trend details">
       <article class="card">
         <h2>Busiest hours{% if days > 1 %} ({{ days }}-Day Digest){% endif %}</h2>
@@ -669,6 +687,9 @@ def _build_view_model(
     top_interaction_pairs = _top_interaction_pairs_view(
         metrics.get("top_interaction_pairs")
     )
+    room_participation_rates = _room_participation_rates_view(
+        metrics.get("room_participation_rates") or metrics.get("room_participation_rate")
+    )
 
     summary_cards = [
         {
@@ -703,6 +724,7 @@ def _build_view_model(
         "summary_cards": summary_cards,
         "agent_rows": _agent_rows(agent_counts),
         "room_rows": _room_rows(room_metrics),
+        "room_participation_rates": room_participation_rates,
         "busiest_hours": busiest_hours,
         "busiest_weekdays": busiest_weekdays,
         "action_types": action_types,
@@ -1224,6 +1246,13 @@ def _safe_int(value: Any) -> int:
         return 0
 
 
+def _safe_float(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _interaction_graph_rows(graph: Any) -> list[dict[str, Any]]:
     if not isinstance(graph, Mapping):
         return []
@@ -1418,4 +1447,29 @@ def _chain_initiators_view(value: Any) -> list[dict[str, Any]]:
         )
     # Keep the original sort: chains desc, then agent asc
     rows.sort(key=lambda x: (-x["chains"], x["agent"]))
+    return rows
+
+
+def _room_participation_rates_view(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, Mapping):
+        return []
+    rows: list[dict[str, Any]] = []
+    for room, agents in value.items():
+        if not isinstance(agents, Mapping):
+            continue
+        for agent, rate in agents.items():
+            f_rate = _safe_float(rate)
+            rows.append({
+                "room": html.escape(str(room)),
+                "agent": html.escape(str(agent)),
+                "rate": f_rate,
+                "percent": round(f_rate * 100, 1)
+            })
+    rows.sort(
+        key=lambda row: (
+            row["room"].lower(),
+            -row["rate"],
+            row["agent"].lower()
+        )
+    )
     return rows
