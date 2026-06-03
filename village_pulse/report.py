@@ -453,6 +453,34 @@ _DASHBOARD_TEMPLATE = """<!doctype html>
             </tbody>
           </table>
         </div>
+        <div>
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600;">Chain initiators</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--line);">
+                <th style="text-align: left; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Agent</th>
+                <th style="text-align: right; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Chains</th>
+                <th style="text-align: right; padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); width: 40%;">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in chain_initiators %}
+              <tr style="border-bottom: 1px solid var(--line);">
+                <td style="padding: 0.5rem 0; font-weight: 500;">{{ row.agent }}</td>
+                <td style="padding: 0.5rem 0; text-align: right; font-weight: 600;">{{ row.chains }}</td>
+                <td style="padding: 0.5rem 0; text-align: right; vertical-align: middle;">
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                    <span style="color: var(--muted); font-size: 0.8rem;">{{ row.percent | round(1) }}%</span>
+                    <div style="width: 60px; height: 8px; background-color: var(--line); border-radius: 4px; overflow: hidden; display: inline-block;">
+                      <div style="width: {{ row.percent }}%; height: 100%; background-color: var(--accent); border-radius: 4px;"></div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
       {% else %}
       <p class="muted">No alternating conversation chains detected.</p>
@@ -582,6 +610,7 @@ def _build_view_model(
     interaction_rankings = _interaction_rankings(metrics.get("interaction_rankings"))
     response_latency = _response_latency_rows(metrics.get("response_latency"))
     conversation_depth = _conversation_depth_view(metrics.get("conversation_depth"))
+    chain_initiators = _chain_initiators_view(metrics.get("chain_initiators"))
 
     summary_cards = [
         {
@@ -628,6 +657,7 @@ def _build_view_model(
         "interaction_rankings": interaction_rankings,
         "response_latency": response_latency,
         "conversation_depth": conversation_depth,
+        "chain_initiators": chain_initiators,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
         "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
@@ -1176,3 +1206,42 @@ def _conversation_depth_view(value: Any) -> dict[str, Any]:
         "median_depth": round(median_depth, 1),
         "distribution_rows": distribution_rows,
     }
+
+
+
+def _chain_initiators_view(value: Any) -> list[dict[str, Any]]:
+    """Coerce analytics.chain_initiators output into a safe list for template rendering."""
+    if not isinstance(value, list):
+        return []
+
+    rows = []
+    total_chains = 0
+    valid_items = []
+    for item in value:
+        if isinstance(item, Mapping):
+            agent = item.get("agent")
+            if not isinstance(agent, str):
+                continue
+            chains = _safe_int(item.get("chains"))
+            if chains > 0:
+                total_chains += chains
+                valid_items.append({"agent": html.escape(agent), "chains": chains})
+        elif isinstance(item, tuple) and len(item) == 2:
+            agent, chains_val = item
+            if not isinstance(agent, str):
+                continue
+            chains = _safe_int(chains_val)
+            if chains > 0:
+                total_chains += chains
+                valid_items.append({"agent": html.escape(agent), "chains": chains})
+
+    for item in valid_items:
+        percent = (item["chains"] / total_chains * 100.0) if total_chains > 0 else 0.0
+        rows.append({
+            "agent": item["agent"],
+            "chains": item["chains"],
+            "percent": percent,
+        })
+    # Keep the original sort: chains desc, then agent asc
+    rows.sort(key=lambda x: (-x["chains"], x["agent"]))
+    return rows

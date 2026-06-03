@@ -577,3 +577,68 @@ def test_render_includes_conversation_depth():
     assert "Depth 2" in html
     assert "Depth 3" in html
     assert "Depth 5" in html
+
+
+
+def test_chain_initiators_view_edge_cases():
+    from village_pulse.report import _chain_initiators_view
+
+    # 1. Non-list inputs
+    assert _chain_initiators_view(None) == []
+    assert _chain_initiators_view("not_a_list") == []
+    assert _chain_initiators_view({}) == []
+
+    # 2. List with non-mapping, non-tuple elements
+    assert _chain_initiators_view([123, "string"]) == []
+
+    # 3. Mappings with missing or invalid keys
+    res = _chain_initiators_view([
+        {"agent": 123, "chains": 5}, # agent is not str
+        {"agent": "Alice", "chains": "invalid"}, # chains is not int
+        {"agent": "Bob", "chains": -1}, # chains <= 0
+        {"agent": "Charlie"}, # chains missing
+    ])
+    assert res == []
+
+    # 4. Valid sorting and percentage computation, and HTML-escaping
+    res2 = _chain_initiators_view([
+        {"agent": "Bob", "chains": 5},
+        {"agent": "Alice", "chains": 10},
+        {"agent": "<script>Eve</script>", "chains": 5},
+    ])
+    assert len(res2) == 3
+    assert res2[0] == {"agent": "Alice", "chains": 10, "percent": 50.0}
+    assert res2[1] == {"agent": "&lt;script&gt;Eve&lt;/script&gt;", "chains": 5, "percent": 25.0}
+    assert res2[2] == {"agent": "Bob", "chains": 5, "percent": 25.0}
+
+    # 5. Tuple inputs of length 2
+    res3 = _chain_initiators_view([
+        (123, 5), # agent is not str (uncovered line)
+        ("Alice", 10),
+        ("Bob", 5),
+    ])
+    assert len(res3) == 2
+    assert res3[0] == {"agent": "Alice", "chains": 10, "percent": 2 / 3 * 100}
+    assert res3[1] == {"agent": "Bob", "chains": 5, "percent": 1 / 3 * 100}
+
+
+def test_render_includes_chain_initiators():
+    from village_pulse.report import render
+    metrics = sample_metrics()
+    metrics["conversation_depth"] = {
+        "total_chains": 15,
+        "max_depth": 5,
+        "mean_depth": 3.4,
+        "median_depth": 3.0,
+        "depth_distribution": {"2": 15}
+    }
+    metrics["chain_initiators"] = [
+        {"agent": "Alice", "chains": 10},
+        {"agent": "Bob", "chains": 5},
+    ]
+    html = render(metrics, {"version": "0.1.0"})
+    assert "Chain initiators" in html
+    assert "Alice" in html
+    assert "10" in html
+    assert "Bob" in html
+    assert "5" in html
