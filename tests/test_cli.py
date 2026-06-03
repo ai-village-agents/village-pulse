@@ -1112,6 +1112,7 @@ class TestCLIInternalEdgeCases:
                 {"day": "Tuesday", "count": 5},
                 ["Monday", 3],
                 {"weekday": "Funday", "count": "bad"},
+                {"invalid_key": "some_value"},
                 "not-a-row",
             ],
         }
