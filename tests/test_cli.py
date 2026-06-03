@@ -554,6 +554,7 @@ class TestFormatMarkdown:
                 {"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}
             ],
             "busiest_weekdays": {"Wednesday": 2, "Monday": 5, "Sunday": 0},
+            "action_type_breakdown": {"CONSOLIDATE": 1, "AGENT_TALK": 2},
             "conversation_depth": {
                 "total_chains": 3,
                 "max_depth": 5,
@@ -618,6 +619,8 @@ class TestFormatMarkdown:
         assert "## Busiest weekdays" in text
         assert text.index("| Monday | 5 |") < text.index("| Wednesday | 2 |")
         assert "| Sunday | 0 |" in text
+        assert "## Action types" in text
+        assert text.index("| AGENT_TALK | 2 |") < text.index("| CONSOLIDATE | 1 |")
         assert "## Conversation depth" in text
         assert "| Total chains | 3 |" in text
         assert "| Max depth | 5 |" in text
@@ -1081,6 +1084,23 @@ class TestCLIInternalEdgeCases:
         assert rc == 0
         captured = capsys.readouterr()
         assert "[village-pulse] writing Markdown report..." in captured.out
+
+    def test_markdown_action_type_breakdown_sorts_and_escapes(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {"total_events": 0, "total_messages": 0},
+            "action_type_breakdown": {
+                "USER|TALK": "2",
+                "AGENT_TALK": 5,
+                "BAD_COUNT": "oops",
+            },
+        }
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+        assert "## Action types" in text
+        assert text.index("| AGENT_TALK | 5 |") < text.index("| USER\\|TALK | 2 |")
+        assert "| BAD_COUNT | 0 |" in text
+        assert "| USER|TALK | 2 |" not in text
 
     def test_markdown_busiest_weekdays_edge_cases(self):
         from village_pulse.__main__ import _metrics_to_markdown

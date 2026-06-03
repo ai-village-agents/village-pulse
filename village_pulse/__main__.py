@@ -259,6 +259,19 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         lines.extend(_markdown_table(["Weekday", "Messages"], weekday_rows))
         lines.append("")
 
+    action_types = metrics.get("action_type_breakdown")
+    if isinstance(action_types, dict) and action_types:
+        rows = [
+            [action_type, _safe_int(count)]
+            for action_type, count in sorted(
+                action_types.items(),
+                key=lambda item: (-_safe_int(item[1]), str(item[0]).lower()),
+            )
+        ]
+        lines.extend(["## Action types", ""])
+        lines.extend(_markdown_table(["Action type", "Events"], rows))
+        lines.append("")
+
     conversation = metrics.get("conversation_depth")
     if isinstance(conversation, dict) and conversation.get("total_chains"):
         lines.extend(["## Conversation depth", ""])
