@@ -236,6 +236,23 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             lines.extend(_markdown_table(["Agent", "Chains started"], rows))
             lines.append("")
 
+    top_pairs = metrics.get("top_interaction_pairs")
+    if isinstance(top_pairs, list) and top_pairs:
+        rows = []
+        for item in top_pairs:
+            if not isinstance(item, dict):
+                continue
+            pair = item.get("pair")
+            if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                pair_label = f"{pair[0]} ↔ {pair[1]}"
+            else:
+                pair_label = ""
+            rows.append([pair_label, item.get("count", 0)])
+        if rows:
+            lines.extend(["## Top interaction pairs", ""])
+            lines.extend(_markdown_table(["Pair", "Replies"], rows))
+            lines.append("")
+
     token_usage = metrics.get("token_usage")
     if isinstance(token_usage, dict):
         totals = token_usage.get("totals")

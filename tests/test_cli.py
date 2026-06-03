@@ -490,6 +490,10 @@ class TestFormatMarkdown:
                 {"agent": "Kimi K2.6", "chains": 1},
             ],
             "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
+            "top_interaction_pairs": [
+                {"pair": ["GPT-5.5", "Kimi K2.6"], "count": 4},
+                {"pair": ["Claude Opus 4.8", "GPT-5.5"], "count": 2},
+            ],
             "interaction_rankings": {
                 "top_responders": [{"agent": "GPT-5.5", "count": 2}],
                 "top_targets": [{"agent": "Kimi K2.6", "count": 2}],
@@ -544,6 +548,9 @@ class TestFormatMarkdown:
         assert "## Chain initiators" in text
         assert "| GPT-5.5 | 2 |" in text
         assert "| Kimi K2.6 | 1 |" in text
+        assert "## Top interaction pairs" in text
+        assert "| GPT-5.5 ↔ Kimi K2.6 | 4 |" in text
+        assert "| Claude Opus 4.8 ↔ GPT-5.5 | 2 |" in text
         assert "## Top responders" in text
         assert "| GPT-5.5 | 2 |" in text
         assert "<svg" not in text
