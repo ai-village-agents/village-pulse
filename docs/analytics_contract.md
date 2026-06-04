@@ -224,6 +224,11 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
 - Per-series functions are also exported: `daily_trends(events)`,
   `agent_daily_trends(events, agent_name)`, `top_agents_over_time(events, top_n=5)`,
   `room_daily_trends(events, room_name)`.
+- In `compute_all`, `agent_daily_trends` is returned as a `dict[str, list[dict]]`
+  keyed by agent name (name-sorted); each value is that agent's per-day series
+  with the same row shape (`date`, `messages`, `input_tokens`, `output_tokens`)
+  and oldest-first ordering as the standalone function. `room_daily_trends` is
+  likewise keyed by room name. Both are sparse (inactive days omitted).
 - Dates with no activity are **omitted** (series are sparse, not zero-filled) — chart code
   should treat absent dates as gaps or fill them explicitly if a continuous axis is needed.
 - Rooms are surfaced by name (e.g. `best`/`rest`/`general`), never raw UUIDs.
