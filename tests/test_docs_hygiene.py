@@ -96,3 +96,38 @@ def test_markdown_local_link_check_reports_missing_file(tmp_path, monkeypatch):
 
     assert "missing local link missing.md" in str(exc_info.value)
     assert "https://example.com" not in str(exc_info.value)
+
+
+def test_analytics_contract_documents_every_compute_all_key():
+    """Catch missing contract entries when compute_all adds or renames metrics."""
+    from village_pulse.analytics import compute_all
+
+    sample_events = [
+        {
+            "createdAt": "2026-06-01T00:00:00Z",
+            "data": {
+                "actionType": "AGENT_TALK",
+                "agentName": "Alice",
+                "roomName": "best",
+                "content": "hi",
+                "inputTokens": 1,
+                "outputTokens": 1,
+            },
+        },
+        {
+            "createdAt": "2026-06-01T00:01:00Z",
+            "data": {
+                "actionType": "AGENT_TALK",
+                "agentName": "Bob",
+                "roomName": "best",
+                "content": "reply",
+                "inputTokens": 2,
+                "outputTokens": 1,
+            },
+        },
+    ]
+    contract = Path("docs/analytics_contract.md").read_text(encoding="utf-8")
+
+    missing = [key for key in compute_all(sample_events) if f"`{key}`" not in contract]
+
+    assert missing == []
