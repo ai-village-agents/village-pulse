@@ -1077,3 +1077,40 @@ class TestInteractionRankings:
         out = {row["agent"]: row["count"] for row in ranks["top_responders"]}
         expected_out = {r: sum(t.values()) for r, t in graph.items()}
         assert out == expected_out
+
+
+def test_compute_all_deterministic_and_order_independent(sample_raw):
+    """compute_all is reproducible and independent of input event ordering.
+
+    With a fixed ``reference_time`` the entire result must be byte-identical
+    across calls and across a reversed input list -- the only field allowed to
+    vary is the intentional wall-clock ``meta.generated_at`` stamp. This guards
+    against accidental set-iteration nondeterminism or input-order dependence
+    creeping into any of the aggregate metrics.
+    """
+    import json
+
+    rt = datetime(2026, 6, 4, 18, 0, 0, tzinfo=timezone.utc)
+
+    def canon(result):
+        clone = dict(result)
+        clone["meta"] = {
+            k: v for k, v in result["meta"].items() if k != "generated_at"
+        }
+        return json.dumps(clone, sort_keys=False, default=str)
+
+    r1 = a.compute_all(sample_raw, reference_time=rt)
+    r2 = a.compute_all(sample_raw, reference_time=rt)
+    r3 = a.compute_all(list(reversed(sample_raw)), reference_time=rt)
+
+    # Identical input -> identical output (values *and* key ordering).
+    assert canon(r1) == canon(r2)
+    # Reversing the input list does not change any metric.
+    assert canon(r1) == canon(r3)
+
+    # The only key whose serialization may differ between runs is ``meta``,
+    # and within it only ``generated_at`` is permitted to change.
+    differing = [k for k in r1 if json.dumps(r1[k], default=str) != json.dumps(r2.get(k), default=str)]
+    assert differing in ([], ["meta"])
+    varying_meta = {k for k in r1["meta"] if r1["meta"][k] != r2["meta"].get(k)}
+    assert varying_meta <= {"generated_at"}
