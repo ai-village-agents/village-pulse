@@ -408,6 +408,105 @@ def _flat(agent, room, date, action="AGENT_TALK", content="hi"):
     }
 
 
+
+def test_integration_empty_events_list_renders_empty_dashboard(tmp_path):
+    """Empty input still flows through compute_all -> report without warnings or leaks."""
+    metrics = analytics.compute_all([])
+
+    assert metrics["meta"]["total_events"] == 0
+    assert metrics["meta"]["total_messages"] == 0
+    assert metrics["messages_per_agent"] == {}
+    assert metrics["room_participation"] == {}
+    assert metrics["interaction_graph"] == {}
+
+    out = tmp_path / "empty.html"
+    generate(metrics, out, {"days": 1, "version": "0.1.0"})
+    html = out.read_text(encoding="utf-8")
+
+    assert "Village Pulse" in html
+    assert "Agent activity" in html
+    assert "Raw metrics payload" in html
+    assert "<script" not in html.lower()
+
+
+def test_integration_single_event_pipeline(tmp_path):
+    """A one-message dataset keeps singleton counts and has no reply-derived edges."""
+    events = [_flat("Solo", "best", "2026-06-01")]
+    metrics = analytics.compute_all(events)
+
+    assert metrics["meta"]["total_events"] == 1
+    assert metrics["meta"]["total_messages"] == 1
+    assert metrics["messages_per_agent"] == {"Solo": 1}
+    assert metrics["messages_per_day"] == {"2026-06-01": 1}
+    assert metrics["room_participation"] == {"best": {"Solo": 1}}
+    assert metrics["interaction_graph"] == {}
+    assert metrics["conversation_depth"]["total_chains"] == 0
+
+    out = tmp_path / "single.html"
+    generate(metrics, out, {"days": 1, "version": "0.1.0"})
+    html = out.read_text(encoding="utf-8")
+
+    assert "Solo" in html
+    assert "best" in html
+    assert "Agent activity" in html
+    assert "<script" not in html.lower()
+
+
+def test_integration_all_events_from_same_agent(tmp_path):
+    """Repeated same-agent messages aggregate but do not create reply chains."""
+    events = [
+        _flat("Solo", "best", "2026-06-01", content="one"),
+        _flat("Solo", "rest", "2026-06-01", content="two"),
+        _flat("Solo", "best", "2026-06-02", content="three"),
+    ]
+    metrics = analytics.compute_all(events)
+
+    assert metrics["meta"]["total_events"] == 3
+    assert metrics["messages_per_agent"] == {"Solo": 3}
+    assert metrics["messages_per_agent_per_day"] == {
+        "Solo": {"2026-06-01": 2, "2026-06-02": 1}
+    }
+    assert metrics["interaction_graph"] == {}
+    assert metrics["response_latency"] == []
+    assert metrics["chain_initiators"] == []
+    assert metrics["conversation_depth"]["total_chains"] == 0
+
+    out = tmp_path / "same-agent.html"
+    generate(metrics, out, {"days": 2, "version": "0.1.0"})
+    html = out.read_text(encoding="utf-8")
+
+    assert "Solo" in html
+    assert "Room participation" in html
+    assert "<script" not in html.lower()
+
+
+def test_integration_all_events_in_same_room(tmp_path):
+    """Single-room activity preserves one room bucket while multi-agent metrics work."""
+    events = [
+        _flat("Alice", "best", "2026-06-01", content="one"),
+        _flat("Bob", "best", "2026-06-01", content="two"),
+        _flat("Carol", "best", "2026-06-01", content="three"),
+    ]
+    metrics = analytics.compute_all(events)
+
+    assert metrics["meta"]["unique_rooms"] == 1
+    assert metrics["room_participation"] == {
+        "best": {"Alice": 1, "Bob": 1, "Carol": 1}
+    }
+    assert set(metrics["room_daily_trends"]) == {"best"}
+    assert metrics["room_daily_trends"]["best"][0]["active_agents"] == 3
+    assert metrics["interaction_graph"] == {"Bob": {"Alice": 1}, "Carol": {"Bob": 1}}
+
+    out = tmp_path / "same-room.html"
+    generate(metrics, out, {"room": "best", "days": 1, "version": "0.1.0"})
+    html = out.read_text(encoding="utf-8")
+
+    assert "Village Pulse — #best" in html
+    assert "Alice" in html and "Bob" in html and "Carol" in html
+    assert "rest" not in metrics["room_participation"]
+    assert "<script" not in html.lower()
+
+
 def _day_metrics_from_events(day, events):
     """Mirror archive_compare.generate_comparison_archive's per-day shaping."""
     metrics = analytics.compute_all(events)
