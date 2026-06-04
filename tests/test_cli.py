@@ -15,6 +15,7 @@ from village_pulse.__main__ import (
     _build_parser,
     _filter_metrics,
     _selected_metric_keys,
+    _unknown_metric_names,
 )
 
 
@@ -477,6 +478,14 @@ class TestMetricsAliases:
 
         assert keys == {"meta", "messages_per_agent", "active_agents"}
 
+    def test_unknown_metric_names_preserves_first_seen_order(self):
+        unknown = _unknown_metric_names(
+            "messages,nonexistent,token_usage,missing,nonexistent,all",
+            {"meta", "messages_per_agent", "token_usage"},
+        )
+
+        assert unknown == ["nonexistent", "missing"]
+
     def test_interactions_alias_includes_graph_rankings_and_pairs(self):
         keys = _selected_metric_keys("interactions")
 
@@ -674,6 +683,101 @@ class TestMetricsAliases:
             assert set(filtered) == {"meta", *_METRIC_ALIASES[alias]}
             for key in filtered:
                 assert section_for_key[key] in markdown, (alias, key)
+
+    def test_invalid_metrics_returns_error_before_writing_html(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """Unknown --metrics values fail clearly before report generation."""
+        fake_metrics = {
+            "meta": {"total_events": 1},
+            "messages_per_agent": {"A": 1},
+        }
+
+        def fake_fetch(**kwargs):
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
+
+        import village_pulse.api_client as ac
+
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        import village_pulse.report as rp
+
+        generate_calls = []
+        monkeypatch.setattr(
+            rp, "generate", lambda **kwargs: generate_calls.append(kwargs)
+        )
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "report.html"
+        rc = main(["--metrics", "nonexistent", "--output", str(out)])
+
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert captured.out == ""
+        assert "--metrics" in captured.err
+        assert "nonexistent" in captured.err
+        assert not out.exists()
+        assert generate_calls == []
+
+    def test_invalid_metrics_json_returns_consistent_error(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """JSON output rejects unknown --metrics values the same way."""
+        fake_metrics = {
+            "meta": {"total_events": 1},
+            "messages_per_agent": {"A": 1},
+        }
+
+        def fake_fetch(**kwargs):
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                }
+            ]
+
+        import village_pulse.api_client as ac
+
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+
+        monkeypatch.setattr(an, "compute_all", lambda _events: fake_metrics)
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "metrics.json"
+        rc = main(
+            [
+                "--format",
+                "json",
+                "--metrics",
+                "nonexistent",
+                "--output",
+                str(out),
+            ]
+        )
+
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert captured.out == ""
+        assert "--metrics" in captured.err
+        assert "nonexistent" in captured.err
+        assert not out.exists()
 
     def test_metrics_aliases_filter_json_output(self, tmp_path, monkeypatch):
         """--metrics messages,tokens expands aliases before filtering."""
