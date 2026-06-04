@@ -944,7 +944,7 @@ def test_render_includes_room_participation_rates():
 
 
 def test_report_branch_coverage_edges():
-    from village_pulse.report import _hour_rows, _weekday_rows, _action_type_rows, _chain_initiators_view, render
+    from village_pulse.report import _hour_rows, _weekday_rows, _action_type_rows, _chain_initiators_view
 
     # 1. Cover 1089->1081 branch in _hour_rows by passing an entry that is not Mapping and is not valid Sequence
     assert _hour_rows([123]) == []
