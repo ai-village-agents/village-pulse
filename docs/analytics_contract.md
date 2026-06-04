@@ -219,6 +219,10 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
 - `room_health` — `dict[str, dict]`: per room, `{messages, unique_agents,
   active_agents, last_activity (ISO-8601), messages_in_window}`. `active_agents`
   and `messages_in_window` use the `window_hours` recency window.
+- `agent_daily_trends` — `dict[str, list[dict]]`: keyed by agent name (sorted).
+  Each value is that agent's sparse per-day series, oldest-first, with rows
+  `{date, messages, input_tokens, output_tokens}`. Includes named agents with at
+  least one event; empty input yields `{}`.
 
 ## Notes
 - Per-series functions are also exported: `daily_trends(events)`,
