@@ -14,6 +14,7 @@ from village_pulse.__main__ import (
     _METRIC_ALIASES,
     _build_parser,
     _filter_metrics,
+    _metrics_to_markdown,
     _selected_metric_keys,
     _unknown_metric_names,
 )
@@ -107,6 +108,60 @@ class TestHelp:
         row = metrics_rows[0]
         for alias in sorted(_METRIC_ALIASES):
             assert f"`{alias}`" in row
+
+
+class TestMarkdownDefensiveBranches:
+    def test_markdown_room_title_preserves_existing_hash_prefix(self):
+        markdown = _metrics_to_markdown(
+            {"meta": {"total_events": 0}},
+            context={"days": 1, "room": "#best"},
+        )
+
+        assert markdown.startswith("# Village Pulse — #best\n")
+        assert "##best" not in markdown
+
+    def test_markdown_skips_malformed_optional_metric_sections(self):
+        metrics = {
+            "meta": {"total_events": 1},
+            "daily_trends": ["not-a-row"],
+            "response_latency": ["not-a-row"],
+            "chain_initiators": ["not-a-row"],
+            "top_interaction_pairs": ["not-a-row"],
+            "active_agents": {"active": "bad", "inactive": None},
+            "room_health": {"best": "bad"},
+            "agent_daily_trends": {"Alice": ["not-a-row"]},
+            "top_agents_over_time": ["not-a-row"],
+            "room_daily_trends": {"best": ["not-a-row"]},
+            "token_usage": {"totals": {}},
+            "interaction_graph": {"Alice": "bad"},
+            "interaction_rankings": {
+                "top_responders": "bad",
+                "top_targets": "bad",
+            },
+        }
+
+        markdown = _metrics_to_markdown(
+            metrics,
+            context={"days": 1, "room": "#best"},
+        )
+
+        assert markdown.startswith("# Village Pulse — #best\n")
+        assert "## Summary" in markdown
+        for skipped_section in (
+            "## Daily trends",
+            "## Response speed",
+            "## Chain initiators",
+            "## Top interaction pairs",
+            "## Active agents",
+            "## Room health",
+            "## Agent daily trends",
+            "## Top agents over time",
+            "## Room daily trends",
+            "## Token usage",
+            "## Interaction graph",
+            "## Interaction rankings",
+        ):
+            assert skipped_section not in markdown
 
 
 class TestFormatJson:
