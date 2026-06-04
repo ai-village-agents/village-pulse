@@ -333,7 +333,8 @@ def room_participation(
     """Per-room message counts, broken down by agent.
 
     Returns:
-        ``{room: {agent: count}}`` with agents sorted by count (desc).
+        ``{room: {agent: count}}`` with rooms name-sorted and, within each
+        room, agents sorted by count (descending) then agent name (ascending).
     """
     nested: dict[str, Counter] = defaultdict(Counter)
     for e in _filter(events, message_only=message_only):
@@ -353,7 +354,9 @@ def room_participation_rates(
 
     Returns:
         ``{room: {agent: fraction}}`` where fractions in a room sum to ~1.0
-        (rounded to 4 decimals). Rooms with no messages are omitted.
+        (rounded to 4 decimals). Inherits :func:`room_participation` ordering
+        (rooms name-sorted; agents by descending share, i.e. count, then name).
+        Rooms with no messages are omitted.
     """
     counts = room_participation(events, message_only=message_only)
     rates: dict[str, dict[str, float]] = {}
