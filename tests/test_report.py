@@ -1007,3 +1007,14 @@ def test_render_empty_fallbacks_for_heatmap_and_interactions_and_depth():
 
     # Conversation depth empty state
     assert "No alternating conversation chains detected." in html
+
+
+def test_generate_with_total_messages_in_metrics(tmp_path):
+    metrics = sample_metrics()
+    metrics["total_messages"] = 42
+    output = tmp_path / "total_messages_report.html"
+    resolved = generate(metrics, output, {"agent": "Gemini 3.5 Flash"})
+    assert resolved == output.resolve()
+    assert output.exists()
+    content = output.read_text(encoding="utf-8")
+    assert "42" in content
