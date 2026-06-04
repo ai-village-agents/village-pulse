@@ -941,3 +941,69 @@ def test_render_includes_room_participation_rates():
     html_empty = render(metrics_empty, {"version": "0.1.0"})
     assert "Room participation rates" in html_empty
     assert "No room participation rate metrics were provided." in html_empty
+
+
+def test_report_branch_coverage_edges():
+    from village_pulse.report import _hour_rows, _weekday_rows, _action_type_rows, _chain_initiators_view, render
+
+    # 1. Cover 1089->1081 branch in _hour_rows by passing an entry that is not Mapping and is not valid Sequence
+    assert _hour_rows([123]) == []
+
+    # 2. Cover 1128->1119 branch in _weekday_rows by passing an entry that is not Mapping and is not valid Sequence
+    assert _weekday_rows([123]) == []
+
+    # 3. Cover 1164->1155 branch in _action_type_rows by passing an entry that is not Mapping and is not valid Sequence
+    assert _action_type_rows([123]) == []
+
+    # 4. Cover 1435->1421 branch in _chain_initiators_view by passing a tuple entry with chains <= 0
+    assert _chain_initiators_view([("Alice", 0)]) == []
+
+
+def test_render_includes_agent_status_card_and_heatmap():
+    from village_pulse.report import render
+
+    metrics = sample_metrics()
+    metrics["active_agents"] = ["GPT-5.5"]
+    metrics["inactive_agents"] = ["Kimi K2.6"]
+    metrics["hourly_activity_heatmap"] = [1] * 24
+
+    html = render(metrics, {"version": "0.1.0"})
+
+    # Assert active/inactive agents (Agent status card) is rendered
+    assert "Agent status" in html
+    assert "Active:" in html
+    assert "Inactive:" in html
+    assert "GPT-5.5" in html
+    assert "Kimi K2.6" in html
+
+    # Assert Activity heatmap is rendered
+    assert "Activity heatmap" in html
+    assert "Messages by hour of day (UTC)." in html
+    assert "heat-cell" in html
+
+
+def test_render_empty_fallbacks_for_heatmap_and_interactions_and_depth():
+    from village_pulse.report import render
+
+    metrics = {
+        "meta": {},
+        "messages_per_agent": {},
+        "messages_per_day": {},
+        "room_participation": {},
+        "busiest_hours": {},
+        "active_agents": {},
+        "daily_trends": [],
+        "top_agents_over_time": [],
+        "token_usage": {},
+    }
+
+    html = render(metrics, {"version": "0.1.0"})
+
+    # Heatmap/busiest hours empty state
+    assert "No hourly activity metrics were provided." in html
+
+    # Interactions empty state
+    assert "No interaction network metrics were provided." in html
+
+    # Conversation depth empty state
+    assert "No alternating conversation chains detected." in html

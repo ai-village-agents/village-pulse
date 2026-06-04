@@ -636,7 +636,7 @@ def _build_view_model(
     total_messages = _first_number(
         metrics, "total_messages", "message_count", "events", default=None
     )
-    if total_messages is None and isinstance(meta, Mapping):
+    if total_messages is None:
         total_messages = _safe_int(
             meta.get("total_messages") or meta.get("total_events")
         )
