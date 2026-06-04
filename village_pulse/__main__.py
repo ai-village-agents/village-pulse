@@ -311,6 +311,18 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             lines.extend(_markdown_table(["Room", "Agent", "Share"], rate_rows))
             lines.append("")
 
+    messages_per_day = metrics.get("messages_per_day")
+    if isinstance(messages_per_day, dict) and messages_per_day:
+        rows = [
+            [date, _safe_int(count)]
+            for date, count in sorted(
+                messages_per_day.items(), key=lambda item: str(item[0])
+            )
+        ]
+        lines.extend(["## Messages per day", ""])
+        lines.extend(_markdown_table(["Date", "Messages"], rows))
+        lines.append("")
+
     daily = metrics.get("daily_trends")
     if isinstance(daily, list) and daily:
         rows = []
@@ -336,6 +348,17 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
         lines.extend(["## Busiest hours", ""])
         lines.extend(_markdown_table(["Hour (UTC)", "Events"], hour_rows))
         lines.append("")
+
+    heatmap = metrics.get("hourly_activity_heatmap")
+    if isinstance(heatmap, (list, tuple)) and heatmap:
+        rows = [
+            [f"{hour:02d}:00", _safe_int(count)]
+            for hour, count in enumerate(heatmap[:24])
+        ]
+        if rows:
+            lines.extend(["## Activity heatmap", ""])
+            lines.extend(_markdown_table(["Hour (UTC)", "Events"], rows))
+            lines.append("")
 
     weekday_rows = _weekday_markdown_rows(metrics.get("busiest_weekdays"))
     if weekday_rows:
@@ -419,6 +442,140 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             lines.extend(_markdown_table(["Pair", "Replies"], rows))
             lines.append("")
 
+    active_agents = metrics.get("active_agents")
+    if isinstance(active_agents, dict) and active_agents:
+        rows = []
+        for status in ("active", "inactive"):
+            agents = active_agents.get(status)
+            if isinstance(agents, (list, tuple)):
+                rows.append(
+                    [
+                        status.title(),
+                        len(agents),
+                        ", ".join(str(agent) for agent in agents),
+                    ]
+                )
+        if rows:
+            lines.extend(["## Active agents", ""])
+            lines.extend(_markdown_table(["Status", "Count", "Agents"], rows))
+            lines.append("")
+
+    room_health = metrics.get("room_health")
+    if isinstance(room_health, dict) and room_health:
+        rows = []
+        for room, data in room_health.items():
+            if not isinstance(data, dict):
+                continue
+            rows.append(
+                [
+                    room,
+                    data.get("messages", 0),
+                    data.get("unique_agents", 0),
+                    data.get("active_agents", 0),
+                    data.get("messages_in_window", 0),
+                    data.get("last_activity", ""),
+                ]
+            )
+        if rows:
+            rows.sort(key=lambda row: (-_safe_int(row[1]), str(row[0]).lower()))
+            lines.extend(["## Room health", ""])
+            lines.extend(
+                _markdown_table(
+                    [
+                        "Room",
+                        "Messages",
+                        "Unique agents",
+                        "Active agents",
+                        "Recent messages",
+                        "Last activity",
+                    ],
+                    rows,
+                )
+            )
+            lines.append("")
+
+    agent_daily = metrics.get("agent_daily_trends")
+    if isinstance(agent_daily, dict) and agent_daily:
+        rows = []
+        for agent, days_for_agent in agent_daily.items():
+            if not isinstance(days_for_agent, (list, tuple)):
+                continue
+            for item in days_for_agent:
+                if isinstance(item, dict):
+                    rows.append(
+                        [
+                            agent,
+                            item.get("date", ""),
+                            item.get("messages", 0),
+                            item.get("input_tokens", 0),
+                            item.get("output_tokens", 0),
+                        ]
+                    )
+        if rows:
+            rows.sort(key=lambda row: (str(row[0]).lower(), str(row[1])))
+            lines.extend(["## Agent daily trends", ""])
+            lines.extend(
+                _markdown_table(
+                    ["Agent", "Date", "Messages", "Input tokens", "Output tokens"], rows
+                )
+            )
+            lines.append("")
+
+    top_agents_over_time = metrics.get("top_agents_over_time")
+    if isinstance(top_agents_over_time, list) and top_agents_over_time:
+        rows = []
+        for item in top_agents_over_time:
+            if not isinstance(item, dict):
+                continue
+            daily_parts = []
+            daily = item.get("daily")
+            if isinstance(daily, (list, tuple)):
+                for day in daily:
+                    if isinstance(day, dict):
+                        daily_parts.append(
+                            f"{day.get('date', '')}: {day.get('messages', 0)}"
+                        )
+            rows.append(
+                [
+                    item.get("agent", ""),
+                    item.get("total_messages", 0),
+                    "; ".join(daily_parts),
+                ]
+            )
+        if rows:
+            lines.extend(["## Top agents over time", ""])
+            lines.extend(
+                _markdown_table(["Agent", "Total messages", "Daily messages"], rows)
+            )
+            lines.append("")
+
+    room_daily = metrics.get("room_daily_trends")
+    if isinstance(room_daily, dict) and room_daily:
+        rows = []
+        for room, days_for_room in room_daily.items():
+            if not isinstance(days_for_room, (list, tuple)):
+                continue
+            for item in days_for_room:
+                if isinstance(item, dict):
+                    rows.append(
+                        [
+                            room,
+                            item.get("date", ""),
+                            item.get("messages", 0),
+                            item.get("events", 0),
+                            item.get("active_agents", 0),
+                        ]
+                    )
+        if rows:
+            rows.sort(key=lambda row: (str(row[0]).lower(), str(row[1])))
+            lines.extend(["## Room daily trends", ""])
+            lines.extend(
+                _markdown_table(
+                    ["Room", "Date", "Messages", "Events", "Active agents"], rows
+                )
+            )
+            lines.append("")
+
     token_usage = metrics.get("token_usage")
     if isinstance(token_usage, dict):
         totals = token_usage.get("totals")
@@ -431,10 +588,47 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             )
             lines.append("")
 
+    graph = metrics.get("interaction_graph")
+    if isinstance(graph, dict) and graph:
+        rows = []
+        for source, targets in graph.items():
+            if not isinstance(targets, dict):
+                continue
+            for target, count in targets.items():
+                rows.append([source, target, _safe_int(count)])
+        if rows:
+            rows.sort(
+                key=lambda row: (
+                    -_safe_int(row[2]),
+                    str(row[0]).lower(),
+                    str(row[1]).lower(),
+                )
+            )
+            lines.extend(["## Interaction graph", ""])
+            lines.extend(_markdown_table(["Responder", "Target", "Replies"], rows))
+            lines.append("")
+
     rankings = metrics.get("interaction_rankings")
     if isinstance(rankings, dict):
         top_responders = rankings.get("top_responders")
         top_targets = rankings.get("top_targets")
+        ranking_rows = []
+        if isinstance(top_responders, list):
+            ranking_rows.extend(
+                ["Responder", item.get("agent", ""), item.get("count", 0)]
+                for item in top_responders
+                if isinstance(item, dict)
+            )
+        if isinstance(top_targets, list):
+            ranking_rows.extend(
+                ["Target", item.get("agent", ""), item.get("count", 0)]
+                for item in top_targets
+                if isinstance(item, dict)
+            )
+        if ranking_rows:
+            lines.extend(["## Interaction rankings", ""])
+            lines.extend(_markdown_table(["Ranking", "Agent", "Replies"], ranking_rows))
+            lines.append("")
         if isinstance(top_responders, list) and top_responders:
             lines.extend(["## Top responders", ""])
             rows = [

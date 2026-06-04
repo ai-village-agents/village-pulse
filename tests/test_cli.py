@@ -561,10 +561,12 @@ class TestFormatMarkdown:
             "room_participation_rates": {
                 "best": {"GPT-5.5": 0.667, "Kimi K2.6": 0.333}
             },
+            "messages_per_day": {"2026-06-01": 1, "2026-06-02": 2},
             "daily_trends": [
                 {"date": "2026-06-02", "messages": 2, "events": 3, "active_agents": 2}
             ],
             "busiest_weekdays": {"Wednesday": 2, "Monday": 5, "Sunday": 0},
+            "hourly_activity_heatmap": [0, 1, 2] + [0] * 21,
             "action_type_breakdown": {"CONSOLIDATE": 1, "AGENT_TALK": 2},
             "response_latency": [
                 {"agent": "GPT-5.5", "median_seconds": 12.5, "responses": 2},
@@ -580,11 +582,49 @@ class TestFormatMarkdown:
                 {"agent": "GPT-5.5", "chains": 2},
                 {"agent": "Kimi K2.6", "chains": 1},
             ],
+            "active_agents": {"active": ["GPT-5.5", "Kimi K2.6"], "inactive": ["Idle"]},
+            "room_health": {
+                "best": {
+                    "messages": 3,
+                    "unique_agents": 2,
+                    "active_agents": 2,
+                    "messages_in_window": 3,
+                    "last_activity": "2026-06-02T10:00:00+00:00",
+                }
+            },
+            "agent_daily_trends": {
+                "GPT-5.5": [
+                    {
+                        "date": "2026-06-02",
+                        "messages": 2,
+                        "input_tokens": 100,
+                        "output_tokens": 25,
+                    }
+                ]
+            },
+            "top_agents_over_time": [
+                {
+                    "agent": "GPT-5.5",
+                    "total_messages": 2,
+                    "daily": [{"date": "2026-06-02", "messages": 2}],
+                }
+            ],
+            "room_daily_trends": {
+                "best": [
+                    {
+                        "date": "2026-06-02",
+                        "messages": 2,
+                        "events": 3,
+                        "active_agents": 2,
+                    }
+                ]
+            },
             "token_usage": {"totals": {"input": 100, "output": 25, "total": 125}},
             "top_interaction_pairs": [
                 {"pair": ["GPT-5.5", "Kimi K2.6"], "count": 4},
                 {"pair": ["Claude Opus 4.8", "GPT-5.5"], "count": 2},
             ],
+            "interaction_graph": {"GPT-5.5": {"Kimi K2.6": 2}},
             "interaction_rankings": {
                 "top_responders": [{"agent": "GPT-5.5", "count": 2}],
                 "top_targets": [{"agent": "Kimi K2.6", "count": 2}],
@@ -644,11 +684,15 @@ class TestFormatMarkdown:
         assert "## Room participation rates" in text
         assert "| best | GPT-5.5 | 66.7% |" in text
         assert "| best | Kimi K2.6 | 33.3% |" in text
+        assert "## Messages per day" in text
+        assert "| 2026-06-01 | 1 |" in text
         assert "## Daily trends" in text
         assert "| 2026-06-02 | 2 | 3 | 2 |" in text
         assert "## Busiest weekdays" in text
         assert text.index("| Monday | 5 |") < text.index("| Wednesday | 2 |")
         assert "| Sunday | 0 |" in text
+        assert "## Activity heatmap" in text
+        assert "| 02:00 | 2 |" in text
         assert "## Action types" in text
         assert text.index("| AGENT_TALK | 2 |") < text.index("| CONSOLIDATE | 1 |")
         assert "## Response speed" in text
@@ -662,11 +706,27 @@ class TestFormatMarkdown:
         assert "## Chain initiators" in text
         assert "| GPT-5.5 | 2 |" in text
         assert "| Kimi K2.6 | 1 |" in text
+        assert "## Active agents" in text
+        assert "| Active | 2 | GPT-5.5, Kimi K2.6 |" in text
+        assert "## Room health" in text
+        assert "| best | 3 | 2 | 2 | 3 | 2026-06-02T10:00:00+00:00 |" in text
+        assert "## Agent daily trends" in text
+        assert "| GPT-5.5 | 2026-06-02 | 2 | 100 | 25 |" in text
+        assert "## Top agents over time" in text
+        assert "| GPT-5.5 | 2 | 2026-06-02: 2 |" in text
+        assert "## Room daily trends" in text
+        assert "| best | 2026-06-02 | 2 | 3 | 2 |" in text
         assert "## Top interaction pairs" in text
         assert "| GPT-5.5 ↔ Kimi K2.6 | 4 |" in text
         assert "| Claude Opus 4.8 ↔ GPT-5.5 | 2 |" in text
+        assert "## Interaction graph" in text
+        assert "| GPT-5.5 | Kimi K2.6 | 2 |" in text
+        assert "## Interaction rankings" in text
+        assert "| Responder | GPT-5.5 | 2 |" in text
+        assert "| Target | Kimi K2.6 | 2 |" in text
         assert "## Top responders" in text
         assert "| GPT-5.5 | 2 |" in text
+        assert "## Top targets" in text
         assert "<svg" not in text
 
     def test_markdown_skips_zero_conversation_depth(self):
