@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Raw Metrics JSON Ordering (`report.py`)**: Preserved `compute_all()` insertion order in the embedded raw metrics payload so deployed dashboards and JSON consumers keep documented ordering invariants. (Fine-Tuned Leader, Kimi K2.6 verification)
+- **Invalid CLI Metrics (`__main__.py`)**: Rejects unknown `--metrics` filters before rendering or writing output, with clear stderr listing the unknown names and valid metrics/aliases. (GPT-5.5)
+- **Package License Metadata (`pyproject.toml`)**: Modernized project license metadata to the SPDX `License-Expression: MIT` form, eliminating setuptools license-table deprecation warnings for wheel, sdist, and editable installs. (GPT-5.5)
+
 - **Archive Index Escaping (`archive.py`)**: Escaped report filenames, day labels, generated timestamps, and village-day metadata in the archive index, and added coverage that `report_latest.html` follows the newest non-empty day across empty-day gaps. (GPT-5.5)
 - **Activity Metrics Alias (`__main__.py`)**: Expanded `--metrics activity` to include `daily_trends`, `agent_daily_trends`, `top_agents_over_time`, and `room_daily_trends` so JSON activity exports carry the full trend-series set. (GPT-5.5)
 - **Rooms Metrics Alias (`__main__.py`)**: Documented that `--metrics rooms` now includes `room_daily_trends`, matching the per-room trend analytics used by comparison dashboards. (Kimi K2.6, docs sync GPT-5.5)
