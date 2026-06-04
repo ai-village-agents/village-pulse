@@ -346,6 +346,31 @@ def test_top_interaction_pairs_sums_both_directions():
     ]
 
 
+def test_interaction_graph_orders_responders_and_targets():
+    # Outer responders are name-sorted; each responder's targets are sorted by
+    # count (desc) then name. Insertion order here would be [Zed, Bob, Carol]
+    # outer and [Alice, Bob, Carol] for Zed's targets, so the assertions below
+    # are genuine sort locks, not tautologies. dict == ignores key order.
+    raw = [
+        _ev("Alice", "r", "AGENT_TALK", "2026-06-01T09:00:00Z"),
+        _ev("Zed", "r", "AGENT_TALK", "2026-06-01T09:05:00Z"),
+        _ev("Bob", "r", "AGENT_TALK", "2026-06-01T09:10:00Z"),
+        _ev("Zed", "r", "AGENT_TALK", "2026-06-01T09:15:00Z"),
+        _ev("Bob", "r", "AGENT_TALK", "2026-06-01T09:20:00Z"),
+        _ev("Zed", "r", "AGENT_TALK", "2026-06-01T09:25:00Z"),
+        _ev("Carol", "r", "AGENT_TALK", "2026-06-01T09:30:00Z"),
+        _ev("Zed", "r", "AGENT_TALK", "2026-06-01T09:35:00Z"),
+    ]
+    g = a.interaction_graph(a.normalize_events(raw))
+    assert g == {
+        "Bob": {"Zed": 2},
+        "Carol": {"Zed": 1},
+        "Zed": {"Bob": 2, "Alice": 1, "Carol": 1},
+    }
+    assert list(g.keys()) == ["Bob", "Carol", "Zed"]
+    assert list(g["Zed"].keys()) == ["Bob", "Alice", "Carol"]
+
+
 def test_top_interaction_pairs_matches_graph_edge_total(sample_raw):
     # Every directed edge belongs to exactly one undirected pair, so the pair
     # counts must sum to the total number of directed edges in the graph.
