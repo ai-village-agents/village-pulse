@@ -1219,3 +1219,45 @@ def test_compute_all_scales_to_large_inputs(n):
     assert elapsed < 5.0, (
         f"compute_all on {n} events took {elapsed:.2f}s (>5s budget)"
     )
+
+
+def test_compute_all_skips_malformed_events():
+    """Incomplete raw events are handled gracefully rather than crashing.
+
+    Covers the per-metric skip paths for events missing an agent, an
+    unparseable timestamp, or a room. A single well-formed event keeps the
+    metrics non-trivial. Asserts the documented skip semantics:
+
+    * an empty agent never becomes an agent key;
+    * a None room is bucketed under "(unknown)";
+    * events with an unparseable timestamp are excluded from time-based
+      histograms and per-day series, yet still counted per-agent (which
+      does not depend on a timestamp).
+    """
+    raw = [
+        _ev("", "#best", "AGENT_TALK", "2026-06-01T09:00:00Z", "no-agent"),
+        _ev("Bob", "#best", "AGENT_TALK", "not-a-date", "bad-ts"),
+        _ev("Carol", None, "AGENT_TALK", "2026-06-01T09:05:00Z", "no-room"),
+        _ev("", None, "PAUSE", "also-bad", ""),
+        _ev("Dave", "#best", "AGENT_TALK", "2026-06-01T09:10:00Z", "ok"),
+    ]
+    reference_time = datetime(2026, 6, 4, 18, 0, 0, tzinfo=timezone.utc)
+
+    result = a.compute_all(raw, reference_time=reference_time)
+    assert isinstance(result, dict)
+    assert len(result) == 24
+
+    # Empty agent is dropped; the three valid agents remain.
+    assert "" not in result["messages_per_agent"]
+    assert result["messages_per_agent"] == {"Bob": 1, "Carol": 1, "Dave": 1}
+
+    # None room is bucketed as "(unknown)".
+    assert "(unknown)" in result["room_participation"]
+    assert "Carol" in result["room_participation"]["(unknown)"]
+
+    # Unparseable timestamps contribute nothing to time-based histograms.
+    assert sum(result["busiest_hours"].values()) == 3
+    assert result["busiest_hours"][9] == 3
+
+    # Bob (no parseable timestamp) is counted per-agent but not per-day.
+    assert result["messages_per_day"] == {"2026-06-01": 3}
