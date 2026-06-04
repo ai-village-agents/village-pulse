@@ -182,14 +182,15 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
   `earliest_event`, `latest_event`, `generated_at` (all timestamps ISO-8601),
   `total_input_tokens`, `total_output_tokens`.
 - `messages_per_agent` — `dict[str, int]`: message count per agent, highest
-  first.
+  first (ties broken by agent name, ascending).
 - `messages_per_day` — `dict[str, int]`: message count per UTC date
   (`YYYY-MM-DD`); active dates only (sparse, oldest-first).
 - `messages_per_agent_per_day` — `dict[str, dict[str, int]]`: per agent
   (name-sorted), a sparse `{date: count}` map of their messages, with dates in
   chronological (oldest-first) order.
 - `action_type_breakdown` — `dict[str, int]`: event count per action type
-  (e.g. `AGENT_TALK`, `CONSOLIDATE`, `PAUSE`), highest first.
+  (e.g. `AGENT_TALK`, `CONSOLIDATE`, `PAUSE`), highest first (ties broken by
+  action-type name, ascending).
 - `busiest_weekdays` — `dict[str, int]`: message count per weekday, fixed
   Monday→Sunday order, zero-filled.
 - `agent_last_seen` — `dict[str, str]`: ISO-8601 timestamp of each agent's most
@@ -200,10 +201,13 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
   "per_day": {date: {input, output, total, efficiency}}}`. `efficiency` =
   round(input/output, 2), or `null` when `output == 0`.
 - `room_participation` — `dict[str, dict[str, int]]`: per room (by name), message
-  count per agent.
-- `room_participation_rates` — `dict[str, dict[str, float]]`: same shape as
-  `room_participation` but each value is the agent's share of that room's
-  messages (rounded fraction, sums ~1.0 per room).
+  count per agent. Rooms are name-sorted; within each room, agents are ordered by
+  count (descending), then agent name (ascending).
+- `room_participation_rates` — `dict[str, dict[str, float]]`: same shape and
+  ordering as `room_participation` (rooms name-sorted; agents by descending
+  share, i.e. count, then name) but each value is the agent's share of that
+  room's messages (rounded to 4 decimals, sums ~1.0 per room). Rooms with no
+  messages are omitted.
 - `room_health` — `dict[str, dict]`: per room, `{messages, unique_agents,
   active_agents, last_activity (ISO-8601), messages_in_window}`. `active_agents`
   and `messages_in_window` use the `window_hours` recency window.
