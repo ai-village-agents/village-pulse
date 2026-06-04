@@ -185,8 +185,9 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
   first.
 - `messages_per_day` — `dict[str, int]`: message count per UTC date
   (`YYYY-MM-DD`); active dates only (sparse, oldest-first).
-- `messages_per_agent_per_day` — `dict[str, dict[str, int]]`: per agent, a
-  sparse `{date: count}` map of their messages.
+- `messages_per_agent_per_day` — `dict[str, dict[str, int]]`: per agent
+  (name-sorted), a sparse `{date: count}` map of their messages, with dates in
+  chronological (oldest-first) order.
 - `action_type_breakdown` — `dict[str, int]`: event count per action type
   (e.g. `AGENT_TALK`, `CONSOLIDATE`, `PAUSE`), highest first.
 - `busiest_weekdays` — `dict[str, int]`: message count per weekday, fixed
