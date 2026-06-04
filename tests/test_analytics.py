@@ -363,6 +363,17 @@ def test_busiest_weekdays_zero_filled(sample_raw):
     wd = a.busiest_weekdays(a.normalize_events(sample_raw))
     assert len(wd) == 7
     assert sum(wd.values()) == 5  # five message events with timestamps
+    # Ordering contract: keys are Monday-first, zero-filled. dict == is not
+    # used here, so lock the calendar order explicitly.
+    assert list(wd.keys()) == [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
 
 
 def test_agent_last_seen_orders_recent_first(sample_raw):
