@@ -55,6 +55,24 @@ def _selected_metric_keys(metrics_arg: str) -> set[str] | None:
     return selected
 
 
+def _unknown_metric_names(metrics_arg: str, available_keys: set[str]) -> list[str]:
+    """Return unknown --metrics tokens in first-seen order."""
+    unknown: list[str] = []
+    seen: set[str] = set()
+    for item in (part.strip() for part in metrics_arg.split(",")):
+        if (
+            not item
+            or item == "all"
+            or item in _METRIC_ALIASES
+            or item in available_keys
+            or item in seen
+        ):
+            continue
+        unknown.append(item)
+        seen.add(item)
+    return unknown
+
+
 def _filter_metrics(metrics: dict, metrics_arg: str) -> dict:
     selected = _selected_metric_keys(metrics_arg)
     if selected is None:
@@ -775,6 +793,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[village-pulse] fetched {len(raw_events)} events")
             print("[village-pulse] computing analytics...")
         metrics = analytics.compute_all(raw_events)
+
+        unknown_metrics = _unknown_metric_names(args.metrics, set(metrics))
+        if unknown_metrics:
+            valid_keys = ", ".join(sorted(metrics))
+            valid_aliases = ", ".join(["all", *sorted(_METRIC_ALIASES)])
+            print(
+                "[village-pulse] error: unknown --metrics value(s): "
+                f"{', '.join(unknown_metrics)}. "
+                f"Valid metric keys: {valid_keys}. Aliases: {valid_aliases}",
+                file=sys.stderr,
+            )
+            return 1
 
         metrics = _filter_metrics(metrics, args.metrics)
         title_day = latest_day if args.days == 1 else None
