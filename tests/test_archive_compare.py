@@ -1419,6 +1419,22 @@ class TestBuildTopInteractionPairs:
         html = _build_top_interaction_pairs(metrics)
         assert "&lt;script&gt;" in html
         assert "<script>" not in html
+    def test_skips_malformed_pairs(self):
+        metrics = [
+            {
+                "day": 420,
+                "top_interaction_pairs": [
+                    {"pair": ["Alice", "Bob"], "count": 10},
+                    {"pair": ["Carol"], "count": 5},
+                    {"pair": [], "count": 3},
+                ],
+            }
+        ]
+        html = _build_top_interaction_pairs(metrics)
+        assert "Alice" in html
+        assert "Bob" in html
+        assert "10" in html
+        assert "Carol" not in html
 
 
 class TestTOC:
