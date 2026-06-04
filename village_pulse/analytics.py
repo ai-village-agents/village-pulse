@@ -451,6 +451,13 @@ def interaction_rankings(
             targets[target] += count
 
     def _rank(counts: "Counter") -> list[dict[str, int]]:
+        """Render a degree ``Counter`` as a sorted leaderboard.
+
+        Converts the per-agent counts into a list of ``{"agent", "count"}``
+        dicts ordered by count descending, then by agent name ascending so
+        ties are deterministic. Agents with a zero count are omitted, so the
+        returned list is directly chartable.
+        """
         return [
             {"agent": agent, "count": count}
             for agent, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
