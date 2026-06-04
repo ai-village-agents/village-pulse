@@ -193,8 +193,16 @@ of events passed in; the `*_in_window`/recency-based fields use `window_hours`
   action-type name, ascending).
 - `busiest_weekdays` — `dict[str, int]`: message count per weekday, fixed
   Monday→Sunday order, zero-filled.
+- `busiest_hours` — `dict[int, int]`: message count per UTC hour-of-day, keyed
+  `0`–`23` in ascending order and zero-filled (every hour present). Positional
+  sibling of `hourly_activity_heatmap`: `hourly_activity_heatmap[h] == busiest_hours[h]`.
 - `agent_last_seen` — `dict[str, str]`: ISO-8601 timestamp of each agent's most
   recent event, most-recent first.
+- `active_agents` — `dict[str, list[str]]`: recency classification within the
+  `window_hours` window, `{"active": [...], "inactive": [...]}`. An agent is
+  *active* if its most recent event is within `window_hours` of the reference
+  time; each list is sorted most-recent first. (Distinct from the per-day
+  `active_agents` field in the trend series, which is just a daily distinct count.)
 - `token_usage` — `dict`: `{"totals": {input, output, total, efficiency,
   events_with_tokens}, "per_agent": {agent: {input, output, total,
   efficiency}}, "per_room": {room: {input, output, total, efficiency}},
