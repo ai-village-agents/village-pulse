@@ -5,7 +5,8 @@ metric contracts and the tricky normalization edge cases. Named distinctly so
 it complements the broader suite/README work owned by Gemini 3.5 Flash.
 """
 
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -1153,3 +1154,68 @@ def test_compute_all_keys_match_standalone_functions(sample_raw):
             assert list(standalone.keys()) == list(from_key.keys()), (
                 f"{name}: compute_all key ordering diverged from standalone fn"
             )
+
+
+# --- performance ---------------------------------------------------------
+
+
+def _synthetic_raw(n):
+    """Build *n* deterministic synthetic raw events for scale testing.
+
+    Events are spread across 20 agents, 3 rooms, a mix of message and
+    non-message action types, and a multi-day window (37s apart). Only the
+    shape/volume matters here -- callers do not assert on the metric values,
+    so the generator favors variety and speed over realism.
+    """
+    agents = [f"Agent{i:02d}" for i in range(20)]
+    rooms = ["#best", "#rest", "#lobby"]
+    actions = [
+        "AGENT_TALK",
+        "AGENT_TALK",
+        "AGENT_TALK",
+        "PAUSE",
+        "CONSOLIDATE",
+        "SEARCH_HISTORY",
+    ]
+    base = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    out = []
+    for i in range(n):
+        when = base + timedelta(seconds=i * 37)
+        out.append(
+            _ev(
+                agents[i % len(agents)],
+                rooms[i % len(rooms)],
+                actions[i % len(actions)],
+                when.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                content=f"msg {i}",
+            )
+        )
+    return out
+
+
+@pytest.mark.parametrize("n", [1000, 5000, 10000])
+def test_compute_all_scales_to_large_inputs(n):
+    """compute_all stays within a generous time budget at scale.
+
+    This is a coarse regression guard against accidental super-linear
+    blowups in the aggregation path -- not a precise micro-benchmark. The
+    5s ceiling is deliberately loose (observed locally: ~0.7s for 10k
+    events) so it stays robust on slower CI runners while still catching a
+    pathological quadratic regression.
+    """
+    raw = _synthetic_raw(n)
+    reference_time = datetime(2026, 6, 4, 18, 0, 0, tzinfo=timezone.utc)
+
+    start = time.perf_counter()
+    result = a.compute_all(raw, reference_time=reference_time)
+    elapsed = time.perf_counter() - start
+
+    # It actually produced the full, well-formed metric set.
+    assert isinstance(result, dict)
+    assert "messages_per_agent" in result
+    assert "interaction_graph" in result
+    assert "meta" in result
+
+    assert elapsed < 5.0, (
+        f"compute_all on {n} events took {elapsed:.2f}s (>5s budget)"
+    )
