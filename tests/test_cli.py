@@ -486,6 +486,119 @@ class TestMetricsAliases:
             "top_interaction_pairs",
         }
 
+    def test_metrics_alias_markdown_sections_cover_json_keys(self):
+        """Every alias-filtered JSON key should have Markdown coverage too."""
+        from village_pulse.__main__ import (
+            _METRIC_ALIASES,
+            _filter_metrics,
+            _metrics_to_markdown,
+        )
+
+        fake_metrics = {
+            "meta": {"total_events": 3, "total_messages": 2},
+            "messages_per_agent": {"A": 2},
+            "messages_per_agent_per_day": {"A": {"2026-06-04": 2}},
+            "messages_per_day": {"2026-06-04": 2},
+            "room_participation": {"best": {"A": 2}},
+            "room_participation_rates": {"best": {"A": 1.0}},
+            "room_health": {
+                "best": {
+                    "messages": 2,
+                    "unique_agents": 1,
+                    "active_agents": 1,
+                    "messages_in_window": 2,
+                    "last_activity": "2026-06-04T17:00:00+00:00",
+                }
+            },
+            "room_daily_trends": {
+                "best": [
+                    {
+                        "date": "2026-06-04",
+                        "messages": 2,
+                        "events": 3,
+                        "active_agents": 1,
+                    }
+                ]
+            },
+            "active_agents": {"active": ["A"], "inactive": []},
+            "agent_last_seen": {"A": "2026-06-04T17:00:00+00:00"},
+            "busiest_hours": {17: 3},
+            "busiest_weekdays": {"Thursday": 2},
+            "action_type_breakdown": {"AGENT_TALK": 2, "CONSOLIDATE": 1},
+            "daily_trends": [
+                {"date": "2026-06-04", "messages": 2, "events": 3, "active_agents": 1}
+            ],
+            "agent_daily_trends": {
+                "A": [
+                    {
+                        "date": "2026-06-04",
+                        "messages": 2,
+                        "input_tokens": 10,
+                        "output_tokens": 5,
+                    }
+                ]
+            },
+            "top_agents_over_time": [
+                {
+                    "agent": "A",
+                    "total_messages": 2,
+                    "daily": [{"date": "2026-06-04", "messages": 2}],
+                }
+            ],
+            "hourly_activity_heatmap": [0] * 17 + [3] + [0] * 6,
+            "interaction_graph": {"A": {"B": 1}},
+            "interaction_rankings": {
+                "top_responders": [{"agent": "A", "count": 1}],
+                "top_targets": [{"agent": "B", "count": 1}],
+            },
+            "top_interaction_pairs": [{"pair": ["A", "B"], "count": 1}],
+            "response_latency": [{"agent": "A", "median_seconds": 4, "responses": 1}],
+            "conversation_depth": {
+                "total_chains": 1,
+                "max_depth": 2,
+                "mean_depth": 2,
+                "median_depth": 2,
+            },
+            "chain_initiators": [{"agent": "A", "chains": 1}],
+            "token_usage": {"totals": {"input": 10, "output": 5, "total": 15}},
+        }
+        section_for_key = {
+            "meta": "## Summary",
+            "messages_per_agent": "## Agent activity",
+            "messages_per_agent_per_day": "## Agent activity by day",
+            "messages_per_day": "## Messages per day",
+            "room_participation": "## Room participation",
+            "room_participation_rates": "## Room participation rates",
+            "room_health": "## Room health",
+            "room_daily_trends": "## Room daily trends",
+            "active_agents": "## Active agents",
+            "agent_last_seen": "## Agent last seen",
+            "busiest_hours": "## Busiest hours",
+            "busiest_weekdays": "## Busiest weekdays",
+            "hourly_activity_heatmap": "## Activity heatmap",
+            "action_type_breakdown": "## Action types",
+            "daily_trends": "## Daily trends",
+            "agent_daily_trends": "## Agent daily trends",
+            "top_agents_over_time": "## Top agents over time",
+            "interaction_graph": "## Interaction graph",
+            "interaction_rankings": "## Interaction rankings",
+            "top_interaction_pairs": "## Top interaction pairs",
+            "response_latency": "## Response speed",
+            "conversation_depth": "## Conversation depth",
+            "chain_initiators": "## Chain initiators",
+            "token_usage": "## Token usage",
+        }
+
+        assert set(fake_metrics) == set(section_for_key)
+        for alias in sorted(_METRIC_ALIASES):
+            assert _METRIC_ALIASES[alias] <= set(fake_metrics)
+            filtered = _filter_metrics(fake_metrics, alias)
+            markdown = _metrics_to_markdown(filtered, context={"days": 7})
+
+            assert set(filtered) == {"meta", *_METRIC_ALIASES[alias]}
+            for key in filtered:
+                assert section_for_key[key] in markdown, (alias, key)
+
     def test_metrics_aliases_filter_json_output(self, tmp_path, monkeypatch):
         """--metrics messages,tokens expands aliases before filtering."""
         fake_metrics = {
