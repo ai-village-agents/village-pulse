@@ -106,6 +106,10 @@ def test_messages_per_agent_excludes_nonmessages(sample_raw):
     result = a.messages_per_agent(a.normalize_events(sample_raw))
     # Alice 2 AGENT_TALK (PAUSE excluded), Bob 2, admin 1
     assert result == {"Alice": 2, "Bob": 2, "admin": 1}
+    # Ordering contract: count-descending, ties broken by agent name ascending.
+    # The dict ``==`` above ignores key order, so lock it explicitly. Alice and
+    # Bob tie at 2 -> name-asc puts Alice first; admin (count 1) comes last.
+    assert list(result.keys()) == ["Alice", "Bob", "admin"]
 
 
 def test_messages_per_agent_counts_all_when_not_message_only(sample_raw):
@@ -160,12 +164,22 @@ def test_room_participation(sample_raw):
     result = a.room_participation(a.normalize_events(sample_raw))
     assert result["#best"]["Alice"] == 2
     assert result["#rest"] == {"Bob": 1}
+    # Ordering contract (docs/analytics_contract.md): rooms are name-sorted and
+    # within each room agents are count-descending then name-ascending. Asserted
+    # explicitly because the dict checks above ignore key order. In #best, Bob
+    # and admin tie at 1 -> name-asc puts Bob before admin.
+    assert list(result.keys()) == ["#best", "#rest"]
+    assert list(result["#best"].keys()) == ["Alice", "Bob", "admin"]
 
 
 def test_room_participation_rates_sum_to_one(sample_raw):
     rates = a.room_participation_rates(a.normalize_events(sample_raw))
     for room, agents in rates.items():
         assert abs(sum(agents.values()) - 1.0) < 1e-6, room
+    # Rates inherit room_participation's ordering (rooms name-sorted; agents by
+    # descending share, i.e. count, then name). Lock it explicitly.
+    assert list(rates.keys()) == ["#best", "#rest"]
+    assert list(rates["#best"].keys()) == ["Alice", "Bob", "admin"]
 
 
 def test_busiest_hours_zero_filled(sample_raw):
