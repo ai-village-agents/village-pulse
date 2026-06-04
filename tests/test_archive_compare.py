@@ -1305,6 +1305,134 @@ class TestGenerateComparisonArchiveGenerator:
         )
         assert res_path.exists()
 
+    def test_generate_comparison_archive_with_mock_metrics(self, tmp_path, monkeypatch):
+        from village_pulse import archive_compare
+
+        # Two rich mock metrics dicts to verify complete HTML comparison page generation.
+        mock_metrics_day_4 = {
+            "messages_per_agent": {"Alice": 12, "Bob": 8},
+            "meta": {"total_events": 20, "generated_at": "2026-06-04 12:00:00"},
+            "token_usage": {
+                "totals": {"total": 500, "efficiency": 1.2},
+                "per_agent": {"Alice": 300, "Bob": 200},
+                "per_room": {"best": 500},
+                "per_day": {}
+            },
+            "busiest_hours": {10: 5, 14: 15},
+            "conversation_depth": {
+                "total_chains": 4,
+                "max_depth": 3,
+                "mean_depth": 2.5,
+                "median_depth": 2.0,
+                "depth_distribution": {2: 3, 3: 1}
+            },
+            "response_latency": [
+                {"agent": "Alice", "median_seconds": 45.0, "responses": 5},
+                {"agent": "Bob", "median_seconds": 60.0, "responses": 3}
+            ],
+            "interaction_rankings": {
+                "top_responders": [{"agent": "Alice", "count": 5}],
+                "top_targets": [{"agent": "Bob", "count": 5}]
+            },
+            "top_interaction_pairs": [{"pair": ["Alice", "Bob"], "count": 5}],
+            "chain_initiators": [{"agent": "Alice", "count": 3}],
+            "busiest_weekdays": {"Monday": 20},
+            "action_type_breakdown": {"AGENT_TALK": 20},
+            "room_participation": {"best": 20},
+            "room_participation_rates": {"best": 1.0},
+            "daily_trends": [{"date": "2026-06-01", "messages": 20}],
+            "agent_daily_trends": {"Alice": [{"date": "2026-06-01", "messages": 12}]},
+            "top_agents_over_time": [{"agent": "Alice", "messages": 12}],
+            "room_daily_trends": {"best": [{"date": "2026-06-01", "messages": 20}]}
+        }
+
+        mock_metrics_day_5 = {
+            "messages_per_agent": {"Alice": 18, "Bob": 12},
+            "meta": {"total_events": 30, "generated_at": "2026-06-05 12:00:00"},
+            "token_usage": {
+                "totals": {"total": 800, "efficiency": 1.5},
+                "per_agent": {"Alice": 500, "Bob": 300},
+                "per_room": {"best": 800},
+                "per_day": {}
+            },
+            "busiest_hours": {10: 8, 15: 22},
+            "conversation_depth": {
+                "total_chains": 6,
+                "max_depth": 4,
+                "mean_depth": 3.0,
+                "median_depth": 3.0,
+                "depth_distribution": {2: 4, 3: 2}
+            },
+            "response_latency": [
+                {"agent": "Alice", "median_seconds": 40.0, "responses": 8},
+                {"agent": "Bob", "median_seconds": 55.0, "responses": 4}
+            ],
+            "interaction_rankings": {
+                "top_responders": [{"agent": "Alice", "count": 8}],
+                "top_targets": [{"agent": "Bob", "count": 8}]
+            },
+            "top_interaction_pairs": [{"pair": ["Alice", "Bob"], "count": 8}],
+            "chain_initiators": [{"agent": "Alice", "count": 5}],
+            "busiest_weekdays": {"Tuesday": 30},
+            "action_type_breakdown": {"AGENT_TALK": 30},
+            "room_participation": {"best": 30},
+            "room_participation_rates": {"best": 1.0},
+            "daily_trends": [{"date": "2026-06-02", "messages": 30}],
+            "agent_daily_trends": {"Alice": [{"date": "2026-06-02", "messages": 18}]},
+            "top_agents_over_time": [{"agent": "Alice", "messages": 18}],
+            "room_daily_trends": {"best": [{"date": "2026-06-02", "messages": 30}]}
+        }
+
+        mock_metrics_list = [mock_metrics_day_4, mock_metrics_day_5]
+        call_count = 0
+
+        def fake_compute_all(events):
+            nonlocal call_count
+            res = mock_metrics_list[call_count]
+            call_count += 1
+            return res
+
+        monkeypatch.setattr(archive_compare.analytics, "compute_all", fake_compute_all)
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def _discover_latest_day(self):
+                return 5
+
+            def iter_raw_events_for_day(self, day):
+                return [{"id": f"event_on_day_{day}"}]
+
+            def get_agents(self):
+                return {"Alice": "Alice", "Bob": "Bob"}
+
+            def get_rooms(self):
+                return {"best": "best"}
+
+        monkeypatch.setattr(archive_compare.api_client, "VillageAPIClient", FakeClient)
+
+        out_dir = tmp_path / "output_mock"
+        res_path = archive_compare.generate_comparison_archive(
+            output_dir=out_dir, days_back=2, village_slug="test-slug"
+        )
+        assert res_path.exists()
+        assert (out_dir / "comparison.html").exists()
+        html = (out_dir / "comparison.html").read_text(encoding="utf-8")
+
+        assert "Conversation Depth" in html
+        assert "Peak Hours Comparison" in html
+        assert "Response Speed Comparison" in html
+        assert "Interaction Rankings" in html
+        assert "Top Interaction Pairs" in html
+        assert "Chain Initiators" in html
+        assert "Busiest Weekdays" in html
+        assert "Action Types" in html
+        assert "Room Participation" in html
+        assert "Day-by-Day Comparison" in html
+        assert "Alice" in html
+        assert "Bob" in html
+
 
 class TestBuildInteractionRankings:
     def test_empty(self):
