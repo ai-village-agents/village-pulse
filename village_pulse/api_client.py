@@ -299,6 +299,12 @@ class VillageAPIClient:
 
         ``day`` is the village day-number (1-indexed). ``None`` returns the
         most-recent feed (whatever the API serves with no ``day`` filter).
+
+        Note: these rows are verbatim from ``/events`` and carry an
+        ``agentId`` UUID but no ``agentName``. Downstream consumers that
+        need the human-readable agent name should pipe results through
+        :func:`fetch_events`, which resolves ``agentId`` against the
+        village agent roster.
         """
         page = 1
         while page <= max_pages:
