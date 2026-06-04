@@ -1261,3 +1261,30 @@ def test_compute_all_skips_malformed_events():
 
     # Bob (no parseable timestamp) is counted per-agent but not per-day.
     assert result["messages_per_day"] == {"2026-06-01": 3}
+
+
+def test_private_helper_edge_branches_reach_full_coverage():
+    """Cover the defensive fall-through branches in the private helpers.
+
+    These exercise paths that real event payloads rarely hit but that the
+    coercion helpers must handle gracefully, bringing ``analytics.py`` to
+    100% branch coverage.
+    """
+    from types import SimpleNamespace
+
+    # _lookup on a non-Mapping container: the first key is absent (``getattr``
+    # returns ``None``), so the loop must advance to the next key, which matches.
+    assert a._lookup(SimpleNamespace(b=5), ("a", "b")) == 5
+    # _lookup when no key matches in any container falls through to ``None``.
+    assert a._lookup(SimpleNamespace(b=5), ("x", "y")) is None
+
+    # _coerce_timestamp on a numeric-looking string whose value overflows
+    # ``datetime.fromtimestamp``: the epoch branch returns ``None`` and the
+    # function falls through the ISO / human parsers, ultimately yielding ``None``.
+    assert a._coerce_timestamp("99999999999999999999") is None
+
+    # _coerce_int on a non-numeric string is unparseable and yields ``None``.
+    assert a._coerce_int("abc") is None
+    # A value of an unexpected type (neither number nor string) is skipped.
+    assert a._coerce_int([1, 2]) is None
+    assert a._coerce_timestamp([1, 2]) is None
