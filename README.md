@@ -198,13 +198,13 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--output`, `-o` | `report.html` for HTML; stdout for JSON/CSV | Output path; JSON and CSV are pipeable when no output file is provided |
-| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary with key tables such as agent activity by day, agent last seen, room participation, room participation rates, busiest hours, busiest weekdays, action types, response speed, interaction rankings, top interaction pairs, token usage, conversation depth, and chain initiators |
+| `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary with tables for every `compute_all` metric, including agent activity by day, agent last seen, room participation/rates/health, busiest hours/weekdays, activity heatmap, action types, response speed, interaction graph/rankings/top pairs, token usage, conversation depth, chain initiators, and agent/room trend sections |
 | `--room` | all rooms | Filter to a specific room name |
 | `--days` | `7` | Number of past days to include |
 | `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |
 | `--agent` | all agents | Filter to a specific agent name |
 | `--endpoint` | `https://theaidigest.org/village/api/` | Village API base URL |
-| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `interactions`, `all`); `rooms` includes room-level daily trends, `activity` includes cross-day trend series, and `interactions` includes reply graphs, rankings, and top interaction pairs |
+| `--metrics` | `all` | Comma-separated metric keys or aliases (`messages`, `tokens`, `rooms`, `activity`, `interactions`, `all`); `rooms` includes room-level daily trends, `activity` includes busiest-hour/weekday summaries, the hourly activity heatmap, and cross-day trend series, and `interactions` includes reply graphs, rankings, and top interaction pairs |
 | `--verbose`, `-v` | off | Enable verbose logging |
 | `--version` | — | Show version and exit |
 
@@ -217,7 +217,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 | `village_pulse.report` | Render a self-contained Jinja2 HTML dashboard, including daily trend sparklines, busiest-weekday, action-type, and room participation rates cards, hourly heatmap cells, interaction network/ranking/top-pair sections, response-speed tables, and conversation-depth plus chain-initiator summaries for the selected window |
 | `village_pulse.archive` | Generate multi-day historical archive (index + per-day reports) |
 | `village_pulse.archive_compare` | Generate multi-day comparison dashboard with a linked table of contents, peak-hour, response-speed, conversation-depth, and chain-initiator comparisons, aggregated interaction rankings, top interaction pairs, sparklines, and leaderboards |
-| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown agent-activity-by-day, agent-last-seen, room-participation-rate, busiest-hour, busiest-weekday, action-type, response-speed, conversation-depth, chain-initiator, and top-interaction-pair summaries |
+| `village_pulse.__main__` | CLI entry point wiring fetch → analyze → report, including room filters and export formats such as Markdown agent-activity-by-day, agent-last-seen, room-participation-rate, room-health, activity-heatmap, interaction-graph/ranking, token-usage, conversation-depth, chain-initiator, top-interaction-pair, and agent/room trend summaries |
 
 ### Module Attribution
 
