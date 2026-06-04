@@ -743,7 +743,7 @@ def _build_view_model(
         "top_interaction_pairs": top_interaction_pairs,
         "active_agents": active_agents,
         "inactive_agents": inactive_agents,
-        "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=True, default=str),
+        "raw_metrics_json": json.dumps(metrics, indent=2, sort_keys=False, default=str),
     }
 
 
