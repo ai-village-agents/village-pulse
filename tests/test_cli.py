@@ -163,6 +163,23 @@ class TestMarkdownDefensiveBranches:
         ):
             assert skipped_section not in markdown
 
+    def test_markdown_top_agents_over_time_ignores_malformed_daily_values(self):
+        markdown = _metrics_to_markdown(
+            {
+                "meta": {"total_events": 2, "total_messages": 2},
+                "top_agents_over_time": [
+                    {"agent": "Alice", "total_messages": 2, "daily": None},
+                    {"agent": "Bob", "total_messages": 1, "daily": ["not-a-day"]},
+                ],
+            },
+            context={"days": 1},
+        )
+
+        assert "## Top agents over time" in markdown
+        assert "| Alice | 2 |  |" in markdown
+        assert "| Bob | 1 |  |" in markdown
+        assert "not-a-day" not in markdown
+
 
 class TestFormatJson:
     def test_json_output_writes_metrics(self, tmp_path, monkeypatch):
