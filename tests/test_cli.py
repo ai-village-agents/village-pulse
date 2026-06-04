@@ -1,5 +1,7 @@
 """Tests for the village_pulse CLI entry point."""
 
+import csv
+import os
 import json
 
 import subprocess
@@ -358,6 +360,66 @@ class TestDayFlag:
         assert captured["kwargs"]["current_day"] == 423
         assert captured["kwargs"]["days"] == 1
 
+    def test_day_flag_markdown_room_title_uses_selected_day(
+        self, tmp_path, monkeypatch
+    ):
+        """--day should flow into the room-scoped Markdown report title."""
+        captured = {}
+
+        def fake_fetch(**kwargs):
+            captured["kwargs"] = kwargs
+            return [
+                {
+                    "agent_name": "A",
+                    "room": "best",
+                    "action_type": "AGENT_TALK",
+                    "content": "x",
+                    "input_tokens": 1,
+                    "output_tokens": 2,
+                }
+            ]
+
+        import village_pulse.api_client as ac
+
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch)
+
+        import village_pulse.analytics as an
+
+        monkeypatch.setattr(
+            an,
+            "compute_all",
+            lambda _events: {
+                "meta": {"total_events": 1, "total_messages": 1},
+                "messages_per_agent": {"A": 1},
+            },
+        )
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "day-423-best.md"
+        rc = main(
+            [
+                "--format",
+                "markdown",
+                "--room",
+                "best",
+                "--day",
+                "423",
+                "--days",
+                "1",
+                "--output",
+                str(out),
+            ]
+        )
+
+        assert rc == 0
+        assert captured["kwargs"]["current_day"] == 423
+        assert captured["kwargs"]["room"] == "best"
+        text = out.read_text(encoding="utf-8")
+        assert text.startswith("# Village Pulse — Day 423 — #best")
+        assert "- Room: best" in text
+        assert "- Window: 1 day" in text
+
 
 class TestCliValidation:
     def test_days_less_than_one_returns_error(self, capsys):
@@ -383,6 +445,20 @@ class TestCliValidation:
         assert rc == 1
         captured = capsys.readouterr()
         assert "--days must be >= 1" in captured.err
+
+    def test_module_days_zero_returns_error(self):
+        """`python -m village_pulse --days 0` rejects the boundary before I/O."""
+        result = subprocess.run(
+            [sys.executable, "-m", "village_pulse", "--days", "0"],
+            cwd=Path(__file__).resolve().parents[1],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        assert result.returncode != 0
+        assert result.stdout == ""
+        assert "--days must be >= 1" in result.stderr
 
 
 class TestMetricsAliases:
@@ -1043,6 +1119,87 @@ class TestFormatCsv:
         text = out.read_text(encoding="utf-8")
         # The content cell should be quoted because it contains a comma and newline
         assert '"Hello, world!\nSecond line"' in text
+
+    def test_module_csv_all_metrics_outputs_valid_csv(self, tmp_path):
+        """`python -m village_pulse --format csv --metrics all` is clean E2E."""
+        shim = tmp_path / "sitecustomize.py"
+        shim.write_text(
+            """
+from village_pulse import api_client
+
+def fake_fetch_events(**_kwargs):
+    return [
+        {
+            'created_at': '2026-06-01T10:00:00Z',
+            'agent_name': 'Kimi K2.6',
+            'room': 'best',
+            'action_type': 'AGENT_TALK',
+            'content': 'hello',
+            'input_tokens': 100,
+            'output_tokens': 20,
+        },
+        {
+            'created_at': '2026-06-01T10:01:00Z',
+            'agent_name': 'GPT-5.5',
+            'room': 'best',
+            'action_type': 'AGENT_TALK',
+            'content': 'reply',
+            'input_tokens': 200,
+            'output_tokens': 30,
+        },
+    ]
+
+api_client.fetch_events = fake_fetch_events
+""",
+            encoding="utf-8",
+        )
+        repo_root = Path(__file__).resolve().parents[1]
+        env = dict(os.environ)
+        env["PYTHONPATH"] = f"{tmp_path}{os.pathsep}{repo_root}"
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "village_pulse",
+                "--format",
+                "csv",
+                "--metrics",
+                "all",
+            ],
+            cwd=repo_root,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        assert result.returncode == 0
+        assert result.stderr == ""
+        rows = list(csv.DictReader(result.stdout.splitlines()))
+        assert result.stdout.splitlines()[0] == (
+            "timestamp,agent,room,action_type,content,input_tokens,output_tokens"
+        )
+        assert rows == [
+            {
+                "timestamp": "2026-06-01T10:00:00Z",
+                "agent": "Kimi K2.6",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "hello",
+                "input_tokens": "100",
+                "output_tokens": "20",
+            },
+            {
+                "timestamp": "2026-06-01T10:01:00Z",
+                "agent": "GPT-5.5",
+                "room": "best",
+                "action_type": "AGENT_TALK",
+                "content": "reply",
+                "input_tokens": "200",
+                "output_tokens": "30",
+            },
+        ]
 
 
 def test_rooms_alias_includes_room_daily_trends():
