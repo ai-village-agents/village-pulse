@@ -275,6 +275,10 @@ def test_conversation_depth_alternating_run_and_repeat_reset():
     assert result["max_depth"] == 4
     assert result["total_chains"] == 2
     assert result["depth_distribution"] == {2: 1, 4: 1}
+    # Ordering contract: depth_distribution is ascending by depth. dict ==
+    # ignores key order, so lock it explicitly. (Chains here occur depth-4
+    # then depth-2, so insertion order would be [4, 2] without the sort.)
+    assert list(result["depth_distribution"].keys()) == [2, 4]
 
 
 def test_conversation_depth_empty_is_zeroed():
