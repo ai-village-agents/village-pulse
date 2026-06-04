@@ -313,6 +313,27 @@ class TestGenerateArchive:
         assert "Current village day: 2" in index_html
 
 
+    def test_all_days_empty_generates_index_without_reports(self, tmp_path: Path) -> None:
+        """When every day is empty, reports is empty but index is still generated."""
+        mock_client = MagicMock()
+        mock_client._discover_latest_day.return_value = 426
+        mock_client.get_agents.return_value = {"room-1": "Alice"}
+        mock_client.get_rooms.return_value = {"room-1": "best"}
+        mock_client.iter_raw_events_for_day.return_value = []
+
+        with patch(
+            "village_pulse.archive.api_client.VillageAPIClient",
+            return_value=mock_client,
+        ):
+            reports = archive.generate_archive(tmp_path, days_back=2)
+
+        assert reports == []
+        assert not any((tmp_path / f"report_day{d}.html").exists() for d in (426, 425))
+        index_path = tmp_path / "index.html"
+        assert index_path.exists()
+        index_html = index_path.read_text(encoding="utf-8")
+        assert "Village Pulse Archive" in index_html
+
 class TestGenerateIndexPage:
     def test_index_has_days_sorted_newest_first(self, tmp_path: Path) -> None:
         reports = [
