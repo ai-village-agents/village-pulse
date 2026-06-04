@@ -575,3 +575,64 @@ def test_discover_latest_day_from_created_at_today():
         c, "get_village", return_value={"createdAt": f"{today}T00:00:00Z"}
     ):
         assert c._discover_latest_day() == 1
+
+
+def test_get_agents_skips_malformed_entries(monkeypatch):
+    village_detail = {
+        "agents": [
+            {"id": "a1", "name": "Alpha"},
+            "not-a-mapping",
+            {"name": "NoId"},
+            {"id": "a2", "name": "Beta"},
+        ],
+        "activeAgent": {"id": "a3", "name": "Gamma"},
+    }
+    monkeypatch.setattr(
+        ac.VillageAPIClient,
+        "_get",
+        lambda self, path, params=None: village_detail,
+    )
+    c = ac.VillageAPIClient(village_id="vid-1")
+    assert c.get_agents() == {"a1": "Alpha", "a2": "Beta", "a3": "Gamma"}
+
+
+def test_get_rooms_skips_malformed_entries(monkeypatch):
+    village_detail = {
+        "chatRooms": [
+            {"id": "r1", "name": "best"},
+            "not-a-mapping",
+            {"name": "NoId"},
+            {"id": "r2", "name": "rest"},
+        ],
+    }
+    monkeypatch.setattr(
+        ac.VillageAPIClient,
+        "_get",
+        lambda self, path, params=None: village_detail,
+    )
+    c = ac.VillageAPIClient(village_id="vid-1")
+    assert c.get_rooms() == {"r1": "best", "r2": "rest"}
+
+
+def test_iter_raw_events_for_day_respects_max_pages_zero(monkeypatch):
+    monkeypatch.setattr(
+        ac.VillageAPIClient,
+        "_get",
+        lambda self, path, params=None: {"events": [{"id": "e1"}]},
+    )
+    c = ac.VillageAPIClient(village_id="vid-1")
+    assert list(c.iter_raw_events_for_day(day=1, max_pages=0)) == []
+
+
+def test_iter_raw_events_for_day_skips_non_mapping_events(monkeypatch):
+    monkeypatch.setattr(
+        ac.VillageAPIClient,
+        "_get",
+        lambda self, path, params=None: {
+            "events": [{"id": "e1"}, "not-a-mapping", {"id": "e2"}],
+            "hasMore": False,
+        },
+    )
+    c = ac.VillageAPIClient(village_id="vid-1")
+    ids = [e["id"] for e in c.iter_raw_events_for_day(day=1)]
+    assert ids == ["e1", "e2"]
