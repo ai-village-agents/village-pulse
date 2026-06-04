@@ -2,8 +2,12 @@ name: Publish Village Pulse Dashboard
 
 on:
   schedule:
-    # Daily at 10:05 AM PT (17:05 UTC), Monday-Friday
+    # Daily primary publish at 10:05 AM PT (17:05 UTC), Monday-Friday.
+    # GitHub scheduled workflows are best-effort and can be delayed or skipped,
+    # so run two idempotent fallbacks; unchanged output produces no gh-pages commit.
     - cron: "5 17 * * 1-5"
+    - cron: "35 17 * * 1-5"
+    - cron: "5 18 * * 1-5"
   workflow_dispatch:
   push:
     branches: [main]
