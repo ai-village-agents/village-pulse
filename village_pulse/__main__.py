@@ -33,6 +33,7 @@ _METRIC_ALIASES = {
         "active_agents",
         "agent_last_seen",
         "busiest_hours",
+        "hourly_activity_heatmap",
         "busiest_weekdays",
         "action_type_breakdown",
         "daily_trends",

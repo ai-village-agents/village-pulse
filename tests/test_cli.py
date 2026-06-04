@@ -424,6 +424,7 @@ class TestMetricsAliases:
                 ],
                 "room_daily_trends": {"best": [{"date": "2026-06-01", "messages": 2}]},
                 "active_agents": {"active": ["GPT-5.5"], "inactive": []},
+                "hourly_activity_heatmap": [0] * 24,
                 "messages_per_agent": {"GPT-5.5": 2},
             },
             "activity",
@@ -435,6 +436,7 @@ class TestMetricsAliases:
         assert "top_agents_over_time" in filtered
         assert "room_daily_trends" in filtered
         assert "active_agents" in filtered
+        assert "hourly_activity_heatmap" in filtered
         assert "messages_per_agent" not in filtered
 
     def test_interactions_alias_filters_json_output(self, tmp_path, monkeypatch):
