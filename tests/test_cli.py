@@ -1373,3 +1373,52 @@ class TestCLIInternalEdgeCases:
         assert "Alice ↔ Bob" in text
         assert "10" in text
         assert "not-a-dict" not in text
+
+    def test_markdown_defensive_isinstance_edge_cases(self):
+        from village_pulse.__main__ import _metrics_to_markdown
+
+        metrics = {
+            "meta": {"total_events": 0, "total_messages": 0},
+            "room_health": {
+                "#best": "not-a-dict",
+                "#rest": {
+                    "messages": 10,
+                    "unique_agents": 2,
+                    "active_agents": 1,
+                    "messages_in_window": 3,
+                    "last_activity": "2026-06-01T09:00:00Z",
+                },
+            },
+            "agent_daily_trends": {
+                "Alice": "not-a-list",
+                "Bob": [
+                    {
+                        "date": "2026-06-01",
+                        "messages": 5,
+                        "input_tokens": 100,
+                        "output_tokens": 200,
+                    }
+                ],
+            },
+            "top_agents_over_time": [
+                "not-a-dict",
+                {"agent": "Alice", "daily": [{"date": "2026-06-01", "messages": 5}]},
+            ],
+            "room_daily_trends": {
+                "#best": "not-a-list",
+                "#rest": [
+                    {
+                        "date": "2026-06-01",
+                        "messages": 5,
+                        "events": 10,
+                        "active_agents": 1,
+                    }
+                ],
+            },
+            "interaction_graph": {"Alice": "not-a-dict", "Bob": {"Charlie": 10}},
+        }
+        text = _metrics_to_markdown(metrics, context={"days": 1})
+        assert "## Interaction graph" in text
+        assert "Bob" in text
+        assert "Charlie" in text
+        assert "10" in text
