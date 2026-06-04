@@ -117,6 +117,12 @@ def test_messages_per_agent_per_day(sample_raw):
     result = a.messages_per_agent_per_day(a.normalize_events(sample_raw))
     assert result["Bob"] == {"2026-05-31": 1, "2026-06-01": 1}
     assert result["Alice"] == {"2026-06-01": 2}
+    # Ordering contract (documented in docs/analytics_contract.md): the outer
+    # agent keys are name-sorted and each agent's inner date keys are
+    # chronological. The dict ``==`` checks above ignore key order, so assert the
+    # orderings explicitly to regression-lock the documented behaviour.
+    assert list(result.keys()) == sorted(result.keys())
+    assert list(result["Bob"].keys()) == ["2026-05-31", "2026-06-01"]
 
 
 def test_messages_per_day_is_sorted(sample_raw):
