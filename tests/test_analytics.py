@@ -1114,3 +1114,42 @@ def test_compute_all_deterministic_and_order_independent(sample_raw):
     assert differing in ([], ["meta"])
     varying_meta = {k for k in r1["meta"] if r1["meta"][k] != r2["meta"].get(k)}
     assert varying_meta <= {"generated_at"}
+
+
+def test_compute_all_keys_match_standalone_functions(sample_raw):
+    """``compute_all`` must be a faithful aggregation of the standalone helpers.
+
+    Each metric is implemented once as a standalone function and then surfaced
+    under a key of the same name by :func:`compute_all`. Nothing in the suite
+    currently asserts that the two stay in agreement, so a future refactor that
+    re-sorted or re-shaped a value inside ``compute_all`` (without touching the
+    standalone helper, which has its own unit test) would slip through. This
+    test pins the equivalence -- both the *values* and, for dict results, the
+    *key ordering* -- for every metric that exists in both forms.
+    """
+    rt = datetime(2026, 6, 4, 18, 0, 0, tzinfo=timezone.utc)
+    norm = a.normalize_events(sample_raw)
+    result = a.compute_all(sample_raw, reference_time=rt)
+
+    # Metrics that are exposed both as a standalone function and as a key.
+    paired_metrics = [
+        "action_type_breakdown",
+        "messages_per_agent",
+        "response_latency",
+        "chain_initiators",
+        "conversation_depth",
+        "messages_per_agent_per_day",
+        "interaction_graph",
+        "top_interaction_pairs",
+        "room_participation",
+        "busiest_weekdays",
+    ]
+
+    for name in paired_metrics:
+        standalone = getattr(a, name)(norm)
+        from_key = result[name]
+        assert standalone == from_key, f"{name}: compute_all value diverged from standalone fn"
+        if isinstance(standalone, dict):
+            assert list(standalone.keys()) == list(from_key.keys()), (
+                f"{name}: compute_all key ordering diverged from standalone fn"
+            )
