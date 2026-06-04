@@ -1154,6 +1154,148 @@ class TestMainErrorHandling:
         assert "[HTTP 503]" in captured.err
 
 
+class TestCliSubprocessFilters:
+    def test_module_day_flag_fetches_selected_day_markdown_e2e(self, tmp_path):
+        """`python -m village_pulse --day` forwards current_day and titles output."""
+        capture = tmp_path / "kwargs.json"
+        out = tmp_path / "day-423.md"
+        shim = tmp_path / "sitecustomize.py"
+        shim.write_text(
+            """
+import json
+import os
+from pathlib import Path
+from village_pulse import api_client
+
+def fake_fetch_events(**kwargs):
+    Path(os.environ['VILLAGE_PULSE_CAPTURE_KWARGS']).write_text(
+        json.dumps(kwargs, sort_keys=True),
+        encoding='utf-8',
+    )
+    return [
+        {
+            'created_at': '2026-06-01T10:00:00Z',
+            'agent_name': 'GPT-5.5',
+            'room': 'best',
+            'action_type': 'AGENT_TALK',
+            'content': 'selected day',
+            'input_tokens': 10,
+            'output_tokens': 5,
+        }
+    ]
+
+api_client.fetch_events = fake_fetch_events
+""",
+            encoding="utf-8",
+        )
+        repo_root = Path(__file__).resolve().parents[1]
+        env = dict(os.environ)
+        env["PYTHONPATH"] = f"{tmp_path}{os.pathsep}{repo_root}"
+        env["VILLAGE_PULSE_CAPTURE_KWARGS"] = str(capture)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "village_pulse",
+                "--format",
+                "markdown",
+                "--room",
+                "best",
+                "--day",
+                "423",
+                "--days",
+                "1",
+                "--output",
+                str(out),
+            ],
+            cwd=repo_root,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        assert result.returncode == 0
+        assert result.stderr == ""
+        kwargs = json.loads(capture.read_text(encoding="utf-8"))
+        assert kwargs["current_day"] == 423
+        assert kwargs["days"] == 1
+        assert kwargs["room"] == "best"
+        markdown = out.read_text(encoding="utf-8")
+        assert markdown.startswith("# Village Pulse — Day 423 — #best")
+        assert "- Room: best" in markdown
+
+    def test_module_agent_filter_fetches_agent_json_e2e(self, tmp_path):
+        """`python -m village_pulse --agent` forwards the filter into analytics."""
+        capture = tmp_path / "kwargs.json"
+        out = tmp_path / "agent.json"
+        shim = tmp_path / "sitecustomize.py"
+        shim.write_text(
+            """
+import json
+import os
+from pathlib import Path
+from village_pulse import api_client
+
+def fake_fetch_events(**kwargs):
+    Path(os.environ['VILLAGE_PULSE_CAPTURE_KWARGS']).write_text(
+        json.dumps(kwargs, sort_keys=True),
+        encoding='utf-8',
+    )
+    agent = kwargs.get('agent')
+    return [
+        {
+            'created_at': '2026-06-01T10:00:00Z',
+            'agent_name': agent,
+            'room': 'best',
+            'action_type': 'AGENT_TALK',
+            'content': 'agent-filtered message',
+            'input_tokens': 7,
+            'output_tokens': 3,
+        }
+    ]
+
+api_client.fetch_events = fake_fetch_events
+""",
+            encoding="utf-8",
+        )
+        repo_root = Path(__file__).resolve().parents[1]
+        env = dict(os.environ)
+        env["PYTHONPATH"] = f"{tmp_path}{os.pathsep}{repo_root}"
+        env["VILLAGE_PULSE_CAPTURE_KWARGS"] = str(capture)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "village_pulse",
+                "--format",
+                "json",
+                "--metrics",
+                "messages",
+                "--agent",
+                "GPT-5.5",
+                "--output",
+                str(out),
+            ],
+            cwd=repo_root,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        assert result.returncode == 0
+        assert result.stderr == ""
+        kwargs = json.loads(capture.read_text(encoding="utf-8"))
+        assert kwargs["agent"] == "GPT-5.5"
+        assert kwargs["days"] == 7
+        metrics = json.loads(out.read_text(encoding="utf-8"))
+        assert metrics["messages_per_agent"] == {"GPT-5.5": 1}
+        assert metrics["meta"]["total_messages"] == 1
+
+
 class TestFormatCsv:
     def test_csv_output_writes_file(self, tmp_path, monkeypatch):
         """--format csv writes flat events as CSV."""
