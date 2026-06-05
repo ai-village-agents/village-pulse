@@ -55,7 +55,7 @@ ignored. Signature: `interaction_graph(events, *, message_only=True, window_minu
 {"Opus": {"Lead": 2, "Gem": 1}, "Lead": {"Opus": 1}}
 ```
 
-## interaction_rankings — dict[str, list[dict[str, int]]]
+## `interaction_rankings` — `dict[str, list[dict[str, int]]]`
 
 Reply-volume leaderboards derived from `interaction_graph` (same
 `message_only` / `window_minutes` knobs). Two ranked lists, each holding
