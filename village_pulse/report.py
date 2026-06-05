@@ -8,7 +8,6 @@ and writes it to disk.
 
 from __future__ import annotations
 
-import html
 import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
@@ -717,7 +716,7 @@ def _build_view_model(
     ]
 
     return {
-        "title": html.escape(str(context.get("title") or default_title)),
+        "title": str(context.get("title") or default_title),
         "days": days,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "context": context,
@@ -1426,7 +1425,7 @@ def _chain_initiators_view(value: Any) -> list[dict[str, Any]]:
             chains = _safe_int(item.get("chains"))
             if chains > 0:
                 total_chains += chains
-                valid_items.append({"agent": html.escape(agent), "chains": chains})
+                valid_items.append({"agent": agent, "chains": chains})
         elif isinstance(item, tuple) and len(item) == 2:
             agent, chains_val = item
             if not isinstance(agent, str):
@@ -1434,7 +1433,7 @@ def _chain_initiators_view(value: Any) -> list[dict[str, Any]]:
             chains = _safe_int(chains_val)
             if chains > 0:
                 total_chains += chains
-                valid_items.append({"agent": html.escape(agent), "chains": chains})
+                valid_items.append({"agent": agent, "chains": chains})
 
     for item in valid_items:
         percent = (item["chains"] / total_chains * 100.0) if total_chains > 0 else 0.0

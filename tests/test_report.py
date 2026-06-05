@@ -604,7 +604,7 @@ def test_chain_initiators_view_edge_cases():
     )
     assert res == []
 
-    # 4. Valid sorting and percentage computation, and HTML-escaping
+    # 4. Valid sorting and percentage computation; Jinja autoescape handles HTML escaping
     res2 = _chain_initiators_view(
         [
             {"agent": "Bob", "chains": 5},
@@ -615,7 +615,7 @@ def test_chain_initiators_view_edge_cases():
     assert len(res2) == 3
     assert res2[0] == {"agent": "Alice", "chains": 10, "percent": 50.0}
     assert res2[1] == {
-        "agent": "&lt;script&gt;Eve&lt;/script&gt;",
+        "agent": "<script>Eve</script>",
         "chains": 5,
         "percent": 25.0,
     }
@@ -729,6 +729,31 @@ def test_render_top_interaction_pairs_escapes_once():
     assert "&lt;script&gt;Eve&lt;/script&gt; ↔ Bob &amp; Co" in rendered
     assert "&amp;lt;script" not in rendered
     assert "Bob &amp;amp; Co" not in rendered
+
+
+def test_render_title_escapes_once():
+    from village_pulse.report import render
+
+    rendered = render(sample_metrics(), {"title": "Village <Check>&"})
+
+    assert "Village <Check>&" not in rendered
+    assert "Village &lt;Check&gt;&amp;" in rendered
+    assert "Village &amp;lt;Check&amp;gt;&amp;amp;" not in rendered
+
+
+def test_render_chain_initiators_escape_once():
+    from village_pulse.report import render
+
+    metrics = sample_metrics()
+    metrics["chain_initiators"] = [
+        {"agent": "<script>alert(1)</script>&Agent", "chains": 2},
+    ]
+
+    rendered = render(metrics, {"version": "0.1.0"})
+
+    assert "<script>alert(1)</script>&Agent" not in rendered
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;&amp;Agent" in rendered
+    assert "&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;&amp;amp;Agent" not in rendered
 
 
 def test_weekday_rows_edge_cases():
