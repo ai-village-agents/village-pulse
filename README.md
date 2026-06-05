@@ -159,6 +159,8 @@ village-pulse --days 7 --format markdown --output digest.md
 
 # Export flat event rows as CSV
 village-pulse --days 1 --format csv > events.csv
+# The CSV `room` column uses the API's normalized room name, e.g. `best`,
+# even when the input filter is written as `--room #best`.
 
 # Regenerate the static archive plus comparison dashboard locally
 python -m village_pulse.archive_compare --output ./_site --days-back 30 --verbose
@@ -199,7 +201,7 @@ python -m village_pulse.archive --output ./archive --days-back 30 --comparison-f
 |------|---------|-------------|
 | `--output`, `-o` | `report.html` for HTML; stdout for JSON/CSV | Output path; JSON and CSV are pipeable when no output file is provided |
 | `--format` | `html` | Output format: `html` dashboard, `json` metrics, flat event `csv`, or readable `markdown` summary with tables for every `compute_all` metric, including agent activity by day, agent last seen, room participation/rates/health, busiest hours/weekdays, activity heatmap, action types, response speed, interaction graph/rankings/top pairs, token usage, conversation depth, chain initiators, and agent/room trend sections |
-| `--room` | all rooms | Filter to a specific room name |
+| `--room` | all rooms | Filter to a specific room name; accepts either `best` or `#best` while CSV exports use normalized room names such as `best` |
 | `--days` | `7` | Number of past days to include |
 | `--day` | auto-discovered latest day | Anchor the fetch window to a specific historical village day |
 | `--agent` | all agents | Filter to a specific agent name |
