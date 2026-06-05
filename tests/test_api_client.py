@@ -706,3 +706,159 @@ def test_fetch_events_aborts_immediately_on_4xx_error(monkeypatch):
     with pytest.raises(ac.APIError) as exc_info:
         c.fetch_events(days=1)
     assert exc_info.value.status == 401
+
+# ---------------------------------------------------------------------------
+# fetch_events error-path integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_events_retries_5xx_on_events_then_succeeds(monkeypatch):
+    """A transient 503 on the events feed is retried and fetch_events succeeds."""
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_agents", lambda self: {"a1": "Alpha"}
+    )
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_rooms", lambda self: {"r1": "best"}
+    )
+    event_resp = _FakeResp(
+        {
+            "events": [
+                {
+                    "id": "e1",
+                    "eventIndex": 1,
+                    "createdAt": "2026-06-01T17:00:00Z",
+                    "data": {
+                        "actionType": "AGENT_TALK",
+                        "speakerId": "a1",
+                        "roomId": "r1",
+                        "content": "hi",
+                    },
+                }
+            ],
+            "hasMore": False,
+        },
+        status=200,
+    )
+    busy_resp = _FakeResp({"oops": True}, status=503, text="busy")
+    responses = [busy_resp, event_resp]
+    with (
+        mock.patch.object(ac, "_requests") as fake_req,
+        mock.patch.object(ac.time, "sleep"),
+    ):
+        fake_req.get.side_effect = _fake_get_factory(responses)
+        fake_req.__bool__ = lambda self: True  # type: ignore[assignment]
+        c = ac.VillageAPIClient(village_id="vid-1")
+        out = c.fetch_events(days=1, current_day=426)
+    assert len(out) == 1
+    assert out[0]["agent_name"] == "Alpha"
+
+
+def test_fetch_events_propagates_apierror_after_exhausted_retries_on_events(
+    monkeypatch,
+):
+    """Persistent 503 on events causes APIError to propagate after retries."""
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_agents", lambda self: {"a1": "Alpha"}
+    )
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_rooms", lambda self: {"r1": "best"}
+    )
+    busy_resp = _FakeResp({"oops": True}, status=503, text="busy")
+    responses = [busy_resp, busy_resp, busy_resp]
+    with (
+        mock.patch.object(ac, "_requests") as fake_req,
+        mock.patch.object(ac.time, "sleep"),
+    ):
+        fake_req.get.side_effect = _fake_get_factory(responses)
+        fake_req.__bool__ = lambda self: True  # type: ignore[assignment]
+        c = ac.VillageAPIClient(village_id="vid-1")
+        with pytest.raises(ac.APIError) as exc_info:
+            c.fetch_events(days=1, current_day=426)
+    assert exc_info.value.status == 503
+
+
+def test_fetch_events_propagates_4xx_immediately_on_events(monkeypatch):
+    """A 4xx error on the events feed is not retried and propagates immediately."""
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_agents", lambda self: {"a1": "Alpha"}
+    )
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_rooms", lambda self: {"r1": "best"}
+    )
+    not_found = _FakeResp(
+        {"error": "not found"},
+        status=404,
+        text='{"error":"not found"}',
+    )
+    responses = [not_found]
+    with (
+        mock.patch.object(ac, "_requests") as fake_req,
+        mock.patch.object(ac.time, "sleep"),
+    ):
+        fake_req.get.side_effect = _fake_get_factory(responses)
+        fake_req.__bool__ = lambda self: True  # type: ignore[assignment]
+        c = ac.VillageAPIClient(village_id="vid-1")
+        with pytest.raises(ac.APIError) as exc_info:
+            c.fetch_events(days=1, current_day=426)
+    assert exc_info.value.status == 404
+
+
+def test_fetch_events_propagates_network_error_as_apierror_on_events(monkeypatch):
+    """Network-level failures on events (e.g. TimeoutError) are wrapped in APIError."""
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_agents", lambda self: {"a1": "Alpha"}
+    )
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_rooms", lambda self: {"r1": "best"}
+    )
+    with (
+        mock.patch.object(ac, "_requests") as fake_req,
+        mock.patch.object(ac.time, "sleep"),
+    ):
+        fake_req.get.side_effect = TimeoutError("connection timed out")
+        fake_req.__bool__ = lambda self: True  # type: ignore[assignment]
+        c = ac.VillageAPIClient(village_id="vid-1")
+        with pytest.raises(ac.APIError) as exc_info:
+            c.fetch_events(days=1, current_day=426)
+    assert "connection timed out" in str(exc_info.value)
+
+
+def test_fetch_events_multi_day_raises_on_mid_stream_failure(monkeypatch):
+    """If a later day fails mid-stream, the exception propagates."""
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_agents", lambda self: {"a1": "Alpha"}
+    )
+    monkeypatch.setattr(
+        ac.VillageAPIClient, "get_rooms", lambda self: {"r1": "best"}
+    )
+    calls: list[tuple[str, Any]] = []
+
+    def fake_get(self, path, params=None):  # noqa: ARG001
+        calls.append((path, params))
+        day = params.get("day") if params else None
+        if day == 426:
+            raise ac.APIError("mid-stream failure", status=500)
+        return {
+            "events": [
+                {
+                    "id": "e1",
+                    "eventIndex": 1,
+                    "createdAt": "2026-06-01T17:00:00Z",
+                    "data": {
+                        "actionType": "AGENT_TALK",
+                        "speakerId": "a1",
+                        "roomId": "r1",
+                        "content": "hi",
+                    },
+                }
+            ],
+            "hasMore": False,
+        }
+
+    monkeypatch.setattr(ac.VillageAPIClient, "_get", fake_get)
+    c = ac.VillageAPIClient(village_id="vid-1")
+    with pytest.raises(ac.APIError) as exc_info:
+        c.fetch_events(days=2, current_day=427)
+    assert "mid-stream failure" in str(exc_info.value)
+    assert any(p.get("day") == 427 for _p, p in calls if p)
+    assert any(p.get("day") == 426 for _p, p in calls if p)
