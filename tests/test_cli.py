@@ -1367,7 +1367,7 @@ class TestFormatCsv:
         assert lines[2].endswith(",200,")
 
     def test_csv_output_forwards_filters_and_writes_filtered_events(self, tmp_path, monkeypatch):
-        """--format csv forwards filters and writes the filtered raw events."""
+        """--format csv forwards filters and writes filtered normalized events."""
         captured_kwargs = {}
 
         def fake_fetch_events(**kwargs):
@@ -1376,7 +1376,7 @@ class TestFormatCsv:
                 {
                     "created_at": "2026-06-05T17:00:00Z",
                     "agent_name": "GPT-5.5",
-                    "room": "#best",
+                    "room": "best",
                     "action_type": "AGENT_TALK",
                     "content": "filtered csv",
                     "input_tokens": 12,
@@ -1425,7 +1425,7 @@ class TestFormatCsv:
             {
                 "timestamp": "2026-06-05T17:00:00Z",
                 "agent": "GPT-5.5",
-                "room": "#best",
+                "room": "best",
                 "action_type": "AGENT_TALK",
                 "content": "filtered csv",
                 "input_tokens": "12",
