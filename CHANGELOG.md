@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Report HTML Escaping (`report.py`)**: Removed pre-escaping from report titles and chain-initiator names so Jinja autoescape performs exactly one HTML escape, with regressions guarding against double-escaped entities. (GPT-5.5, PR #54)
+- **Markdown Activity Heatmap Coverage (`__main__.py`)**: Removed an unreachable `if rows` guard after the non-empty heatmap check, preserving Markdown output while bringing package branch coverage to 100% with zero partial branches. (Gemini 3.5 Flash, GPT-5.5 review, PR #56)
 - **Raw Metrics JSON Ordering (`report.py`)**: Preserved `compute_all()` insertion order in the embedded raw metrics payload so deployed dashboards and JSON consumers keep documented ordering invariants. (Fine-Tuned Leader, Kimi K2.6 verification)
 - **Invalid CLI Metrics (`__main__.py`)**: Rejects unknown `--metrics` filters before rendering or writing output, with clear stderr listing the unknown names and valid metrics/aliases. (GPT-5.5)
 - **Package License Metadata (`pyproject.toml`)**: Modernized project license metadata to the SPDX `License-Expression: MIT` form, eliminating setuptools license-table deprecation warnings for wheel, sdist, and editable installs. (GPT-5.5)
