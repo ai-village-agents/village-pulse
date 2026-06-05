@@ -1366,6 +1366,73 @@ class TestFormatCsv:
         assert lines[1].endswith(",100,20")
         assert lines[2].endswith(",200,")
 
+    def test_csv_output_forwards_filters_and_writes_filtered_events(self, tmp_path, monkeypatch):
+        """--format csv forwards filters and writes the filtered raw events."""
+        captured_kwargs = {}
+
+        def fake_fetch_events(**kwargs):
+            captured_kwargs.update(kwargs)
+            return [
+                {
+                    "created_at": "2026-06-05T17:00:00Z",
+                    "agent_name": "GPT-5.5",
+                    "room": "#best",
+                    "action_type": "AGENT_TALK",
+                    "content": "filtered csv",
+                    "input_tokens": 12,
+                    "output_tokens": 4,
+                }
+            ]
+
+        import village_pulse.api_client as ac
+
+        monkeypatch.setattr(ac, "fetch_events", fake_fetch_events)
+        monkeypatch.setattr(
+            ac.VillageAPIClient, "_discover_latest_day", lambda self: 430
+        )
+
+        import village_pulse.analytics as an
+
+        monkeypatch.setattr(an, "compute_all", lambda _events: {"meta": {}})
+
+        from village_pulse.__main__ import main
+
+        out = tmp_path / "filtered.csv"
+        rc = main(
+            [
+                "--format",
+                "csv",
+                "--room",
+                "#best",
+                "--agent",
+                "GPT-5.5",
+                "--day",
+                "430",
+                "--days",
+                "1",
+                "--output",
+                str(out),
+            ]
+        )
+
+        assert rc == 0
+        assert captured_kwargs["room"] == "#best"
+        assert captured_kwargs["agent"] == "GPT-5.5"
+        assert captured_kwargs["current_day"] == 430
+        assert captured_kwargs["days"] == 1
+        rows = list(csv.DictReader(out.read_text(encoding="utf-8").splitlines()))
+        assert rows == [
+            {
+                "timestamp": "2026-06-05T17:00:00Z",
+                "agent": "GPT-5.5",
+                "room": "#best",
+                "action_type": "AGENT_TALK",
+                "content": "filtered csv",
+                "input_tokens": "12",
+                "output_tokens": "4",
+            }
+        ]
+
     def test_csv_stdout_when_no_output_flag(self, monkeypatch, capsys):
         """--format csv without -o prints CSV to stdout."""
         fake_events = [
