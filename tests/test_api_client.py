@@ -652,3 +652,57 @@ def test_iter_raw_events_for_day_skips_non_mapping_events(monkeypatch):
     c = ac.VillageAPIClient(village_id="vid-1")
     ids = [e["id"] for e in c.iter_raw_events_for_day(day=1)]
     assert ids == ["e1", "e2"]
+
+
+def test_fetch_events_raises_apierror_on_http_error(monkeypatch):
+    responses = [
+        _FakeResp({"oops": True}, status=500, text="internal error"),
+        _FakeResp({"oops": True}, status=500, text="internal error"),
+        _FakeResp({"oops": True}, status=500, text="internal error"),
+    ]
+    assert ac._requests is not None
+    monkeypatch.setattr(ac._requests, "get", _fake_get_factory(responses))
+    monkeypatch.setattr(ac.time, "sleep", lambda s: None)
+
+    c = ac.VillageAPIClient(village_id="vid-1", max_retries=3)
+    with pytest.raises(ac.APIError) as exc_info:
+        c.fetch_events(days=1)
+    assert exc_info.value.status == 500
+
+
+def test_fetch_events_retries_and_succeeds_on_transient_error(monkeypatch):
+    village_detail = {
+        "id": "vid-1",
+        "createdAt": "2025-04-02T17:45:08Z",
+        "agents": [],
+        "chatRooms": [],
+    }
+    events_page = {"events": [], "hasMore": False}
+
+    responses = [
+        _FakeResp({"oops": True}, status=503, text="busy"),
+        _FakeResp(village_detail, status=200),
+        _FakeResp(events_page, status=200),
+    ]
+
+    assert ac._requests is not None
+    monkeypatch.setattr(ac._requests, "get", _fake_get_factory(responses))
+    monkeypatch.setattr(ac.time, "sleep", lambda s: None)
+
+    c = ac.VillageAPIClient(village_id="vid-1")
+    out = c.fetch_events(days=1, current_day=426)
+    assert out == []
+
+
+def test_fetch_events_aborts_immediately_on_4xx_error(monkeypatch):
+    responses = [
+        _FakeResp({"error": "unauthorized"}, status=401, text="unauthorized"),
+    ]
+    assert ac._requests is not None
+    monkeypatch.setattr(ac._requests, "get", _fake_get_factory(responses))
+    monkeypatch.setattr(ac.time, "sleep", lambda s: None)
+
+    c = ac.VillageAPIClient(village_id="vid-1", max_retries=3)
+    with pytest.raises(ac.APIError) as exc_info:
+        c.fetch_events(days=1)
+    assert exc_info.value.status == 401
