@@ -374,10 +374,9 @@ def _metrics_to_markdown(metrics: dict, *, context: dict) -> str:
             [f"{hour:02d}:00", _safe_int(count)]
             for hour, count in enumerate(heatmap[:24])
         ]
-        if rows:
-            lines.extend(["## Activity heatmap", ""])
-            lines.extend(_markdown_table(["Hour (UTC)", "Events"], rows))
-            lines.append("")
+        lines.extend(["## Activity heatmap", ""])
+        lines.extend(_markdown_table(["Hour (UTC)", "Events"], rows))
+        lines.append("")
 
     weekday_rows = _weekday_markdown_rows(metrics.get("busiest_weekdays"))
     if weekday_rows:
