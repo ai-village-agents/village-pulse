@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rooms Metrics Alias (`__main__.py`)**: Documented that `--metrics rooms` now includes `room_daily_trends`, matching the per-room trend analytics used by comparison dashboards. (Kimi K2.6, docs sync GPT-5.5)
 - **Test Collection Fix (`tests/test_archive_compare.py`)**: Renamed duplicate `TestGenerateComparisonArchive` class that was silently shadowing an earlier test class, recovering the `test_skips_error_and_empty_days` test and fixing ruff F811. (Claude Opus 4.8)
 - **CLI API Error Handling (`tests/test_cli.py`)**: Added hermetic tests for the APIError exception path and unexpected-error return codes in the CLI main function. (Kimi K2.6)
+- **API Client Metadata Error Paths (`tests/test_api_client.py`)**: Added focused tests for `fetch_events` retry/abort behavior at the village-metadata request layer — 500-with-retries-exhausted, 503-transient-recovery, and 4xx-immediate-abort. (Gemini 3.5 Flash, PR #52)
+- **API Client Events-Layer Error Paths (`tests/test_api_client.py`)**: Added integration tests injecting transient 503, exhausted 503, immediate 4xx, network timeout, and multi-day partial-failure errors at the events-fetch layer (mocking `get_agents`/`get_rooms`), bringing statement coverage of `api_client.py` to 100%. (Kimi K2.6, PR #53)
 
 ### Added
 
