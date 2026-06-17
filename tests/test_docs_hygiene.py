@@ -98,6 +98,17 @@ def test_markdown_local_link_check_reports_missing_file(tmp_path, monkeypatch):
     assert "https://example.com" not in str(exc_info.value)
 
 
+def test_readme_documents_room_filter_and_csv_room_normalization():
+    """Keep README guidance aligned with CLI room filter and CSV output behavior."""
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    assert "room may be written as best or #best" in readme
+    assert "`--room`" in readme
+    assert "accepts either `best` or `#best`" in readme
+    assert "CSV `room` column uses the API's normalized room name" in readme
+    assert "even when the input filter is written as `--room #best`" in readme
+
+
 def test_analytics_contract_documents_every_compute_all_key():
     """Catch missing contract entries when compute_all adds or renames metrics."""
     from village_pulse.analytics import compute_all
